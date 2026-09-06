@@ -1,0 +1,932 @@
+{
+  "negocio": {
+    "nombre": "Panadería Sissa",
+    "moneda": "COP"
+  },
+  "categorias": [
+    {
+      "nombre": "Bebidas calientes",
+      "medida": "unidad",
+      "orden": 1
+    },
+    {
+      "nombre": "Bebidas frias",
+      "medida": "unidad",
+      "orden": 2
+    },
+    {
+      "nombre": "Panadería",
+      "medida": "unidad",
+      "orden": 3
+    },
+    {
+      "nombre": "Alpina",
+      "medida": "litro",
+      "orden": 4
+    },
+    {
+      "nombre": "Galletas y pasteles",
+      "medida": "unidad",
+      "orden": 5
+    },
+    {
+      "nombre": "Tortas y postres",
+      "medida": "unidad",
+      "orden": 99
+    }
+  ],
+  "productos": [
+    {
+      "categoria": "Bebidas calientes",
+      "nombre": "Tinto",
+      "precio": 2000,
+      "disponible": true,
+      "orden": 1
+    },
+    {
+      "categoria": "Bebidas calientes",
+      "nombre": "Café",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 2
+    },
+    {
+      "categoria": "Bebidas calientes",
+      "nombre": "Aromática Grande",
+      "precio": 2500,
+      "disponible": true,
+      "orden": 3
+    },
+    {
+      "categoria": "Bebidas calientes",
+      "nombre": "Aromática Pequeña",
+      "precio": 2000,
+      "disponible": true,
+      "orden": 4
+    },
+    {
+      "categoria": "Bebidas calientes",
+      "nombre": "Perico",
+      "precio": 2500,
+      "disponible": true,
+      "orden": 5
+    },
+    {
+      "categoria": "Bebidas calientes",
+      "nombre": "Chocolate",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 6
+    },
+    {
+      "categoria": "Bebidas calientes",
+      "nombre": "Milo",
+      "precio": 4000,
+      "disponible": true,
+      "orden": 7
+    },
+    {
+      "categoria": "Bebidas calientes",
+      "nombre": "Capuchino",
+      "precio": 6000,
+      "disponible": true,
+      "orden": 8
+    },
+    {
+      "categoria": "Bebidas calientes",
+      "nombre": "Capuchino con Amaretto",
+      "precio": 9000,
+      "disponible": true,
+      "orden": 9
+    },
+    {
+      "categoria": "Bebidas calientes",
+      "nombre": "Capuchino con Crema de Whisky",
+      "precio": 8000,
+      "disponible": true,
+      "orden": 10
+    },
+    {
+      "categoria": "Bebidas calientes",
+      "nombre": "Mokaccino",
+      "precio": 5000,
+      "disponible": true,
+      "orden": 11
+    },
+    {
+      "categoria": "Bebidas calientes",
+      "nombre": "Tinto Pequeño",
+      "precio": 1500,
+      "disponible": true,
+      "orden": 12
+    },
+    {
+      "categoria": "Bebidas calientes",
+      "nombre": "Tinto Express",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 13
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Milo Frío",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 14
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Jugo de Naranja",
+      "precio": 5000,
+      "disponible": true,
+      "orden": 15
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Jugo de Fruta",
+      "precio": 4000,
+      "disponible": true,
+      "orden": 16
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Agua 300 ml",
+      "precio": 1500,
+      "disponible": true,
+      "orden": 17
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Agua 600 ml",
+      "precio": 2500,
+      "disponible": true,
+      "orden": 18
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Agua Litro",
+      "precio": 3500,
+      "disponible": true,
+      "orden": 19
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Cristal Aloe",
+      "precio": 2500,
+      "disponible": true,
+      "orden": 20
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Speed Max",
+      "precio": 2500,
+      "disponible": true,
+      "orden": 21
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Pony Malta",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 22
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Gatorade",
+      "precio": 4500,
+      "disponible": true,
+      "orden": 23
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Agua H2O",
+      "precio": 3500,
+      "disponible": true,
+      "orden": 24
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Hit 500 ml",
+      "precio": 3500,
+      "disponible": true,
+      "orden": 25
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Hit Botella 250",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 26
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Coca Cola 1.5 L",
+      "precio": 7000,
+      "disponible": true,
+      "orden": 27
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Coca Cola Plástica",
+      "precio": 3500,
+      "disponible": true,
+      "orden": 28
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Coca Cola 350 ml",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 29
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Coca Cola Zero",
+      "precio": 3500,
+      "disponible": true,
+      "orden": 30
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Mr Tea",
+      "precio": 3500,
+      "disponible": true,
+      "orden": 31
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Gaseosa Postobón 250 ml",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 32
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Gaseosa 250 ml Botella",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 33
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Bretaña",
+      "precio": 3500,
+      "disponible": true,
+      "orden": 34
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Gaseosa Pepsi 1 Litro",
+      "precio": 5000,
+      "disponible": true,
+      "orden": 35
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Gaseosa 1.5 L",
+      "precio": 7500,
+      "disponible": true,
+      "orden": 36
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Coca Cola 3 L",
+      "precio": 13000,
+      "disponible": true,
+      "orden": 37
+    },
+    {
+      "categoria": "Bebidas frias",
+      "nombre": "Masato",
+      "precio": 2500,
+      "disponible": true,
+      "orden": 38
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Avena Bolsa",
+      "precio": 3400,
+      "disponible": true,
+      "orden": 39
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Avena Vaso",
+      "precio": 4800,
+      "disponible": true,
+      "orden": 40
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Yogo Bolsa",
+      "precio": 2000,
+      "disponible": true,
+      "orden": 41
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Yogo Vaso",
+      "precio": 3500,
+      "disponible": true,
+      "orden": 42
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Yogo Caja",
+      "precio": 2800,
+      "disponible": true,
+      "orden": 43
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Alpin Bolsa",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 44
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Alpin Caja",
+      "precio": 3500,
+      "disponible": true,
+      "orden": 45
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Frutto Caja",
+      "precio": 2800,
+      "disponible": true,
+      "orden": 46
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Frutto Botella",
+      "precio": 4000,
+      "disponible": true,
+      "orden": 47
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Alpinito Pequeño",
+      "precio": 2000,
+      "disponible": true,
+      "orden": 48
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Alpinito Grande",
+      "precio": 2500,
+      "disponible": true,
+      "orden": 49
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Alpinette",
+      "precio": 4800,
+      "disponible": true,
+      "orden": 50
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Gelatina sin premio",
+      "precio": 2500,
+      "disponible": true,
+      "orden": 51
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Gelatina con premio",
+      "precio": 3500,
+      "disponible": true,
+      "orden": 52
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Yox",
+      "precio": 3800,
+      "disponible": true,
+      "orden": 53
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Kumiz Vaso",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 54
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Yogurt Original",
+      "precio": 3800,
+      "disponible": true,
+      "orden": 55
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Bon Yurt",
+      "precio": 4800,
+      "disponible": true,
+      "orden": 56
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Yogo Yogo Cereal",
+      "precio": 3500,
+      "disponible": true,
+      "orden": 57
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Mini Bon Yurt",
+      "precio": 3500,
+      "disponible": true,
+      "orden": 58
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Compota",
+      "precio": 3800,
+      "disponible": true,
+      "orden": 59
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Soka Botella",
+      "precio": 4000,
+      "disponible": true,
+      "orden": 60
+    },
+    {
+      "categoria": "Alpina",
+      "nombre": "Yogo Premium",
+      "precio": 4800,
+      "disponible": true,
+      "orden": 61
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Mantecada Grande",
+      "precio": 8000,
+      "disponible": true,
+      "orden": 62
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Galleta Avena",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 63
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Pasabocas",
+      "precio": 2500,
+      "disponible": true,
+      "orden": 64
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Galleta Mariposa",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 65
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Galleta Doble con Chocolate",
+      "precio": 3500,
+      "disponible": true,
+      "orden": 66
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Galleta Chips",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 67
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Galleta Doble Maní",
+      "precio": 3500,
+      "disponible": true,
+      "orden": 68
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Negro",
+      "precio": 7000,
+      "disponible": true,
+      "orden": 69
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Mantecada",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 70
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Galleta Punto Rojo",
+      "precio": 2000,
+      "disponible": true,
+      "orden": 71
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Galleta Punta Chocolate",
+      "precio": 2500,
+      "disponible": true,
+      "orden": 72
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Galleta de Muñecas",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 73
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Flautas",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 74
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Marranitos (Arequipe, Bocadillo)",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 75
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Torta de Mazorca",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 76
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Mantecada Decorada",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 77
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Empanadas",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 78
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Almojábanas",
+      "precio": 2500,
+      "disponible": true,
+      "orden": 79
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Pastel de Pollo",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 80
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Hawaiano",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 81
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Mantecada porción",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 82
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Pan de Yuca",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 83
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Pan de Bono",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 84
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Pan de Queso",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 85
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Rellenos",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 86
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Croissant (Bocadillo, Jamón)",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 87
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Churros",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 88
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Donas",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 89
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Pastel de Piña",
+      "precio": 4000,
+      "disponible": true,
+      "orden": 90
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Arepa de Queso",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 91
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Palitos de Queso",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 92
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Liberales",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 93
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "María Luisa",
+      "precio": 3000,
+      "disponible": true,
+      "orden": 94
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Brazo de Reina pequeño",
+      "precio": 2500,
+      "disponible": true,
+      "orden": 95
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Trufas",
+      "precio": 1500,
+      "disponible": true,
+      "orden": 96
+    },
+    {
+      "categoria": "Galletas y pasteles",
+      "nombre": "Repollas",
+      "precio": 2000,
+      "disponible": true,
+      "orden": 97
+    },
+    {
+      "categoria": "Torta Tres Leches (10 personas)",
+      "nombre": "30000",
+      "precio": 0,
+      "disponible": true,
+      "orden": 98
+    },
+    {
+      "categoria": "Torta Tres Leches (20 personas)",
+      "nombre": "45000",
+      "precio": 0,
+      "disponible": true,
+      "orden": 99
+    },
+    {
+      "categoria": "Torta Tres Leches (30 personas)",
+      "nombre": "65000",
+      "precio": 0,
+      "disponible": true,
+      "orden": 100
+    },
+    {
+      "categoria": "Porción de Torta Tres Leches",
+      "nombre": "2500",
+      "precio": 0,
+      "disponible": true,
+      "orden": 101
+    },
+    {
+      "categoria": "Torta Milky Way (10 personas)",
+      "nombre": "35000",
+      "precio": 0,
+      "disponible": true,
+      "orden": 102
+    },
+    {
+      "categoria": "Torta Milky Way (20 personas)",
+      "nombre": "50000",
+      "precio": 0,
+      "disponible": true,
+      "orden": 103
+    },
+    {
+      "categoria": "Torta Milky Way (30 personas)",
+      "nombre": "70000",
+      "precio": 0,
+      "disponible": true,
+      "orden": 104
+    },
+    {
+      "categoria": "Ponqué (10 personas)",
+      "nombre": "35000",
+      "precio": 0,
+      "disponible": true,
+      "orden": 105
+    },
+    {
+      "categoria": "Ponqué (20 personas)",
+      "nombre": "55000",
+      "precio": 0,
+      "disponible": true,
+      "orden": 106
+    },
+    {
+      "categoria": "Ponqué (30 personas)",
+      "nombre": "80000",
+      "precio": 0,
+      "disponible": true,
+      "orden": 107
+    },
+    {
+      "categoria": "Vaso Gelatina / Fresa",
+      "nombre": "6500",
+      "precio": 0,
+      "disponible": true,
+      "orden": 108
+    },
+    {
+      "categoria": "Brazo de Reina Grande",
+      "nombre": "20000",
+      "precio": 1,
+      "disponible": true,
+      "orden": 109
+    },
+    {
+      "categoria": "Tiramisú",
+      "nombre": "7000",
+      "precio": 0,
+      "disponible": true,
+      "orden": 110
+    },
+    {
+      "categoria": "Milhoja",
+      "nombre": "6500",
+      "precio": 1,
+      "disponible": true,
+      "orden": 111
+    },
+    {
+      "categoria": "Tres Leches en Domo",
+      "nombre": "8000",
+      "precio": 0,
+      "disponible": true,
+      "orden": 112
+    },
+    {
+      "categoria": "Merengones",
+      "nombre": "8500",
+      "precio": 0,
+      "disponible": true,
+      "orden": 113
+    },
+    {
+      "categoria": "Flan Porción / Copas de Chocolate",
+      "nombre": "7000",
+      "precio": 1,
+      "disponible": true,
+      "orden": 114
+    },
+    {
+      "categoria": "Pan pequeño",
+      "nombre": "400",
+      "precio": 0,
+      "disponible": true,
+      "orden": 115
+    },
+    {
+      "categoria": "Pan grande",
+      "nombre": "6000",
+      "precio": 0,
+      "disponible": true,
+      "orden": 116
+    }
+  ],
+  "mesas": [
+    {
+      "nombre": "Mesa 1",
+      "zona": "Salón"
+    },
+    {
+      "nombre": "Mesa 2",
+      "zona": "Salón"
+    },
+    {
+      "nombre": "Mesa 3",
+      "zona": "Salón"
+    },
+    {
+      "nombre": "Mesa 4",
+      "zona": "Salón"
+    },
+    {
+      "nombre": "Mesa 5",
+      "zona": "Salón"
+    },
+    {
+      "nombre": "Mesa 6",
+      "zona": "Salón"
+    },
+    {
+      "nombre": "Mesa 7",
+      "zona": "Salón"
+    },
+    {
+      "nombre": "Mesa 8",
+      "zona": "Salón"
+    },
+    {
+      "nombre": "Mesa 9",
+      "zona": "Salón"
+    },
+    {
+      "nombre": "Mesa 10",
+      "zona": "Salón"
+    }
+  ],
+  "usuarios": [
+    {
+      "email": "dueno@panaderiasissa.com",
+      "password": "Sissa2026!",
+      "nombre": "Dueño",
+      "rol": "dueno"
+    },
+    {
+      "email": "admin@panaderiasissa.com",
+      "password": "Sissa2026!",
+      "nombre": "Administrador",
+      "rol": "admin"
+    },
+    {
+      "email": "mostrador@panaderiasissa.com",
+      "password": "Sissa2026!",
+      "nombre": "Mostrador",
+      "rol": "mostrador"
+    },
+    {
+      "email": "mesero@panaderiasissa.com",
+      "password": "Sissa2026!",
+      "nombre": "Mesero",
+      "rol": "mesero"
+    },
+    {
+      "email": "cocina@panaderiasissa.com",
+      "password": "Sissa2026!",
+      "nombre": "Cocina",
+      "rol": "cocina"
+    },
+    {
+      "email": "caja@panaderiasissa.com",
+      "password": "Sissa2026!",
+      "nombre": "Caja",
+      "rol": "caja"
+    }
+  ]
+}
