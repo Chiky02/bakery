@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Encargo } from "@/types";
 import { formatCOP, formatDate } from "@/lib/format";
+import { useBakeryId } from "@/lib/use-bakery-id";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ const ESTADO_COLOR: Record<string, "warning" | "success" | "info" | "danger"> = 
 };
 
 export default function EncargosPage() {
+  const { panaderiaId } = useBakeryId();
   const [encargos, setEncargos] = useState<Encargo[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
@@ -29,17 +31,19 @@ export default function EncargosPage() {
   });
 
   async function load() {
+    if (!panaderiaId) return;
     const supabase = createClient();
     const { data } = await supabase
       .from("encargos")
       .select("*")
+      .eq("panaderia_id", panaderiaId)
       .order("fecha_entrega");
     setEncargos((data as Encargo[]) ?? []);
   }
 
   useEffect(() => {
     load();
-  }, []);
+  }, [panaderiaId]);
 
   async function crear(e: React.FormEvent) {
     e.preventDefault();

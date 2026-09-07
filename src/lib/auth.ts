@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Profile } from "@/types";
+import type { Miembro, Panaderia, Profile, SessionContext, UserRole } from "@/types";
 import { redirect } from "next/navigation";
 
 export async function getSessionProfile(): Promise<Profile | null> {
@@ -11,7 +11,7 @@ export async function getSessionProfile(): Promise<Profile | null> {
 
   const { data } = await supabase
     .from("profiles")
-    .select("id, nombre, rol, activo")
+    .select("id, nombre, activo, panaderia_activa_id")
     .eq("id", user.id)
     .single();
 
@@ -22,4 +22,59 @@ export async function requireProfile(): Promise<Profile> {
   const profile = await getSessionProfile();
   if (!profile || !profile.activo) redirect("/login");
   return profile;
+}
+
+export async function getSessionContext(): Promise<SessionContext | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, nombre, activo, panaderia_activa_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile || !profile.activo) return null;
+
+  const { data: memberships } = await supabase
+    .from("miembros")
+    .select("*, panaderias(*)")
+    .eq("user_id", user.id)
+    .eq("activo", true);
+
+  const list = (memberships as Miembro[]) ?? [];
+  if (list.length === 0) return null;
+
+  let active =
+    list.find((m) => m.panaderia_id === profile.panaderia_activa_id) ?? list[0];
+
+  if (profile.panaderia_activa_id !== active.panaderia_id) {
+    await supabase
+      .from("profiles")
+      .update({ panaderia_activa_id: active.panaderia_id })
+      .eq("id", profile.id);
+  }
+
+  const panaderia = active.panaderias as Panaderia;
+  if (!panaderia) return null;
+
+  return {
+    profile: profile as Profile,
+    panaderia,
+    rol: active.rol as UserRole,
+    memberships: list,
+  };
+}
+
+export async function requireBakeryContext(): Promise<SessionContext> {
+  const ctx = await getSessionContext();
+  if (!ctx) {
+    const profile = await getSessionProfile();
+    if (!profile) redirect("/login");
+    redirect("/panaderias");
+  }
+  return ctx;
 }

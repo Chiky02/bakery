@@ -1,16 +1,23 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireApiContext } from "@/lib/api-context";
 
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: mesaId } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const result = await requireApiContext();
+  if (result instanceof NextResponse) return result;
+  const { ctx, supabase } = result;
+
+  const { data: mesa } = await supabase
+    .from("mesas")
+    .select("id, panaderia_id")
+    .eq("id", mesaId)
+    .eq("panaderia_id", ctx.panaderia.id)
+    .single();
+
+  if (!mesa) return NextResponse.json({ error: "Mesa no encontrada" }, { status: 404 });
 
   const { data: existing } = await supabase
     .from("cuentas_mesa")
@@ -23,7 +30,12 @@ export async function POST(
 
   const { data: cuenta, error } = await supabase
     .from("cuentas_mesa")
-    .insert({ mesa_id: mesaId, mesero_id: user.id, estado: "abierta" })
+    .insert({
+      mesa_id: mesaId,
+      panaderia_id: ctx.panaderia.id,
+      mesero_id: ctx.profile.id,
+      estado: "abierta",
+    })
     .select()
     .single();
 

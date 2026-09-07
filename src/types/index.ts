@@ -8,15 +8,50 @@ export type UserRole =
 
 export type MedioPago = "efectivo" | "electronico" | "mixto";
 
+export type RecepcionEstado =
+  | "borrador"
+  | "pendiente"
+  | "parcial"
+  | "recibida"
+  | "cancelada";
+
 export type Profile = {
   id: string;
   nombre: string;
+  activo: boolean;
+  panaderia_activa_id: string | null;
+};
+
+export type Panaderia = {
+  id: string;
+  nombre: string;
+  slug: string;
+  moneda: string;
+  pedido_directo_habilitado: boolean;
+  requiere_aprobacion_mesero: boolean;
+  activa: boolean;
+};
+
+export type Miembro = {
+  id: string;
+  panaderia_id: string;
+  user_id: string;
   rol: UserRole;
   activo: boolean;
+  panaderias?: Panaderia;
+  profiles?: Profile;
+};
+
+export type SessionContext = {
+  profile: Profile;
+  panaderia: Panaderia;
+  rol: UserRole;
+  memberships: Miembro[];
 };
 
 export type Categoria = {
   id: string;
+  panaderia_id: string;
   nombre: string;
   medida: string;
   orden: number;
@@ -24,6 +59,7 @@ export type Categoria = {
 
 export type Producto = {
   id: string;
+  panaderia_id: string;
   categoria_id: string;
   nombre: string;
   precio: number;
@@ -34,6 +70,7 @@ export type Producto = {
 
 export type Mesa = {
   id: string;
+  panaderia_id: string;
   nombre: string;
   zona: string;
   estado: "libre" | "ocupada";
@@ -42,6 +79,7 @@ export type Mesa = {
 
 export type CuentaMesa = {
   id: string;
+  panaderia_id: string;
   mesa_id: string;
   mesero_id: string | null;
   estado: "abierta" | "cerrada";
@@ -83,6 +121,7 @@ export type ItemCuenta = {
 
 export type VentaMostrador = {
   id: string;
+  panaderia_id: string;
   fecha_hora: string;
   total: number;
   medio_pago: MedioPago;
@@ -99,6 +138,7 @@ export type VentaDetalleItem = {
 
 export type Encargo = {
   id: string;
+  panaderia_id: string;
   descripcion: string;
   cliente_nombre: string | null;
   cliente_telefono: string | null;
@@ -108,12 +148,50 @@ export type Encargo = {
   notas: string | null;
 };
 
+/** @deprecated usar Panaderia; se mantiene alias para páginas que leían config_negocio */
 export type ConfigNegocio = {
-  id: number;
+  id: string;
   nombre: string;
   moneda: string;
   pedido_directo_habilitado: boolean;
   requiere_aprobacion_mesero: boolean;
+};
+
+export type Proveedor = {
+  id: string;
+  panaderia_id: string;
+  nombre: string;
+  telefono: string | null;
+  email: string | null;
+  notas: string | null;
+  activo: boolean;
+};
+
+export type RecepcionItem = {
+  id: string;
+  recepcion_id: string;
+  producto_id: string | null;
+  descripcion: string;
+  cantidad_pedida: number;
+  cantidad_recibida: number;
+  unidad: string;
+  costo_unitario: number;
+  productos?: Producto;
+};
+
+export type Recepcion = {
+  id: string;
+  panaderia_id: string;
+  proveedor_id: string | null;
+  numero: string | null;
+  estado: RecepcionEstado;
+  fecha_pedido: string | null;
+  fecha_recepcion: string | null;
+  notas: string | null;
+  total_estimado: number;
+  created_at: string;
+  proveedores?: Proveedor;
+  recepcion_items?: RecepcionItem[];
 };
 
 export type CartItem = {

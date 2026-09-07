@@ -31,17 +31,19 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/");
+    router.push("/dashboard");
     router.refresh();
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-amber-50 to-orange-100 p-4 dark:from-stone-950 dark:to-stone-900">
+    <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(ellipse_at_top,_#ffedd5_0%,_#f7f4ef_45%,_#e7e5e4_100%)] p-4 dark:bg-[radial-gradient(ellipse_at_top,_#431407_0%,_#0c0a09_50%,_#1c1917_100%)]">
       <Card className="w-full max-w-md">
         <div className="mb-6 text-center">
-          <p className="text-4xl">🥐</p>
-          <CardTitle className="mt-2 text-2xl">Panadería Sissa</CardTitle>
-          <p className="mt-1 text-sm text-stone-500">Ingresa para continuar</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-700 dark:text-orange-400">
+            BakeryChiky02
+          </p>
+          <CardTitle className="mt-2 text-2xl">Entrar al sistema</CardTitle>
+          <p className="mt-1 text-sm text-stone-500">Ventas, mesas, encargos y recepciones</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

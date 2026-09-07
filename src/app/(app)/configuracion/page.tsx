@@ -2,50 +2,63 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { ConfigNegocio } from "@/types";
+import type { Panaderia } from "@/types";
+import { useBakeryId } from "@/lib/use-bakery-id";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 
 export default function ConfiguracionPage() {
-  const [config, setConfig] = useState<ConfigNegocio | null>(null);
+  const { panaderiaId, ready } = useBakeryId();
+  const [config, setConfig] = useState<Panaderia | null>(null);
   const [saved, setSaved] = useState(false);
+  const [origin, setOrigin] = useState("");
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase
-      .from("config_negocio")
-      .select("*")
-      .eq("id", 1)
-      .single()
-      .then(({ data }) => setConfig(data as ConfigNegocio));
+    setOrigin(window.location.origin);
   }, []);
 
-  async function guardar() {
-    if (!config) return;
+  useEffect(() => {
+    if (!panaderiaId) return;
     const supabase = createClient();
-    await supabase.from("config_negocio").update({
-      nombre: config.nombre,
-      pedido_directo_habilitado: config.pedido_directo_habilitado,
-      requiere_aprobacion_mesero: config.requiere_aprobacion_mesero,
-    }).eq("id", 1);
+    supabase
+      .from("panaderias")
+      .select("*")
+      .eq("id", panaderiaId)
+      .single()
+      .then(({ data }) => setConfig(data as Panaderia));
+  }, [panaderiaId]);
+
+  async function guardar() {
+    if (!config || !panaderiaId) return;
+    const supabase = createClient();
+    await supabase
+      .from("panaderias")
+      .update({
+        nombre: config.nombre,
+        pedido_directo_habilitado: config.pedido_directo_habilitado,
+        requiere_aprobacion_mesero: config.requiere_aprobacion_mesero,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", panaderiaId);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
 
-  if (!config) return <p>Cargando...</p>;
+  if (!ready || !config) return <p>Cargando...</p>;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Configuración</h1>
-        <p className="text-sm text-stone-500">Ajustes del negocio y pedido por QR</p>
+        <p className="text-sm text-stone-500">Ajustes de esta panadería y pedido por QR</p>
       </div>
 
       <Card className="max-w-lg space-y-4">
+        <CardTitle>BakeryChiky02 · local</CardTitle>
         <div>
           <label className="text-sm font-medium">Nombre del negocio</label>
           <input
-            className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
             value={config.nombre}
             onChange={(e) => setConfig({ ...config, nombre: e.target.value })}
           />
@@ -78,24 +91,33 @@ export default function ConfiguracionPage() {
           <div>
             <p className="font-medium">Mesero como filtro</p>
             <p className="text-xs text-stone-500">
-              Los pedidos QR quedan pendientes hasta aprobación del mesero
+              Pedidos QR quedan pendientes de confirmación del mesero
             </p>
           </div>
         </label>
 
-        <Button onClick={guardar}>{saved ? "✓ Guardado" : "Guardar cambios"}</Button>
+        <Button onClick={guardar}>Guardar</Button>
+        {saved && <p className="text-sm text-green-600">Guardado</p>}
       </Card>
 
-      <Card className="max-w-lg">
-        <CardTitle>Enlaces QR por mesa</CardTitle>
-        <p className="mt-2 text-sm text-stone-500">
-          Cada mesa tiene un enlace del tipo:{" "}
-          <code className="rounded bg-stone-100 px-1">/qr/[id-mesa]</code>
-        </p>
-        <p className="mt-2 text-xs text-stone-400">
-          Imprime el QR apuntando a esa URL para cada mesa desde el panel de mesas.
-        </p>
-      </Card>
+      {config.pedido_directo_habilitado && (
+        <Card className="max-w-lg space-y-2">
+          <CardTitle>Links de pedido QR</CardTitle>
+          <p className="text-sm text-stone-500">
+            Copia el link de cada mesa en{" "}
+            <a href="/mesas" className="text-orange-700 underline dark:text-orange-300">
+              Mesas
+            </a>
+            .
+          </p>
+          <code className="block break-all rounded-lg bg-stone-100 p-3 text-xs dark:bg-stone-800">
+            {origin}/qr/[id-de-mesa]
+          </code>
+          <p className="text-xs text-stone-400">
+            Genera el código QR con ese URL e imprímelo en la mesa.
+          </p>
+        </Card>
+      )}
     </div>
   );
 }

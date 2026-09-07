@@ -1,7 +1,11 @@
-import { requireProfile } from "@/lib/auth";
+import { requireBakeryContext } from "@/lib/auth";
 import { AppShell } from "@/components/app/app-shell";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const profile = await requireProfile();
-  return <AppShell profile={profile}>{children}</AppShell>;
+  const ctx = await requireBakeryContext();
+  return (
+    <AppShell profile={ctx.profile} panaderia={ctx.panaderia} rol={ctx.rol} memberships={ctx.memberships}>
+      {children}
+    </AppShell>
+  );
 }

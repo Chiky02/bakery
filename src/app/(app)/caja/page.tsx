@@ -1,20 +1,25 @@
+import { requireBakeryContext } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatCOP, formatDateTime } from "@/lib/format";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 export default async function CajaPage() {
+  const { panaderia } = await requireBakeryContext();
   const supabase = await createClient();
+  const pid = panaderia.id;
 
   const { data: cuentas } = await supabase
     .from("cuentas_mesa")
     .select("*, mesas(nombre)")
+    .eq("panaderia_id", pid)
     .eq("estado", "abierta")
     .order("hora_apertura");
 
   const { data: ventasHoy } = await supabase
     .from("ventas_mostrador")
     .select("*")
+    .eq("panaderia_id", pid)
     .gte("fecha_hora", new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
     .order("fecha_hora", { ascending: false })
     .limit(20);

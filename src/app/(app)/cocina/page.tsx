@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { ItemCuenta } from "@/types";
 import { formatCOP } from "@/lib/format";
+import { useBakeryId } from "@/lib/use-bakery-id";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,13 +26,16 @@ const ESTADO_LABEL: Record<string, string> = {
 };
 
 export default function CocinaPage() {
+  const { panaderiaId } = useBakeryId();
   const [items, setItems] = useState<ItemCuenta[]>([]);
 
   async function load() {
+    if (!panaderiaId) return;
     const supabase = createClient();
     const { data } = await supabase
       .from("items_cuenta")
-      .select("*, productos(*), cuentas_mesa(mesas(nombre))")
+      .select("*, productos(*), cuentas_mesa!inner(panaderia_id, mesas(nombre))")
+      .eq("cuentas_mesa.panaderia_id", panaderiaId)
       .in("estado", ["pendiente", "pendiente_confirmacion", "en_preparacion", "listo"])
       .order("created_at");
     setItems((data as ItemCuenta[]) ?? []);
@@ -39,6 +43,7 @@ export default function CocinaPage() {
 
   useEffect(() => {
     load();
+    if (!panaderiaId) return;
     const supabase = createClient();
     const channel = supabase
       .channel("cocina")
@@ -49,7 +54,7 @@ export default function CocinaPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [panaderiaId]);
 
   async function updateEstado(id: string, estado: string) {
     await fetch(`/api/items/${id}`, {

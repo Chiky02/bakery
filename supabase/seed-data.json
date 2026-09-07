@@ -1,6 +1,6 @@
 {
   "negocio": {
-    "nombre": "Panadería Sissa",
+    "nombre": "BakeryChiky02",
     "moneda": "COP"
   },
   "categorias": [
@@ -716,135 +716,135 @@
       "orden": 97
     },
     {
-      "categoria": "Torta Tres Leches (10 personas)",
-      "nombre": "30000",
-      "precio": 0,
+      "categoria": "Tortas y postres",
+      "nombre": "Torta Tres Leches (10 personas)",
+      "precio": 30000,
       "disponible": true,
       "orden": 98
     },
     {
-      "categoria": "Torta Tres Leches (20 personas)",
-      "nombre": "45000",
-      "precio": 0,
+      "categoria": "Tortas y postres",
+      "nombre": "Torta Tres Leches (20 personas)",
+      "precio": 45000,
       "disponible": true,
       "orden": 99
     },
     {
-      "categoria": "Torta Tres Leches (30 personas)",
-      "nombre": "65000",
-      "precio": 0,
+      "categoria": "Tortas y postres",
+      "nombre": "Torta Tres Leches (30 personas)",
+      "precio": 65000,
       "disponible": true,
       "orden": 100
     },
     {
-      "categoria": "Porción de Torta Tres Leches",
-      "nombre": "2500",
-      "precio": 0,
+      "categoria": "Tortas y postres",
+      "nombre": "Porción de Torta Tres Leches",
+      "precio": 2500,
       "disponible": true,
       "orden": 101
     },
     {
-      "categoria": "Torta Milky Way (10 personas)",
-      "nombre": "35000",
-      "precio": 0,
+      "categoria": "Tortas y postres",
+      "nombre": "Torta Milky Way (10 personas)",
+      "precio": 35000,
       "disponible": true,
       "orden": 102
     },
     {
-      "categoria": "Torta Milky Way (20 personas)",
-      "nombre": "50000",
-      "precio": 0,
+      "categoria": "Tortas y postres",
+      "nombre": "Torta Milky Way (20 personas)",
+      "precio": 50000,
       "disponible": true,
       "orden": 103
     },
     {
-      "categoria": "Torta Milky Way (30 personas)",
-      "nombre": "70000",
-      "precio": 0,
+      "categoria": "Tortas y postres",
+      "nombre": "Torta Milky Way (30 personas)",
+      "precio": 70000,
       "disponible": true,
       "orden": 104
     },
     {
-      "categoria": "Ponqué (10 personas)",
-      "nombre": "35000",
-      "precio": 0,
+      "categoria": "Tortas y postres",
+      "nombre": "Ponqué (10 personas)",
+      "precio": 35000,
       "disponible": true,
       "orden": 105
     },
     {
-      "categoria": "Ponqué (20 personas)",
-      "nombre": "55000",
-      "precio": 0,
+      "categoria": "Tortas y postres",
+      "nombre": "Ponqué (20 personas)",
+      "precio": 55000,
       "disponible": true,
       "orden": 106
     },
     {
-      "categoria": "Ponqué (30 personas)",
-      "nombre": "80000",
-      "precio": 0,
+      "categoria": "Tortas y postres",
+      "nombre": "Ponqué (30 personas)",
+      "precio": 80000,
       "disponible": true,
       "orden": 107
     },
     {
-      "categoria": "Vaso Gelatina / Fresa",
-      "nombre": "6500",
-      "precio": 0,
+      "categoria": "Tortas y postres",
+      "nombre": "Vaso Gelatina / Fresa",
+      "precio": 6500,
       "disponible": true,
       "orden": 108
     },
     {
-      "categoria": "Brazo de Reina Grande",
-      "nombre": "20000",
-      "precio": 1,
+      "categoria": "Tortas y postres",
+      "nombre": "Brazo de Reina Grande",
+      "precio": 20000,
       "disponible": true,
       "orden": 109
     },
     {
-      "categoria": "Tiramisú",
-      "nombre": "7000",
-      "precio": 0,
+      "categoria": "Tortas y postres",
+      "nombre": "Tiramisú",
+      "precio": 7000,
       "disponible": true,
       "orden": 110
     },
     {
-      "categoria": "Milhoja",
-      "nombre": "6500",
-      "precio": 1,
+      "categoria": "Tortas y postres",
+      "nombre": "Milhoja",
+      "precio": 6500,
       "disponible": true,
       "orden": 111
     },
     {
-      "categoria": "Tres Leches en Domo",
-      "nombre": "8000",
-      "precio": 0,
+      "categoria": "Tortas y postres",
+      "nombre": "Tres Leches en Domo",
+      "precio": 8000,
       "disponible": true,
       "orden": 112
     },
     {
-      "categoria": "Merengones",
-      "nombre": "8500",
-      "precio": 0,
+      "categoria": "Tortas y postres",
+      "nombre": "Merengones",
+      "precio": 8500,
       "disponible": true,
       "orden": 113
     },
     {
-      "categoria": "Flan Porción / Copas de Chocolate",
-      "nombre": "7000",
-      "precio": 1,
+      "categoria": "Tortas y postres",
+      "nombre": "Flan Porción / Copas de Chocolate",
+      "precio": 7000,
       "disponible": true,
       "orden": 114
     },
     {
-      "categoria": "Pan pequeño",
-      "nombre": "400",
-      "precio": 0,
+      "categoria": "Panadería",
+      "nombre": "Pan pequeño",
+      "precio": 400,
       "disponible": true,
       "orden": 115
     },
     {
-      "categoria": "Pan grande",
-      "nombre": "6000",
-      "precio": 0,
+      "categoria": "Panadería",
+      "nombre": "Pan grande",
+      "precio": 6000,
       "disponible": true,
       "orden": 116
     }

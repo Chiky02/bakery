@@ -38,53 +38,119 @@ const data: SeedData = JSON.parse(
   readFileSync(join(process.cwd(), "supabase/seed-data.json"), "utf-8"),
 );
 
-async function seed() {
-  console.log("🥐 Sembrando Panadería Sissa...\n");
+async function ensurePanaderia() {
+  const { data: existing } = await supabase
+    .from("panaderias")
+    .select("*")
+    .eq("slug", "bakerychiky02")
+    .maybeSingle();
 
-  await supabase.from("config_negocio").upsert({
-    id: 1,
-    nombre: data.negocio.nombre,
-    moneda: data.negocio.moneda,
-    pedido_directo_habilitado: false,
-    requiere_aprobacion_mesero: true,
-  });
+  if (existing) {
+    await supabase
+      .from("panaderias")
+      .update({
+        nombre: "BakeryChiky02",
+        moneda: data.negocio.moneda,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", existing.id);
+    return existing.id as string;
+  }
+
+  const { data: created, error } = await supabase
+    .from("panaderias")
+    .insert({
+      nombre: "BakeryChiky02",
+      slug: "bakerychiky02",
+      moneda: data.negocio.moneda,
+      pedido_directo_habilitado: false,
+      requiere_aprobacion_mesero: true,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return created.id as string;
+}
+
+async function seed() {
+  console.log("🥐 Sembrando BakeryChiky02 (multitenant)...\n");
+
+  const panaderiaId = await ensurePanaderia();
+  console.log(`  · Panadería: BakeryChiky02 (${panaderiaId})\n`);
 
   const { data: categorias, error: catErr } = await supabase
     .from("categorias")
-    .upsert(data.categorias, { onConflict: "nombre" })
+    .upsert(
+      data.categorias.map((c) => ({ ...c, panaderia_id: panaderiaId })),
+      { onConflict: "panaderia_id,nombre" },
+    )
     .select();
   if (catErr) throw catErr;
 
   const catMap = new Map(categorias!.map((c) => [c.nombre, c.id]));
+  const fallbackPostres = catMap.get("Tortas y postres") ?? catMap.get("Galletas y pasteles")!;
+  const fallbackPan = catMap.get("Panadería") ?? fallbackPostres;
 
-  const productosPayload = data.productos.map((p) => ({
-    categoria_id: catMap.get(p.categoria) ?? catMap.get("Galletas y pasteles")!,
-    nombre: p.nombre,
-    precio: p.precio,
-    disponible: p.disponible,
-    orden: p.orden,
-  }));
+  const productosPayload = data.productos.map((p) => {
+    const knownId = catMap.get(p.categoria);
+    const numericName = /^\d+$/.test(p.nombre);
+    if (!knownId && numericName) {
+      const isPan = /pan /i.test(p.categoria);
+      return {
+        panaderia_id: panaderiaId,
+        categoria_id: isPan ? fallbackPan : fallbackPostres,
+        nombre: p.categoria,
+        precio: Number(p.nombre) || p.precio,
+        disponible: p.disponible,
+        orden: p.orden,
+      };
+    }
+    return {
+      panaderia_id: panaderiaId,
+      categoria_id: knownId ?? fallbackPostres,
+      nombre: p.nombre,
+      precio: p.precio,
+      disponible: p.disponible,
+      orden: p.orden,
+    };
+  });
+
+  const uniqueProductos = [
+    ...new Map(productosPayload.map((p) => [`${p.categoria_id}:${p.nombre}`, p])).values(),
+  ];
 
   const { error: prodErr } = await supabase
     .from("productos")
-    .upsert(productosPayload, { onConflict: "categoria_id,nombre" });
+    .upsert(uniqueProductos, { onConflict: "panaderia_id,categoria_id,nombre" });
   if (prodErr) {
-    await supabase.from("productos").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-    const { error: insertErr } = await supabase.from("productos").insert(productosPayload);
+    console.warn("Upsert de productos falló, reinsertando limpio:", prodErr.message);
+    await supabase.from("productos").delete().eq("panaderia_id", panaderiaId);
+    const { error: insertErr } = await supabase.from("productos").insert(uniqueProductos);
     if (insertErr) throw insertErr;
   }
 
-  const { error: mesaErr } = await supabase
-    .from("mesas")
-    .upsert(
-      data.mesas.map((m) => ({ ...m, estado: "libre", qr_habilitado: true })),
-      { onConflict: "nombre" },
-    );
+  await supabase
+    .from("productos")
+    .delete()
+    .eq("panaderia_id", panaderiaId)
+    .filter("nombre", "match", "^[0-9]+$");
+
+  const { error: mesaErr } = await supabase.from("mesas").upsert(
+    data.mesas.map((m) => ({
+      ...m,
+      panaderia_id: panaderiaId,
+      estado: "libre",
+      qr_habilitado: true,
+    })),
+    { onConflict: "panaderia_id,nombre" },
+  );
   if (mesaErr) throw mesaErr;
 
+  const { data: existingUsers, error: listErr } = await supabase.auth.admin.listUsers();
+  if (listErr) throw listErr;
+
   for (const u of data.usuarios) {
-    const { data: existing } = await supabase.auth.admin.listUsers();
-    const found = existing?.users.find((x) => x.email === u.email);
+    const found = existingUsers?.users.find((x) => x.email === u.email);
 
     let userId = found?.id;
     if (!found) {
@@ -104,12 +170,35 @@ async function seed() {
     await supabase.from("profiles").upsert({
       id: userId,
       nombre: u.nombre,
-      rol: u.rol,
       activo: true,
+      panaderia_activa_id: panaderiaId,
     });
+
+    await supabase.from("miembros").upsert(
+      {
+        panaderia_id: panaderiaId,
+        user_id: userId,
+        rol: u.rol,
+        activo: true,
+      },
+      { onConflict: "panaderia_id,user_id" },
+    );
   }
 
-  console.log(`\n✅ Listo: ${data.categorias.length} categorías, ${data.productos.length} productos, ${data.mesas.length} mesas`);
+  // Proveedor demo
+  await supabase.from("proveedores").upsert(
+    {
+      panaderia_id: panaderiaId,
+      nombre: "Distribuidora Central",
+      telefono: "3000000000",
+      notas: "Proveedor de demostración",
+    },
+    { onConflict: "panaderia_id,nombre" },
+  );
+
+  console.log(
+    `\n✅ Listo: BakeryChiky02 — ${data.categorias.length} categorías, ${uniqueProductos.length} productos, ${data.mesas.length} mesas`,
+  );
   console.log("\nCredenciales de prueba (cambiar en producción):");
   for (const u of data.usuarios) {
     console.log(`  ${u.rol.padEnd(10)} → ${u.email} / ${u.password}`);

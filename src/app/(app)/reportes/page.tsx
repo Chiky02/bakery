@@ -1,9 +1,12 @@
+import { requireBakeryContext } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatCOP } from "@/lib/format";
 import { Card, CardTitle } from "@/components/ui/card";
 
 export default async function ReportesPage() {
+  const { panaderia } = await requireBakeryContext();
   const supabase = await createClient();
+  const pid = panaderia.id;
   const now = new Date();
   const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1);
   const inicioMesAnterior = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -13,10 +16,12 @@ export default async function ReportesPage() {
     supabase
       .from("ventas_mostrador")
       .select("total, detalle, fecha_hora, medio_pago")
+      .eq("panaderia_id", pid)
       .gte("fecha_hora", inicioMes.toISOString()),
     supabase
       .from("ventas_mostrador")
       .select("total")
+      .eq("panaderia_id", pid)
       .gte("fecha_hora", inicioMesAnterior.toISOString())
       .lte("fecha_hora", finMesAnterior.toISOString()),
   ]);

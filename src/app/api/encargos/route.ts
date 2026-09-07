@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireApiContext } from "@/lib/api-context";
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const result = await requireApiContext();
+  if (result instanceof NextResponse) return result;
+  const { ctx, supabase } = result;
 
   const body = await request.json();
 
@@ -14,7 +12,9 @@ export async function POST(request: Request) {
     .from("encargos")
     .insert({
       ...body,
-      creado_por: user.id,
+      valor: Number(body.valor),
+      panaderia_id: ctx.panaderia.id,
+      creado_por: ctx.profile.id,
       estado: "pendiente",
     })
     .select()

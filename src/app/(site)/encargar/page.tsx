@@ -1,0 +1,218 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import { formatCOP } from "@/lib/format";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+type TortaOption = { id: string; nombre: string; precio: number };
+
+export default function EncargarPage() {
+  const [tortas, setTortas] = useState<TortaOption[]>([]);
+  const [panaderiaId, setPanaderiaId] = useState<string | null>(null);
+  const [productoId, setProductoId] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [cliente, setCliente] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [fecha, setFecha] = useState("");
+  const [notas, setNotas] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [ok, setOk] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      const supabase = createClient();
+      const { data: panaderia } = await supabase
+        .from("panaderias")
+        .select("id")
+        .eq("slug", "bakerychiky02")
+        .maybeSingle();
+      if (!panaderia) return;
+      setPanaderiaId(panaderia.id);
+
+      const { data: cats } = await supabase
+        .from("categorias")
+        .select("id, nombre")
+        .eq("panaderia_id", panaderia.id)
+        .ilike("nombre", "%torta%");
+
+      let list: TortaOption[] = [];
+      if (cats && cats.length > 0) {
+        const { data } = await supabase
+          .from("productos")
+          .select("id, nombre, precio")
+          .eq("panaderia_id", panaderia.id)
+          .eq("disponible", true)
+          .in(
+            "categoria_id",
+            cats.map((c) => c.id),
+          )
+          .order("nombre");
+        list = data ?? [];
+      }
+      if (list.length === 0) {
+        const { data: all } = await supabase
+          .from("productos")
+          .select("id, nombre, precio")
+          .eq("panaderia_id", panaderia.id)
+          .eq("disponible", true)
+          .or("nombre.ilike.%torta%,nombre.ilike.%ponqué%,nombre.ilike.%milky%")
+          .order("nombre");
+        list = all ?? [];
+      }
+      if (list.length === 0) {
+        const { data: all } = await supabase
+          .from("productos")
+          .select("id, nombre, precio")
+          .eq("panaderia_id", panaderia.id)
+          .eq("disponible", true)
+          .order("nombre")
+          .limit(30);
+        list = all ?? [];
+      }
+      setTortas(list);
+    })();
+  }, []);
+
+  const selected = tortas.find((t) => t.id === productoId);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setOk(false);
+
+    const desc =
+      descripcion.trim() ||
+      (selected ? `Encargo: ${selected.nombre}` : "");
+
+    const res = await fetch("/api/public/encargos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        panaderia_id: panaderiaId,
+        producto_id: productoId || null,
+        descripcion: desc,
+        cliente_nombre: cliente,
+        cliente_telefono: telefono,
+        fecha_entrega: fecha,
+        valor: selected?.precio ?? 0,
+        notas: notas || null,
+      }),
+    });
+
+    setLoading(false);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setError(body.error ?? "No se pudo enviar el encargo");
+      return;
+    }
+    setOk(true);
+    setDescripcion("");
+    setCliente("");
+    setTelefono("");
+    setFecha("");
+    setNotas("");
+    setProductoId("");
+  }
+
+  return (
+    <main className="mx-auto min-h-screen max-w-xl px-4 pb-16 pt-28 md:px-6">
+      <p className="text-xs font-semibold uppercase tracking-[0.28em] text-orange-300">
+        BakeryChiky02
+      </p>
+      <h1 className="mt-3 text-3xl font-bold text-white">Encargar torta</h1>
+      <p className="mt-2 text-stone-400">
+        Déjanos tus datos y la fecha de entrega. Te confirmamos por teléfono.
+      </p>
+
+      <form onSubmit={submit} className="mt-8 space-y-4">
+        <div>
+          <label className="mb-1 block text-sm text-stone-300">Torta / producto</label>
+          <select
+            className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+            value={productoId}
+            onChange={(e) => setProductoId(e.target.value)}
+          >
+            <option value="">— Personalizada / otra —</option>
+            {tortas.map((t) => (
+              <option key={t.id} value={t.id} className="text-stone-900">
+                {t.nombre} · {formatCOP(t.precio)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-sm text-stone-300">Descripción del pedido</label>
+          <Input
+            className="border-white/15 bg-white/5 text-white placeholder:text-stone-500"
+            placeholder="Ej. Tres leches 20 personas, decoración cumpleaños"
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+            required={!productoId}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm text-stone-300">Tu nombre</label>
+          <Input
+            className="border-white/15 bg-white/5 text-white"
+            value={cliente}
+            onChange={(e) => setCliente(e.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm text-stone-300">Teléfono</label>
+          <Input
+            className="border-white/15 bg-white/5 text-white"
+            value={telefono}
+            onChange={(e) => setTelefono(e.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm text-stone-300">Fecha de entrega</label>
+          <Input
+            type="date"
+            className="border-white/15 bg-white/5 text-white"
+            value={fecha}
+            onChange={(e) => setFecha(e.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm text-stone-300">Notas</label>
+          <Input
+            className="border-white/15 bg-white/5 text-white"
+            value={notas}
+            onChange={(e) => setNotas(e.target.value)}
+            placeholder="Opcional"
+          />
+        </div>
+
+        {selected && (
+          <p className="text-sm text-orange-300">Valor referencia: {formatCOP(selected.precio)}</p>
+        )}
+        {error && <p className="text-sm text-red-400">{error}</p>}
+        {ok && (
+          <p className="text-sm text-emerald-400">
+            Encargo enviado. Te contactaremos para confirmar.
+          </p>
+        )}
+
+        <Button type="submit" className="w-full" disabled={loading || !panaderiaId}>
+          {loading ? "Enviando..." : "Enviar encargo"}
+        </Button>
+      </form>
+
+      <p className="mt-8 text-center text-sm text-stone-500">
+        <Link href="/" className="text-orange-300 hover:underline">
+          Volver al inicio
+        </Link>
+      </p>
+    </main>
+  );
+}

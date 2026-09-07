@@ -16,13 +16,26 @@ export default function MostradorPage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase
-      .from("productos")
-      .select("*, categorias(*)")
-      .eq("disponible", true)
-      .order("orden")
-      .then(({ data }) => setProductos((data as Producto[]) ?? []));
+    (async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("panaderia_activa_id")
+        .eq("id", user.id)
+        .single();
+      if (!profile?.panaderia_activa_id) return;
+      const { data } = await supabase
+        .from("productos")
+        .select("*, categorias(*)")
+        .eq("panaderia_id", profile.panaderia_activa_id)
+        .eq("disponible", true)
+        .order("orden");
+      setProductos((data as Producto[]) ?? []);
+    })();
   }, []);
 
   const filtered = productos.filter((p) =>

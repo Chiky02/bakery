@@ -17,19 +17,23 @@ export async function POST(
   const supabase = getServiceClient();
   const { items } = await request.json();
 
-  const { data: config } = await supabase
-    .from("config_negocio")
-    .select("*")
-    .eq("id", 1)
-    .single();
-
   const { data: mesa } = await supabase
     .from("mesas")
     .select("*")
     .eq("id", mesaId)
     .single();
 
-  if (!config?.pedido_directo_habilitado || !mesa?.qr_habilitado) {
+  if (!mesa?.qr_habilitado) {
+    return NextResponse.json({ error: "QR deshabilitado" }, { status: 403 });
+  }
+
+  const { data: panaderia } = await supabase
+    .from("panaderias")
+    .select("*")
+    .eq("id", mesa.panaderia_id)
+    .single();
+
+  if (!panaderia?.pedido_directo_habilitado) {
     return NextResponse.json({ error: "QR deshabilitado" }, { status: 403 });
   }
 
@@ -43,7 +47,11 @@ export async function POST(
   if (!cuenta) {
     const { data: nueva } = await supabase
       .from("cuentas_mesa")
-      .insert({ mesa_id: mesaId, estado: "abierta" })
+      .insert({
+        mesa_id: mesaId,
+        panaderia_id: mesa.panaderia_id,
+        estado: "abierta",
+      })
       .select()
       .single();
     cuenta = nueva;
@@ -54,7 +62,7 @@ export async function POST(
     return NextResponse.json({ error: "No se pudo abrir cuenta" }, { status: 500 });
   }
 
-  const estadoInicial = config.requiere_aprobacion_mesero
+  const estadoInicial = panaderia.requiere_aprobacion_mesero
     ? "pendiente_confirmacion"
     : "pendiente";
 
@@ -62,8 +70,9 @@ export async function POST(
   for (const item of items) {
     const { data: producto } = await supabase
       .from("productos")
-      .select("precio, disponible")
+      .select("precio, disponible, panaderia_id")
       .eq("id", item.producto_id)
+      .eq("panaderia_id", mesa.panaderia_id)
       .single();
 
     if (!producto?.disponible) continue;

@@ -21,10 +21,17 @@ export const NAV_ITEMS: {
   { href: "/cocina", label: "Cocina", icon: "👨‍🍳", roles: ["dueno", "admin", "cocina"] },
   { href: "/caja", label: "Caja", icon: "💰", roles: ["dueno", "admin", "caja"] },
   { href: "/encargos", label: "Encargos", icon: "📦", roles: ["dueno", "admin", "mostrador", "mesero"] },
+  {
+    href: "/recepciones",
+    label: "Recepciones",
+    icon: "🚚",
+    roles: ["dueno", "admin", "mostrador", "caja"],
+  },
   { href: "/productos", label: "Productos", icon: "🥐", roles: ["dueno", "admin"] },
   { href: "/reportes", label: "Reportes", icon: "📈", roles: ["dueno", "admin"] },
   { href: "/configuracion", label: "Configuración", icon: "⚙️", roles: ["dueno", "admin"] },
   { href: "/usuarios", label: "Usuarios", icon: "👥", roles: ["dueno", "admin"] },
+  { href: "/panaderias", label: "Mis panaderías", icon: "🏪", roles: ["dueno", "admin", "mostrador", "mesero", "cocina", "caja"] },
 ];
 
 export function canAccess(rol: UserRole, href: string): boolean {
@@ -35,4 +42,14 @@ export function canAccess(rol: UserRole, href: string): boolean {
 
 export function navForRole(rol: UserRole) {
   return NAV_ITEMS.filter((n) => n.roles.includes(rol));
+}
+
+export function slugify(name: string) {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 48);
 }

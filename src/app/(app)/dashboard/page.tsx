@@ -1,33 +1,40 @@
+import { requireBakeryContext } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatCOP, formatHour } from "@/lib/format";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 export default async function DashboardPage() {
+  const { panaderia } = await requireBakeryContext();
   const supabase = await createClient();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const pid = panaderia.id;
 
   const [{ data: ventasHoy }, { data: ventasMes }, { data: encargos }, { data: productosTop }] =
     await Promise.all([
       supabase
         .from("ventas_mostrador")
         .select("total, fecha_hora")
+        .eq("panaderia_id", pid)
         .gte("fecha_hora", today.toISOString()),
       supabase
         .from("ventas_mostrador")
         .select("total, fecha_hora")
+        .eq("panaderia_id", pid)
         .gte("fecha_hora", new Date(today.getFullYear(), today.getMonth(), 1).toISOString()),
       supabase
         .from("encargos")
         .select("*")
+        .eq("panaderia_id", pid)
         .eq("estado", "pendiente")
         .order("fecha_entrega")
         .limit(5),
-      supabase.from("ventas_mostrador").select("detalle, fecha_hora").gte(
-        "fecha_hora",
-        today.toISOString(),
-      ),
+      supabase
+        .from("ventas_mostrador")
+        .select("detalle, fecha_hora")
+        .eq("panaderia_id", pid)
+        .gte("fecha_hora", today.toISOString()),
     ]);
 
   const totalHoy = ventasHoy?.reduce((s, v) => s + v.total, 0) ?? 0;
@@ -57,14 +64,16 @@ export default async function DashboardPage() {
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <p className="text-sm text-stone-500">
-          Flujo registrado vía app (subconjunto de ventas reales del negocio)
+          {panaderia.nombre} — flujo registrado vía app
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <p className="text-sm text-stone-500">Ventas app hoy</p>
-          <p className="mt-1 text-2xl font-bold text-amber-700">{formatCOP(totalHoy)}</p>
+          <p className="mt-1 text-2xl font-bold text-orange-700 dark:text-orange-400">
+            {formatCOP(totalHoy)}
+          </p>
           <p className="text-xs text-stone-400">{countHoy} transacciones</p>
         </Card>
         <Card>

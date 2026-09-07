@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { DM_Sans, Geist_Mono } from "next/font/google";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const display = DM_Sans({
+  variable: "--font-display",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 const geistMono = Geist_Mono({
@@ -13,14 +15,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Panadería Sissa",
-  description: "Sistema de ventas, mesas y encargos — Panadería Sissa",
+  title: "BakeryChiky02",
+  description: "Sistema multitenant de panaderías — ventas, mesas, encargos y recepciones",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${geistSans.variable} ${geistMono.variable} h-full`}>
-      <body className="min-h-full antialiased">{children}</body>
+    <html lang="es" className={`${display.variable} ${geistMono.variable} h-full`} suppressHydrationWarning>
+      <body className="min-h-full antialiased">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

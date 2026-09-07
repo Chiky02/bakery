@@ -5,27 +5,36 @@ import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ProductGrid } from "@/components/app/product-grid";
 import { formatCOP } from "@/lib/format";
-import type { ConfigNegocio, Mesa, Producto } from "@/types";
+import type { Mesa, Panaderia, Producto } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 
 export default function QrMenuPage() {
   const { mesaId } = useParams<{ mesaId: string }>();
   const [mesa, setMesa] = useState<Mesa | null>(null);
-  const [config, setConfig] = useState<ConfigNegocio | null>(null);
+  const [config, setConfig] = useState<Panaderia | null>(null);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [cart, setCart] = useState<{ producto: Producto; cantidad: number }[]>([]);
   const [sent, setSent] = useState(false);
 
   const load = useCallback(async () => {
     const supabase = createClient();
-    const [{ data: m }, { data: c }, { data: p }] = await Promise.all([
-      supabase.from("mesas").select("*").eq("id", mesaId).single(),
-      supabase.from("config_negocio").select("*").eq("id", 1).single(),
-      supabase.from("productos").select("*, categorias(*)").eq("disponible", true).order("orden"),
-    ]);
+    const { data: m } = await supabase.from("mesas").select("*").eq("id", mesaId).single();
+    if (!m) {
+      setMesa(null);
+      return;
+    }
     setMesa(m as Mesa);
-    setConfig(c as ConfigNegocio);
+    const [{ data: c }, { data: p }] = await Promise.all([
+      supabase.from("panaderias").select("*").eq("id", m.panaderia_id).single(),
+      supabase
+        .from("productos")
+        .select("*, categorias(*)")
+        .eq("panaderia_id", m.panaderia_id)
+        .eq("disponible", true)
+        .order("orden"),
+    ]);
+    setConfig(c as Panaderia);
     setProductos((p as Producto[]) ?? []);
   }, [mesaId]);
 

@@ -26,11 +26,16 @@ export default function MesaDetailPage() {
   const load = useCallback(async () => {
     const supabase = createClient();
 
-    const [{ data: mesaData }, { data: prods }] = await Promise.all([
-      supabase.from("mesas").select("*").eq("id", id).single(),
-      supabase.from("productos").select("*, categorias(*)").eq("disponible", true).order("orden"),
-    ]);
+    const { data: mesaData } = await supabase.from("mesas").select("*").eq("id", id).single();
     setMesa(mesaData as Mesa);
+    if (!mesaData) return;
+
+    const { data: prods } = await supabase
+      .from("productos")
+      .select("*, categorias(*)")
+      .eq("panaderia_id", mesaData.panaderia_id)
+      .eq("disponible", true)
+      .order("orden");
     setProductos((prods as Producto[]) ?? []);
 
     let { data: cuenta } = await supabase
