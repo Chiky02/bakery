@@ -8,7 +8,7 @@ import { ChevronDown, Menu, X } from "lucide-react";
 
 const LINKS = [
   { href: "/", label: "Inicio" },
-  { href: "/#especialidades", label: "Especialidades" },
+  { href: "/#locales", label: "Locales" },
   { href: "/encargar", label: "Encargar torta" },
 ];
 
@@ -18,14 +18,14 @@ export function SiteHeader({ brand }: { brand: string }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-orange-100/80 bg-[#f7f4ef]/90 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-orange-100/80 bg-[#f7f4ef]/95 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 md:px-6">
         <Link href="/" className="group">
           <p className="font-[family-name:var(--font-display)] text-lg font-bold tracking-tight text-stone-900 md:text-xl">
             {brand}
           </p>
           <p className="text-[11px] uppercase tracking-[0.22em] text-orange-700/80">
-            Panadería artesanal
+            Pedidos y panadería
           </p>
         </Link>
 
@@ -36,7 +36,7 @@ export function SiteHeader({ brand }: { brand: string }) {
               onClick={() => setOpen((v) => !v)}
               className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-800 shadow-sm transition hover:bg-stone-50"
             >
-              Explorar
+              Menú
               <ChevronDown className={cn("h-4 w-4 transition", open && "rotate-180")} />
             </button>
             {open && (

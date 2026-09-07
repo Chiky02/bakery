@@ -8,7 +8,8 @@ import { navForRole, ROLE_LABELS } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import type { Miembro, Notificacion, Panaderia, Profile, UserRole } from "@/types";
 import { Button } from "@/components/ui/button";
-import { Bell } from "lucide-react";
+import { Bell, X } from "lucide-react";
+import { notificationHref } from "@/lib/notifications";
 
 export function AppShell({
   profile,
@@ -35,10 +36,11 @@ export function AppShell({
       .from("notificaciones")
       .select("*")
       .eq("user_id", profile.id)
+      .eq("panaderia_id", panaderia.id)
       .order("created_at", { ascending: false })
-      .limit(20)
+      .limit(30)
       .then(({ data }) => setNotifs((data as Notificacion[]) ?? []));
-  }, [profile.id, pathname]);
+  }, [profile.id, panaderia.id, pathname]);
 
   const unread = notifs.filter((n) => !n.leida).length;
 
@@ -46,6 +48,34 @@ export function AppShell({
     const supabase = createClient();
     await supabase.from("notificaciones").update({ leida: true }).eq("id", id);
     setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, leida: true } : n)));
+  }
+
+  async function dismissNotif(id: string, e?: React.MouseEvent) {
+    e?.stopPropagation();
+    const supabase = createClient();
+    const { error } = await supabase.from("notificaciones").delete().eq("id", id);
+    if (error) {
+      // Si aún no está la política DELETE, marca leída y oculta en UI
+      await supabase.from("notificaciones").update({ leida: true }).eq("id", id);
+    }
+    setNotifs((prev) => prev.filter((n) => n.id !== id));
+  }
+
+  async function openNotifItem(n: Notificacion) {
+    await markRead(n.id);
+    setOpenNotif(false);
+    router.push(notificationHref(n.tipo));
+  }
+
+  async function clearAll() {
+    const supabase = createClient();
+    const ids = notifs.map((n) => n.id);
+    if (ids.length === 0) return;
+    const { error } = await supabase.from("notificaciones").delete().in("id", ids);
+    if (error) {
+      await supabase.from("notificaciones").update({ leida: true }).in("id", ids);
+    }
+    setNotifs([]);
   }
 
   async function logout() {
@@ -144,26 +174,46 @@ export function AppShell({
                 )}
               </Button>
               {openNotif && (
-                <div className="absolute right-0 z-50 mt-2 w-80 rounded-xl border border-stone-200 bg-white shadow-lg  ">
-                  <p className="border-b px-3 py-2 text-sm font-semibold ">
-                    Notificaciones
-                  </p>
+                <div className="absolute right-0 z-50 mt-2 w-80 rounded-xl border border-stone-200 bg-white shadow-lg">
+                  <div className="flex items-center justify-between border-b border-stone-100 px-3 py-2">
+                    <p className="text-sm font-semibold">Notificaciones</p>
+                    {notifs.length > 0 && (
+                      <button
+                        type="button"
+                        className="text-xs text-stone-500 hover:text-orange-700"
+                        onClick={clearAll}
+                      >
+                        Limpiar
+                      </button>
+                    )}
+                  </div>
                   <ul className="max-h-72 overflow-y-auto">
                     {notifs.length === 0 ? (
                       <li className="px-3 py-4 text-sm text-stone-500">Sin avisos</li>
                     ) : (
                       notifs.map((n) => (
-                        <li key={n.id}>
+                        <li key={n.id} className="flex items-start border-b border-stone-50 last:border-0">
                           <button
                             type="button"
                             className={cn(
-                              "w-full px-3 py-2 text-left text-sm hover:bg-stone-50 ",
-                              !n.leida && "bg-orange-50/60 ",
+                              "min-w-0 flex-1 px-3 py-2.5 text-left text-sm hover:bg-stone-50",
+                              !n.leida && "bg-orange-50/70",
                             )}
-                            onClick={() => markRead(n.id)}
+                            onClick={() => openNotifItem(n)}
                           >
-                            <p className="font-medium">{n.titulo}</p>
-                            {n.cuerpo && <p className="text-xs text-stone-500">{n.cuerpo}</p>}
+                            <p className="font-medium text-stone-900">{n.titulo}</p>
+                            {n.cuerpo && (
+                              <p className="mt-0.5 line-clamp-2 text-xs text-stone-500">{n.cuerpo}</p>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            className="shrink-0 p-2 text-stone-400 hover:text-red-600"
+                            title="Quitar"
+                            aria-label="Quitar notificación"
+                            onClick={(e) => dismissNotif(n.id, e)}
+                          >
+                            <X className="h-3.5 w-3.5" />
                           </button>
                         </li>
                       ))

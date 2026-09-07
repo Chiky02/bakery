@@ -1,24 +1,15 @@
 import type { Metadata } from "next";
 import { SiteHeader } from "@/components/site/site-header";
-import { bakeryDisplayName } from "@/lib/brand";
-import { getPublicBakery } from "@/lib/public-bakery";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const panaderia = await getPublicBakery();
-  const brand = bakeryDisplayName(panaderia);
-  return {
-    title: brand,
-    description: `${brand} — tortas a pedido y pan de cada día`,
-  };
-}
+export const metadata: Metadata = {
+  title: "Chiky02",
+  description: "Encarga tortas y pan en tu local favorito",
+};
 
-export default async function SiteLayout({ children }: { children: React.ReactNode }) {
-  const panaderia = await getPublicBakery();
-  const brand = bakeryDisplayName(panaderia);
-
+export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#f7f4ef] text-stone-900">
-      <SiteHeader brand={brand} />
+      <SiteHeader brand="Chiky02" />
       {children}
     </div>
   );

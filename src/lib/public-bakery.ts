@@ -1,26 +1,40 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Panaderia } from "@/types";
 
-/** Panadería pública principal (slug interno de despliegue; el nombre visible viene de BD). */
-const PUBLIC_SLUG = process.env.NEXT_PUBLIC_BAKERY_SLUG || "bakerychiky02";
+export type PublicBakeryListItem = Pick<
+  Panaderia,
+  "id" | "nombre" | "nombre_publico" | "slug" | "activa"
+>;
 
-export async function getPublicBakery(): Promise<Panaderia | null> {
+/** Lista locales activos visibles en el sitio público. */
+export async function listPublicBakeries(): Promise<PublicBakeryListItem[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("panaderias")
+    .select("id, nombre, nombre_publico, slug, activa")
+    .eq("activa", true)
+    .order("nombre");
+  return (data as PublicBakeryListItem[]) ?? [];
+}
+
+export async function getPublicBakeryBySlug(slug: string): Promise<Panaderia | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("panaderias")
     .select("*")
-    .eq("slug", PUBLIC_SLUG)
+    .eq("slug", slug)
+    .eq("activa", true)
     .maybeSingle();
+  return (data as Panaderia) ?? null;
+}
 
-  if (data) return data as Panaderia;
-
-  const { data: first } = await supabase
+export async function getPublicBakeryById(id: string): Promise<Panaderia | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
     .from("panaderias")
     .select("*")
+    .eq("id", id)
     .eq("activa", true)
-    .order("created_at")
-    .limit(1)
     .maybeSingle();
-
-  return (first as Panaderia) ?? null;
+  return (data as Panaderia) ?? null;
 }
