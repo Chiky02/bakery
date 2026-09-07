@@ -89,6 +89,7 @@ export default function ConfiguracionPage() {
         telefono: config.telefono?.trim() || null,
         direccion: config.direccion?.trim() || null,
         maps_url: config.maps_url?.trim() || null,
+        whatsapp: config.whatsapp?.trim() || null,
         pedido_directo_habilitado: config.pedido_directo_habilitado,
         requiere_aprobacion_mesero: config.requiere_aprobacion_mesero,
         tiempo_minimo_encargo_horas: config.tiempo_minimo_encargo_horas ?? 48,
@@ -232,7 +233,20 @@ export default function ConfiguracionPage() {
                   onChange={(e) => setConfig({ ...config, telefono: e.target.value })}
                 />
                 <p className="mt-1 text-xs text-stone-500">
-                  Botón de llamada en el home y en la ficha del local.
+                  Se muestra en la ficha del local (llamada).
+                </p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">WhatsApp</label>
+                <Input
+                  className="mt-1"
+                  placeholder="Ej. 573001234567"
+                  value={config.whatsapp ?? ""}
+                  onChange={(e) => setConfig({ ...config, whatsapp: e.target.value })}
+                />
+                <p className="mt-1 text-xs text-stone-500">
+                  Con código de país (57…). Botón flotante en el home.
                 </p>
               </div>
 

@@ -4,7 +4,15 @@ import { bakeryDisplayName } from "@/lib/brand";
 
 export type PublicBakeryListItem = Pick<
   Panaderia,
-  "id" | "nombre" | "nombre_publico" | "slug" | "activa" | "telefono" | "direccion" | "maps_url"
+  | "id"
+  | "nombre"
+  | "nombre_publico"
+  | "slug"
+  | "activa"
+  | "telefono"
+  | "direccion"
+  | "maps_url"
+  | "whatsapp"
 >;
 
 const PRIMARY_SLUG = process.env.NEXT_PUBLIC_BAKERY_SLUG || "bakerychiky02";
@@ -14,7 +22,7 @@ export async function listPublicBakeries(): Promise<PublicBakeryListItem[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("panaderias")
-    .select("id, nombre, nombre_publico, slug, activa, telefono, direccion, maps_url")
+    .select("id, nombre, nombre_publico, slug, activa, telefono, direccion, maps_url, whatsapp")
     .eq("activa", true)
     .order("nombre");
   return (data as PublicBakeryListItem[]) ?? [];

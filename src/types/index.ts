@@ -35,6 +35,7 @@ export type Panaderia = {
   telefono?: string | null;
   direccion?: string | null;
   maps_url?: string | null;
+  whatsapp?: string | null;
 };
 
 export type RolePermiso = {
