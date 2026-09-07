@@ -8,6 +8,7 @@ import { formatCOP } from "@/lib/format";
 import { bakeryDisplayName } from "@/lib/brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MapPin, Phone } from "lucide-react";
 
 type TortaOption = { id: string; nombre: string; precio: number };
 type LocalOption = {
@@ -15,6 +16,8 @@ type LocalOption = {
   nombre: string;
   nombre_publico?: string | null;
   slug: string;
+  telefono?: string | null;
+  direccion?: string | null;
 };
 
 export default function EncargarForm() {
@@ -88,7 +91,7 @@ export default function EncargarForm() {
       const supabase = createClient();
       const { data } = await supabase
         .from("panaderias")
-        .select("id, nombre, nombre_publico, slug")
+        .select("id, nombre, nombre_publico, slug, telefono, direccion")
         .eq("activa", true)
         .order("nombre");
       const list = (data as LocalOption[]) ?? [];
@@ -163,9 +166,13 @@ export default function EncargarForm() {
     setProductoId("");
   }
 
+  const selectedLocal = locales.find((l) => l.id === panaderiaId);
+
   return (
     <main className="mx-auto max-w-2xl px-4 pb-16 pt-10 md:px-6">
-      <p className="text-xs font-semibold uppercase tracking-[0.28em] text-orange-700">Chiky02</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.28em] text-orange-700">
+        {brand || "Encargos"}
+      </p>
       <h1 className="mt-3 text-3xl font-bold text-stone-900">Encargar torta</h1>
       <p className="mt-2 text-stone-600">
         Primero elige el negocio. Luego el producto y la fecha de entrega.
@@ -193,6 +200,21 @@ export default function EncargarForm() {
             ))}
           </select>
           {brand && <p className="mt-1 text-xs text-stone-500">Pedido para: {brand}</p>}
+          {selectedLocal?.direccion && (
+            <p className="mt-1 flex items-start gap-1.5 text-xs text-stone-500">
+              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              {selectedLocal.direccion}
+            </p>
+          )}
+          {selectedLocal?.telefono && (
+            <a
+              href={`tel:${selectedLocal.telefono.replace(/[^\d+]/g, "")}`}
+              className="mt-1 inline-flex items-center gap-1.5 text-xs font-medium text-orange-700 hover:underline"
+            >
+              <Phone className="h-3.5 w-3.5" />
+              {selectedLocal.telefono}
+            </a>
+          )}
         </div>
 
         <div className="sm:col-span-2">

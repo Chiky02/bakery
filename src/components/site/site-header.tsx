@@ -20,8 +20,8 @@ export function SiteHeader({ brand }: { brand: string }) {
   return (
     <header className="sticky top-0 z-40 border-b border-orange-100/80 bg-[#f7f4ef]/95 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 md:px-6">
-        <Link href="/" className="group">
-          <p className="font-[family-name:var(--font-display)] text-lg font-bold tracking-tight text-stone-900 md:text-xl">
+        <Link href="/" className="group min-w-0">
+          <p className="truncate font-[family-name:var(--font-display)] text-lg font-bold tracking-tight text-stone-900 md:text-xl">
             {brand}
           </p>
           <p className="text-[11px] uppercase tracking-[0.22em] text-orange-700/80">

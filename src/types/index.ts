@@ -32,6 +32,8 @@ export type Panaderia = {
   activa: boolean;
   tiempo_minimo_encargo_horas?: number;
   nombre_publico?: string | null;
+  telefono?: string | null;
+  direccion?: string | null;
 };
 
 export type Miembro = {

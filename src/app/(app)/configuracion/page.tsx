@@ -86,6 +86,8 @@ export default function ConfiguracionPage() {
       .update({
         nombre: config.nombre,
         nombre_publico: config.nombre,
+        telefono: config.telefono?.trim() || null,
+        direccion: config.direccion?.trim() || null,
         pedido_directo_habilitado: config.pedido_directo_habilitado,
         requiere_aprobacion_mesero: config.requiere_aprobacion_mesero,
         tiempo_minimo_encargo_horas: config.tiempo_minimo_encargo_horas ?? 48,
@@ -208,19 +210,42 @@ export default function ConfiguracionPage() {
           <Card className="space-y-4">
             <CardTitle>Local actual</CardTitle>
             <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="text-sm font-medium">Nombre del negocio</label>
-              <input
-                className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm  "
-                value={config.nombre}
-                onChange={(e) => setConfig({ ...config, nombre: e.target.value })}
-              />
-              <p className="mt-1 text-xs text-stone-500">
-                Este nombre se muestra en el panel, el sitio público, login y pedidos QR.
-              </p>
-            </div>
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium">Nombre del negocio</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm"
+                  value={config.nombre}
+                  onChange={(e) => setConfig({ ...config, nombre: e.target.value })}
+                />
+                <p className="mt-1 text-xs text-stone-500">
+                  Se muestra en el sitio público (header/home), panel y pedidos QR.
+                </p>
+              </div>
 
-              <label className="flex items-start gap-3 rounded-lg border border-stone-200 p-3 ">
+              <div>
+                <label className="text-sm font-medium">Teléfono de contacto</label>
+                <Input
+                  className="mt-1"
+                  placeholder="Ej. 300 123 4567"
+                  value={config.telefono ?? ""}
+                  onChange={(e) => setConfig({ ...config, telefono: e.target.value })}
+                />
+                <p className="mt-1 text-xs text-stone-500">
+                  Botón de llamada en el home y en la ficha del local.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Dirección</label>
+                <Input
+                  className="mt-1"
+                  placeholder="Calle, barrio, ciudad"
+                  value={config.direccion ?? ""}
+                  onChange={(e) => setConfig({ ...config, direccion: e.target.value })}
+                />
+              </div>
+
+              <label className="flex items-start gap-3 rounded-lg border border-stone-200 p-3">
                 <input
                   type="checkbox"
                   className="mt-1"
@@ -237,7 +262,7 @@ export default function ConfiguracionPage() {
                 </div>
               </label>
 
-              <label className="flex items-start gap-3 rounded-lg border border-stone-200 p-3 ">
+              <label className="flex items-start gap-3 rounded-lg border border-stone-200 p-3">
                 <input
                   type="checkbox"
                   className="mt-1"
@@ -259,7 +284,7 @@ export default function ConfiguracionPage() {
                 <input
                   type="number"
                   min={1}
-                  className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm  "
+                  className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm"
                   value={config.tiempo_minimo_encargo_horas ?? 48}
                   onChange={(e) =>
                     setConfig({

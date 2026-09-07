@@ -1,15 +1,23 @@
 import type { Metadata } from "next";
 import { SiteHeader } from "@/components/site/site-header";
+import { getPrimaryPublicBakery, primaryBrandName } from "@/lib/public-bakery";
 
-export const metadata: Metadata = {
-  title: "Chiky02",
-  description: "Encarga tortas y pan en tu local favorito",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const primary = await getPrimaryPublicBakery();
+  const brand = primaryBrandName(primary);
+  return {
+    title: brand,
+    description: `${brand} — encargos y panadería`,
+  };
+}
 
-export default function SiteLayout({ children }: { children: React.ReactNode }) {
+export default async function SiteLayout({ children }: { children: React.ReactNode }) {
+  const primary = await getPrimaryPublicBakery();
+  const brand = primaryBrandName(primary);
+
   return (
     <div className="min-h-screen bg-[#f7f4ef] text-stone-900">
-      <SiteHeader brand="Chiky02" />
+      <SiteHeader brand={brand} />
       {children}
     </div>
   );

@@ -1,13 +1,30 @@
 import Link from "next/link";
 import { bakeryDisplayName } from "@/lib/brand";
-import { listPublicBakeries } from "@/lib/public-bakery";
-import { MapPin, Cake } from "lucide-react";
+import {
+  getPrimaryPublicBakery,
+  listPublicBakeries,
+  primaryBrandName,
+} from "@/lib/public-bakery";
+import { MapPin, Cake, Phone } from "lucide-react";
+
+function telHref(phone: string) {
+  const digits = phone.replace(/[^\d+]/g, "");
+  return `tel:${digits}`;
+}
 
 export default async function PublicHomePage() {
-  const locales = await listPublicBakeries();
+  const [locales, primary] = await Promise.all([
+    listPublicBakeries(),
+    getPrimaryPublicBakery(),
+  ]);
+  const brand = primaryBrandName(primary);
+  const contactPhone =
+    primary?.telefono?.trim() ||
+    locales.find((l) => l.telefono?.trim())?.telefono?.trim() ||
+    "";
 
   return (
-    <main>
+    <main className="relative pb-24">
       <section className="relative overflow-hidden border-b border-orange-100">
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -19,14 +36,14 @@ export default async function PublicHomePage() {
         <div className="relative z-10 mx-auto grid max-w-6xl gap-10 px-4 py-16 md:grid-cols-2 md:items-center md:px-6 md:py-24">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.28em] text-orange-700">
-              Chiky02
+              {brand}
             </p>
             <h1 className="mt-3 text-4xl font-bold leading-[1.08] text-stone-900 md:text-5xl">
               Encarga tu torta en el local que elijas
             </h1>
             <p className="mt-4 max-w-md text-base text-stone-700 md:text-lg">
-              Varios negocios en un solo lugar. Elige la panadería, indica la fecha de entrega y
-              envía tu pedido.
+              Elige la panadería, revisa dirección y teléfono, indica la fecha de entrega y envía
+              tu pedido.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
@@ -75,7 +92,7 @@ export default async function PublicHomePage() {
           <div>
             <h2 className="text-3xl font-bold text-stone-900">Locales</h2>
             <p className="mt-2 text-stone-600">
-              Selecciona a qué negocio quieres hacer el encargo.
+              Dirección y teléfono de cada negocio para que sepas dónde pides.
             </p>
           </div>
           <p className="text-sm text-stone-500">
@@ -101,7 +118,22 @@ export default async function PublicHomePage() {
                       <MapPin className="h-5 w-5" />
                     </div>
                     <h3 className="mt-4 text-lg font-semibold text-stone-900">{name}</h3>
-                    <p className="mt-1 text-sm text-stone-500">Encargos y tortas a pedido</p>
+                    {local.direccion ? (
+                      <p className="mt-2 text-sm text-stone-600">{local.direccion}</p>
+                    ) : (
+                      <p className="mt-2 text-sm text-stone-400">Dirección por confirmar</p>
+                    )}
+                    {local.telefono ? (
+                      <a
+                        href={telHref(local.telefono)}
+                        className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-orange-700 hover:underline"
+                      >
+                        <Phone className="h-3.5 w-3.5" />
+                        {local.telefono}
+                      </a>
+                    ) : (
+                      <p className="mt-2 text-sm text-stone-400">Teléfono por confirmar</p>
+                    )}
                   </div>
                   <Link
                     href={`/encargar?negocio=${encodeURIComponent(local.slug)}`}
@@ -119,6 +151,17 @@ export default async function PublicHomePage() {
       <footer className="border-t border-orange-100 py-8 text-center text-xs text-stone-500">
         © {new Date().getFullYear()} Chiky02
       </footer>
+
+      {contactPhone && (
+        <a
+          href={telHref(contactPhone)}
+          className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-orange-600 text-white shadow-lg shadow-orange-300/50 transition hover:bg-orange-500 md:bottom-8 md:right-8"
+          aria-label={`Llamar a ${brand}: ${contactPhone}`}
+          title={contactPhone}
+        >
+          <Phone className="h-6 w-6" />
+        </a>
+      )}
     </main>
   );
 }
