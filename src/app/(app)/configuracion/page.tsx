@@ -208,14 +208,17 @@ export default function ConfiguracionPage() {
           <Card className="space-y-4">
             <CardTitle>Local actual</CardTitle>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <label className="text-sm font-medium">Nombre del negocio</label>
-                <input
-                  className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
-                  value={config.nombre}
-                  onChange={(e) => setConfig({ ...config, nombre: e.target.value })}
-                />
-              </div>
+            <div>
+              <label className="text-sm font-medium">Nombre del negocio</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
+                value={config.nombre}
+                onChange={(e) => setConfig({ ...config, nombre: e.target.value })}
+              />
+              <p className="mt-1 text-xs text-stone-500">
+                Este nombre se muestra en el panel, el sitio público, login y pedidos QR.
+              </p>
+            </div>
 
               <label className="flex items-start gap-3 rounded-lg border border-stone-200 p-3 dark:border-stone-700">
                 <input
@@ -403,7 +406,7 @@ export default function ConfiguracionPage() {
                 value={alta.panaderia_nombre}
                 onChange={(e) => setAlta({ ...alta, panaderia_nombre: e.target.value })}
                 required
-                placeholder="Ej. Dulce Bonanza Norte"
+                placeholder="Ej. Panadería del Norte"
               />
             </div>
             <div className="sm:col-span-2">

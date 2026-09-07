@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,22 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [brand, setBrand] = useState("Panel");
+
+  useEffect(() => {
+    (async () => {
+      const supabase = createClient();
+      const slug = process.env.NEXT_PUBLIC_BAKERY_SLUG || "bakerychiky02";
+      const { data } = await supabase
+        .from("panaderias")
+        .select("nombre, nombre_publico")
+        .eq("slug", slug)
+        .maybeSingle();
+      if (data) {
+        setBrand(data.nombre_publico?.trim() || data.nombre || "Panel");
+      }
+    })();
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -36,11 +52,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(ellipse_at_top,_#ffedd5_0%,_#f7f4ef_45%,_#e7e5e4_100%)] p-4 dark:bg-[radial-gradient(ellipse_at_top,_#431407_0%,_#0c0a09_50%,_#1c1917_100%)]">
+    <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(ellipse_at_top,_#ffedd5_0%,_#f7f4ef_45%,_#e7e5e4_100%)] p-4">
       <Card className="w-full max-w-md">
         <div className="mb-6 text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-700 dark:text-orange-400">
-            BakeryChiky02
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-700">
+            {brand}
           </p>
           <CardTitle className="mt-2 text-2xl">Entrar al sistema</CardTitle>
           <p className="mt-1 text-sm text-stone-500">Ventas, mesas, encargos y recepciones</p>
@@ -52,7 +68,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="dueno@panaderiasissa.com"
+              placeholder="tu@correo.com"
               required
             />
           </div>

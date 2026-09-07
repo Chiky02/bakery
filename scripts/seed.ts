@@ -46,23 +46,16 @@ async function ensurePanaderia() {
     .maybeSingle();
 
   if (existing) {
-    await supabase
-      .from("panaderias")
-      .update({
-        nombre: "Dulce Bonanza",
-        nombre_publico: "Dulce Bonanza",
-        moneda: data.negocio.moneda,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", existing.id);
+    // No sobrescribe el nombre: respeta lo configurado en la app
     return existing.id as string;
   }
 
+  const nombre = data.negocio.nombre || "Panadería";
   const { data: created, error } = await supabase
     .from("panaderias")
     .insert({
-      nombre: "Dulce Bonanza",
-      nombre_publico: "Dulce Bonanza",
+      nombre,
+      nombre_publico: nombre,
       slug: "bakerychiky02",
       moneda: data.negocio.moneda,
       pedido_directo_habilitado: false,
@@ -76,10 +69,10 @@ async function ensurePanaderia() {
 }
 
 async function seed() {
-  console.log("🥐 Sembrando BakeryChiky02 (multitenant)...\n");
+  console.log("🥐 Sembrando datos (multitenant)...\n");
 
   const panaderiaId = await ensurePanaderia();
-  console.log(`  · Panadería: BakeryChiky02 (${panaderiaId})\n`);
+  console.log(`  · Panadería id: ${panaderiaId}\n`);
 
   const { data: categorias, error: catErr } = await supabase
     .from("categorias")

@@ -1,18 +1,15 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { bakeryDisplayName } from "@/lib/brand";
+import { getPublicBakery } from "@/lib/public-bakery";
 
 export default async function PublicHomePage() {
-  const supabase = await createClient();
-  const { data: panaderia } = await supabase
-    .from("panaderias")
-    .select("id, nombre, nombre_publico, slug")
-    .eq("slug", "bakerychiky02")
-    .maybeSingle();
-
-  const brand = panaderia?.nombre_publico || panaderia?.nombre || "Dulce Bonanza";
+  const panaderia = await getPublicBakery();
+  const brand = bakeryDisplayName(panaderia);
 
   let especialidades: { id: string; nombre: string }[] = [];
   if (panaderia) {
+    const supabase = await createClient();
     const { data: cats } = await supabase
       .from("categorias")
       .select("id")

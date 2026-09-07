@@ -65,10 +65,12 @@ export function AppShell({
     <div className="flex h-dvh overflow-hidden bg-background">
       <aside className="hidden h-dvh w-64 shrink-0 flex-col overflow-hidden border-r border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900 md:flex">
         <div className="shrink-0 border-b border-stone-200 p-5 dark:border-stone-800">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-700 dark:text-orange-400">
-            Dulce Bonanza
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-700">
+            Panel
           </p>
-          <h1 className="mt-1 text-lg font-bold leading-tight">{panaderia.nombre}</h1>
+          <h1 className="mt-1 text-lg font-bold leading-tight">
+            {panaderia.nombre_publico?.trim() || panaderia.nombre}
+          </h1>
           <p className="mt-1 text-sm text-stone-500">
             {profile.nombre} · {ROLE_LABELS[rol]}
           </p>
@@ -122,10 +124,9 @@ export function AppShell({
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <header className="flex shrink-0 items-center justify-between border-b border-stone-200 bg-white px-4 py-3 dark:border-stone-800 dark:bg-stone-900">
           <div className="md:hidden">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-orange-700">
-              Dulce Bonanza
+            <p className="font-semibold">
+              {panaderia.nombre_publico?.trim() || panaderia.nombre}
             </p>
-            <p className="font-semibold">{panaderia.nombre}</p>
           </div>
           <div className="ml-auto flex items-center gap-1">
             <div className="relative">

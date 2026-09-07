@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 type TortaOption = { id: string; nombre: string; precio: number };
 
 export default function EncargarPage() {
+  const [brand, setBrand] = useState("");
   const [tortas, setTortas] = useState<TortaOption[]>([]);
   const [panaderiaId, setPanaderiaId] = useState<string | null>(null);
   const [productoId, setProductoId] = useState("");
@@ -25,13 +26,15 @@ export default function EncargarPage() {
   useEffect(() => {
     (async () => {
       const supabase = createClient();
+      const slug = process.env.NEXT_PUBLIC_BAKERY_SLUG || "bakerychiky02";
       const { data: panaderia } = await supabase
         .from("panaderias")
-        .select("id")
-        .eq("slug", "bakerychiky02")
+        .select("id, nombre, nombre_publico")
+        .eq("slug", slug)
         .maybeSingle();
       if (!panaderia) return;
       setPanaderiaId(panaderia.id);
+      setBrand(panaderia.nombre_publico?.trim() || panaderia.nombre || "");
 
       // Prefer products marked encargable
       const { data: marked, error: markErr } = await supabase
@@ -127,7 +130,7 @@ export default function EncargarPage() {
   return (
     <main className="mx-auto max-w-2xl px-4 pb-16 pt-10 md:px-6">
       <p className="text-xs font-semibold uppercase tracking-[0.28em] text-orange-700">
-        Dulce Bonanza
+        {brand || "Encargos"}
       </p>
       <h1 className="mt-3 text-3xl font-bold text-stone-900">Encargar torta</h1>
       <p className="mt-2 text-stone-600">

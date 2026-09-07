@@ -12,7 +12,7 @@ const LINKS = [
   { href: "/encargar", label: "Encargar torta" },
 ];
 
-export function SiteHeader() {
+export function SiteHeader({ brand }: { brand: string }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -22,7 +22,7 @@ export function SiteHeader() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 md:px-6">
         <Link href="/" className="group">
           <p className="font-[family-name:var(--font-display)] text-lg font-bold tracking-tight text-stone-900 md:text-xl">
-            Dulce Bonanza
+            {brand}
           </p>
           <p className="text-[11px] uppercase tracking-[0.22em] text-orange-700/80">
             Panadería artesanal

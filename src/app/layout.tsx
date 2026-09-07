@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dulce Bonanza",
-  description: "Panadería artesanal — tortas a pedido y pan de cada día",
+  title: "Panel",
+  description: "Gestión de panadería — ventas, mesas, encargos y recepciones",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

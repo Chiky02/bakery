@@ -8,6 +8,7 @@ export function LightModeLock({ children }: { children: React.ReactNode }) {
     const root = document.documentElement;
     root.classList.remove("dark");
     root.style.colorScheme = "light";
+    localStorage.removeItem("app-theme");
     localStorage.removeItem("bakerychiky-theme");
   }, []);
 

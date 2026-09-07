@@ -87,8 +87,8 @@ export default function PanaderiasPage() {
   return (
     <div className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-6 p-6">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-700 dark:text-orange-400">
-          Dulce Bonanza
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-700">
+          Tus negocios
         </p>
         <h1 className="mt-2 text-3xl font-bold">Tus panaderías</h1>
         <p className="mt-1 text-stone-500">
@@ -130,7 +130,7 @@ export default function PanaderiasPage() {
         <CardTitle>Crear panadería</CardTitle>
         <form onSubmit={createBakery} className="space-y-3">
           <Input
-            placeholder="Nombre (ej. Dulce Bonanza Norte)"
+            placeholder="Nombre del negocio"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             required
