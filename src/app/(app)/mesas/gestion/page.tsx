@@ -106,18 +106,16 @@ export default function MesasGestionPage() {
 
       {msg && <p className="text-sm text-stone-600 dark:text-stone-300">{msg}</p>}
 
-      <Card className="max-w-xl space-y-3 p-4">
+      <Card className="w-full max-w-4xl space-y-3 p-4">
         <CardTitle>Nueva mesa</CardTitle>
-        <form onSubmit={crear} className="flex flex-wrap gap-2">
+        <form onSubmit={crear} className="grid gap-2 sm:grid-cols-3">
           <Input
-            className="min-w-[10rem] flex-1"
             placeholder="Nombre (Mesa 11)"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             required
           />
           <Input
-            className="w-32"
             placeholder="Zona"
             value={zona}
             onChange={(e) => setZona(e.target.value)}

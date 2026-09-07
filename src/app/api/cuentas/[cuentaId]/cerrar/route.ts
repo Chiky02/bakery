@@ -55,6 +55,13 @@ export async function POST(
     .eq("cuenta_mesa_id", cuentaId)
     .eq("estado", "abierta");
 
+  // Saca ítems de la cola de cocina
+  await supabase
+    .from("items_cuenta")
+    .update({ estado: "entregado", updated_at: new Date().toISOString() })
+    .eq("cuenta_mesa_id", cuentaId)
+    .neq("estado", "cancelado");
+
   if (cuenta.mesa_id) {
     const { error: mErr } = await supabase
       .from("mesas")

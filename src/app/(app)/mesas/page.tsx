@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useBakeryId } from "@/lib/use-bakery-id";
 import type { Mesa } from "@/types";
@@ -16,9 +17,11 @@ type MesaRow = Mesa & {
 };
 
 export default function MesasPage() {
+  const router = useRouter();
   const { panaderiaId, ready } = useBakeryId();
   const [mesas, setMesas] = useState<MesaRow[]>([]);
   const [qrOn, setQrOn] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   async function load() {
     if (!panaderiaId) return;
@@ -43,6 +46,19 @@ export default function MesasPage() {
   useEffect(() => {
     if (ready) load();
   }, [panaderiaId, ready]);
+
+  async function entrar(mesa: MesaRow) {
+    const cuentaAbierta = mesa.cuentas_mesa?.find((c) => c.estado === "abierta");
+    if (cuentaAbierta) {
+      router.push(`/mesas/${mesa.id}`);
+      return;
+    }
+    setBusyId(mesa.id);
+    const res = await fetch(`/api/mesas/${mesa.id}/abrir`, { method: "POST" });
+    setBusyId(null);
+    if (!res.ok) return;
+    router.push(`/mesas/${mesa.id}`);
+  }
 
   return (
     <div className="space-y-6">
@@ -78,22 +94,33 @@ export default function MesasPage() {
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="text-lg font-semibold">{mesa.nombre}</h3>
-                    <Badge color={mesa.estado === "libre" ? "success" : "warning"}>{mesa.estado}</Badge>
+                    <Badge color={mesa.estado === "libre" ? "success" : "warning"}>
+                      {mesa.estado}
+                    </Badge>
                   </div>
                   <p className="text-sm text-stone-500">{mesa.zona}</p>
                   {cuentaAbierta && (
-                    <p className="mt-2 text-xs text-orange-700 dark:text-orange-300">Cuenta abierta</p>
+                    <p className="mt-2 text-xs text-orange-700 dark:text-orange-300">
+                      Cuenta abierta
+                    </p>
                   )}
                   {mesa.qr_habilitado && (
                     <MesaQrLink mesaId={mesa.id} mesaNombre={mesa.nombre} />
                   )}
                 </div>
                 <div className="mt-4">
-                  <Link href={`/mesas/${mesa.id}`}>
-                    <Button className="w-full" variant={cuentaAbierta ? "primary" : "secondary"}>
-                      {cuentaAbierta ? "Ver cuenta" : "Abrir mesa"}
-                    </Button>
-                  </Link>
+                  <Button
+                    className="w-full"
+                    variant={cuentaAbierta ? "primary" : "secondary"}
+                    disabled={busyId === mesa.id}
+                    onClick={() => entrar(mesa)}
+                  >
+                    {busyId === mesa.id
+                      ? "Abriendo..."
+                      : cuentaAbierta
+                        ? "Ver cuenta"
+                        : "Abrir mesa"}
+                  </Button>
                 </div>
               </Card>
             );

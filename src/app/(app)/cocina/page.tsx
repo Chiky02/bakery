@@ -6,11 +6,16 @@ import type { ItemCuenta } from "@/types";
 import { useBakeryId } from "@/lib/use-bakery-id";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, ChefHat } from "lucide-react";
+import { Check, ChefHat, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ItemConMesa = ItemCuenta & {
-  cuentas_mesa?: { panaderia_id?: string; mesas?: { nombre: string } | null } | null;
+  cuentas_mesa?: {
+    id?: string;
+    estado?: string;
+    panaderia_id?: string;
+    mesas?: { nombre: string } | null;
+  } | null;
 };
 
 export default function CocinaPage() {
@@ -23,9 +28,10 @@ export default function CocinaPage() {
     const supabase = createClient();
     const { data } = await supabase
       .from("items_cuenta")
-      .select("*, productos(*), cuentas_mesa!inner(panaderia_id, mesas(nombre))")
+      .select("*, productos(*), cuentas_mesa!inner(id, estado, panaderia_id, mesas(nombre))")
       .eq("cuentas_mesa.panaderia_id", panaderiaId)
-      .in("estado", ["pendiente", "pendiente_confirmacion", "en_preparacion", "listo"])
+      .eq("cuentas_mesa.estado", "abierta")
+      .in("estado", ["pendiente", "pendiente_confirmacion", "en_preparacion"])
       .order("created_at");
     setItems((data as ItemConMesa[]) ?? []);
   }
@@ -37,6 +43,7 @@ export default function CocinaPage() {
     const channel = supabase
       .channel("cocina")
       .on("postgres_changes", { event: "*", schema: "public", table: "items_cuenta" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "cuentas_mesa" }, () => load())
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
@@ -49,20 +56,42 @@ export default function CocinaPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado }),
     });
+    // Optimistic: quita de la cola al marcar listo/entregado
+    if (estado === "listo" || estado === "entregado" || estado === "cancelado") {
+      setItems((prev) => prev.filter((i) => i.id !== id));
+      setChecked((c) => {
+        const next = { ...c };
+        delete next[id];
+        return next;
+      });
+    }
     await load();
   }
 
   async function bulk(ids: string[], estado: string) {
-    await Promise.all(ids.map((id) => updateEstado(id, estado)));
+    await Promise.all(
+      ids.map((id) =>
+        fetch(`/api/items/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ estado }),
+        }),
+      ),
+    );
+    if (estado === "listo" || estado === "entregado") {
+      setItems((prev) => prev.filter((i) => !ids.includes(i.id)));
+    }
     setChecked({});
+    await load();
   }
 
   const byMesa = useMemo(() => {
-    const map = new Map<string, { nombre: string; items: ItemConMesa[] }>();
+    const map = new Map<string, { key: string; nombre: string; items: ItemConMesa[] }>();
     for (const item of items) {
       const nombre = item.cuentas_mesa?.mesas?.nombre ?? "Sin mesa";
-      if (!map.has(nombre)) map.set(nombre, { nombre, items: [] });
-      map.get(nombre)!.items.push(item);
+      const key = item.cuentas_mesa?.id ?? nombre;
+      if (!map.has(key)) map.set(key, { key, nombre, items: [] });
+      map.get(key)!.items.push(item);
     }
     return [...map.values()];
   }, [items]);
@@ -73,7 +102,10 @@ export default function CocinaPage() {
         <h1 className="flex items-center gap-2 text-2xl font-bold">
           <ChefHat className="h-6 w-6" /> Cocina
         </h1>
-        <p className="text-sm text-stone-500">Una tarjeta por mesa · checklist de platillos</p>
+        <p className="text-sm text-stone-500">
+          Solo mesas abiertas. Al marcar listo desaparece de la cola; al cerrar mesa se limpia la
+          tarjeta.
+        </p>
       </div>
 
       {byMesa.length === 0 ? (
@@ -81,10 +113,10 @@ export default function CocinaPage() {
           Sin pedidos en cola
         </p>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {byMesa.map((grupo) => {
             const ids = grupo.items.map((i) => i.id);
-            const allOn = ids.every((id) => checked[id]);
+            const allOn = ids.length > 0 && ids.every((id) => checked[id]);
             const selected = ids.filter((id) => checked[id]);
             const pendientes = grupo.items.filter((i) =>
               ["pendiente", "pendiente_confirmacion"].includes(i.estado),
@@ -92,7 +124,7 @@ export default function CocinaPage() {
 
             return (
               <article
-                key={grupo.nombre}
+                key={grupo.key}
                 className="flex flex-col rounded-2xl border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900"
               >
                 <header className="flex items-start justify-between gap-2 border-b border-stone-100 px-4 py-3 dark:border-stone-800">
@@ -117,9 +149,7 @@ export default function CocinaPage() {
                       {pendientes > 0 ? ` · ${pendientes} por empezar` : ""}
                     </p>
                   </div>
-                  <Badge color={pendientes ? "warning" : "success"}>
-                    {pendientes ? "En curso" : "Avanzado"}
-                  </Badge>
+                  <Badge color={pendientes ? "warning" : "info"}>En cocina</Badge>
                 </header>
 
                 <ul className="flex-1 space-y-1 px-2 py-2">
@@ -128,7 +158,6 @@ export default function CocinaPage() {
                       key={item.id}
                       className={cn(
                         "flex items-center gap-3 rounded-xl px-2 py-2.5",
-                        item.estado === "listo" && "bg-emerald-50 dark:bg-emerald-950/30",
                         item.estado === "en_preparacion" && "bg-amber-50 dark:bg-amber-950/20",
                       )}
                     >
@@ -141,12 +170,7 @@ export default function CocinaPage() {
                         }
                       />
                       <div className="min-w-0 flex-1">
-                        <p
-                          className={cn(
-                            "font-medium leading-tight",
-                            item.estado === "listo" && "line-through opacity-70",
-                          )}
-                        >
+                        <p className="font-medium leading-tight">
                           {item.cantidad}× {item.productos?.nombre}
                         </p>
                         <p className="text-[11px] uppercase tracking-wide text-stone-500">
@@ -169,18 +193,10 @@ export default function CocinaPage() {
                           <Button
                             size="sm"
                             variant="success"
+                            title="Listo (sale de cocina)"
                             onClick={() => updateEstado(item.id, "listo")}
                           >
                             <Check className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                        {item.estado === "listo" && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => updateEstado(item.id, "entregado")}
-                          >
-                            Entregar
                           </Button>
                         )}
                       </div>
@@ -208,20 +224,19 @@ export default function CocinaPage() {
                   <Button
                     size="sm"
                     variant="success"
-                    className="flex-1"
-                    onClick={() =>
-                      bulk(
-                        (selected.length ? selected : ids).filter((id) => {
-                          const it = grupo.items.find((x) => x.id === id);
-                          return (
-                            it && ["pendiente", "pendiente_confirmacion", "en_preparacion"].includes(it.estado)
-                          );
-                        }),
-                        "listo",
-                      )
-                    }
+                    className="flex-1 gap-1"
+                    onClick={() => bulk(selected.length ? selected : ids, "listo")}
                   >
-                    Marcar listos
+                    <Check className="h-3.5 w-3.5" /> Listos
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="w-full gap-1"
+                    title="Quitar tarjeta de cocina"
+                    onClick={() => bulk(ids, "listo")}
+                  >
+                    <X className="h-3.5 w-3.5" /> Limpiar tarjeta
                   </Button>
                 </footer>
               </article>

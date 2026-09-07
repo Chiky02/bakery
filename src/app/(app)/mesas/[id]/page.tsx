@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { ProductGrid } from "@/components/app/product-grid";
@@ -16,6 +16,8 @@ import { Minus, Plus, Trash2 } from "lucide-react";
 
 export default function MesaDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const closingRef = useRef(false);
   const [mesa, setMesa] = useState<Mesa | null>(null);
   const [cuentaId, setCuentaId] = useState<string | null>(null);
   const [items, setItems] = useState<ItemCuenta[]>([]);
@@ -26,8 +28,10 @@ export default function MesaDetailPage() {
   const [medioPago, setMedioPago] = useState<"efectivo" | "electronico" | "mixto">("efectivo");
   const [cerrarMsg, setCerrarMsg] = useState("");
   const [cerrando, setCerrando] = useState(false);
+  const [abriendo, setAbriendo] = useState(false);
 
   const load = useCallback(async () => {
+    if (closingRef.current) return;
     const supabase = createClient();
     const { data: mesaData } = await supabase.from("mesas").select("*").eq("id", id).single();
     setMesa(mesaData as Mesa);
@@ -37,7 +41,9 @@ export default function MesaDetailPage() {
       onlyDisponible: true,
     });
     setProductos(list);
-    let { data: cuenta } = await supabase
+
+    // Nunca reabre sola: solo carga si hay cuenta abierta
+    const { data: cuenta } = await supabase
       .from("cuentas_mesa")
       .select("*")
       .eq("mesa_id", id)
@@ -45,24 +51,24 @@ export default function MesaDetailPage() {
       .maybeSingle();
 
     if (!cuenta) {
-      const res = await fetch(`/api/mesas/${id}/abrir`, { method: "POST" });
-      if (res.ok) cuenta = await res.json();
+      setCuentaId(null);
+      setItems([]);
+      setSubCuentas([]);
+      return;
     }
 
-    if (cuenta) {
-      setCuentaId(cuenta.id);
-      const [{ data: its }, { data: subs }] = await Promise.all([
-        supabase
-          .from("items_cuenta")
-          .select("*, productos(*)")
-          .eq("cuenta_mesa_id", cuenta.id)
-          .neq("estado", "cancelado")
-          .order("created_at"),
-        supabase.from("sub_cuentas").select("*").eq("cuenta_mesa_id", cuenta.id),
-      ]);
-      setItems((its as ItemCuenta[]) ?? []);
-      setSubCuentas((subs as SubCuenta[]) ?? []);
-    }
+    setCuentaId(cuenta.id);
+    const [{ data: its }, { data: subs }] = await Promise.all([
+      supabase
+        .from("items_cuenta")
+        .select("*, productos(*)")
+        .eq("cuenta_mesa_id", cuenta.id)
+        .neq("estado", "cancelado")
+        .order("created_at"),
+      supabase.from("sub_cuentas").select("*").eq("cuenta_mesa_id", cuenta.id),
+    ]);
+    setItems((its as ItemCuenta[]) ?? []);
+    setSubCuentas((subs as SubCuenta[]) ?? []);
   }, [id]);
 
   useEffect(() => {
@@ -84,6 +90,19 @@ export default function MesaDetailPage() {
       p.nombre.toLowerCase().includes(search.toLowerCase()) ||
       (p.codigo_barras ?? "").includes(search),
   );
+
+  async function abrirMesa() {
+    setAbriendo(true);
+    setCerrarMsg("");
+    const res = await fetch(`/api/mesas/${id}/abrir`, { method: "POST" });
+    setAbriendo(false);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setCerrarMsg(body.error ?? "No se pudo abrir la mesa");
+      return;
+    }
+    await load();
+  }
 
   async function addProducto(producto: Producto, cantidad: number) {
     if (!cuentaId) return;
@@ -133,21 +152,49 @@ export default function MesaDetailPage() {
     if (!cuentaId) return;
     setCerrando(true);
     setCerrarMsg("");
+    closingRef.current = true;
     const res = await fetch(`/api/cuentas/${cuentaId}/cerrar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ total_final: total, medio_pago: medioPago }),
     });
-    setCerrando(false);
     if (!res.ok) {
+      closingRef.current = false;
+      setCerrando(false);
       const body = await res.json().catch(() => ({}));
       setCerrarMsg(body.error ?? "No se pudo cerrar la mesa");
       return;
     }
-    window.location.href = "/mesas";
+    setCuentaId(null);
+    setItems([]);
+    router.replace("/mesas");
   }
 
   if (!mesa) return <p>Cargando...</p>;
+
+  if (!cuentaId) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <Link href="/mesas" className="text-sm text-orange-700 hover:underline dark:text-orange-300">
+            ← Mesas
+          </Link>
+          <h1 className="text-2xl font-bold">{mesa.nombre}</h1>
+          <p className="text-sm text-stone-500">{mesa.zona} · libre</p>
+        </div>
+        <Card className="flex max-w-xl flex-col items-start gap-3 p-6">
+          <CardTitle>Mesa sin cuenta abierta</CardTitle>
+          <p className="text-sm text-stone-500">
+            Abre la mesa para tomar pedidos. No se reabre sola al cerrar.
+          </p>
+          {cerrarMsg && <p className="text-sm text-red-600">{cerrarMsg}</p>}
+          <Button onClick={abrirMesa} disabled={abriendo}>
+            {abriendo ? "Abriendo..." : "Abrir mesa"}
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -161,8 +208,8 @@ export default function MesaDetailPage() {
         <Badge color="info">{formatCOP(total)}</Badge>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
+      <div className="grid gap-6 xl:grid-cols-3">
+        <div className="space-y-4 xl:col-span-2">
           <Input
             placeholder="Buscar producto o código de barras..."
             value={search}

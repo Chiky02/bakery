@@ -204,67 +204,71 @@ export default function ConfiguracionPage() {
       </div>
 
       {tab === "negocio" && canManageNegocio && (
-        <>
-          <Card className="max-w-lg space-y-4">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card className="space-y-4">
             <CardTitle>Local actual</CardTitle>
-            <div>
-              <label className="text-sm font-medium">Nombre del negocio</label>
-              <input
-                className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
-                value={config.nombre}
-                onChange={(e) => setConfig({ ...config, nombre: e.target.value })}
-              />
-            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium">Nombre del negocio</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
+                  value={config.nombre}
+                  onChange={(e) => setConfig({ ...config, nombre: e.target.value })}
+                />
+              </div>
 
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={config.pedido_directo_habilitado}
-                onChange={(e) =>
-                  setConfig({ ...config, pedido_directo_habilitado: e.target.checked })
-                }
-              />
-              <div>
-                <p className="font-medium">Pedido directo por QR</p>
-                <p className="text-xs text-stone-500">
-                  Permite que clientes pidan escaneando el QR de la mesa
+              <label className="flex items-start gap-3 rounded-lg border border-stone-200 p-3 dark:border-stone-700">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={config.pedido_directo_habilitado}
+                  onChange={(e) =>
+                    setConfig({ ...config, pedido_directo_habilitado: e.target.checked })
+                  }
+                />
+                <div>
+                  <p className="font-medium">Pedido directo por QR</p>
+                  <p className="text-xs text-stone-500">
+                    Permite que clientes pidan escaneando el QR de la mesa
+                  </p>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 rounded-lg border border-stone-200 p-3 dark:border-stone-700">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={config.requiere_aprobacion_mesero}
+                  onChange={(e) =>
+                    setConfig({ ...config, requiere_aprobacion_mesero: e.target.checked })
+                  }
+                />
+                <div>
+                  <p className="font-medium">Mesero como filtro</p>
+                  <p className="text-xs text-stone-500">
+                    Pedidos QR quedan pendientes de confirmación del mesero
+                  </p>
+                </div>
+              </label>
+
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium">Tiempo mínimo encargos (horas)</label>
+                <input
+                  type="number"
+                  min={1}
+                  className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
+                  value={config.tiempo_minimo_encargo_horas ?? 48}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      tiempo_minimo_encargo_horas: Math.max(1, Number(e.target.value) || 48),
+                    })
+                  }
+                />
+                <p className="mt-1 text-xs text-stone-500">
+                  El cliente no podrá pedir torta con entrega antes de ese plazo.
                 </p>
               </div>
-            </label>
-
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={config.requiere_aprobacion_mesero}
-                onChange={(e) =>
-                  setConfig({ ...config, requiere_aprobacion_mesero: e.target.checked })
-                }
-              />
-              <div>
-                <p className="font-medium">Mesero como filtro</p>
-                <p className="text-xs text-stone-500">
-                  Pedidos QR quedan pendientes de confirmación del mesero
-                </p>
-              </div>
-            </label>
-
-            <div>
-              <label className="text-sm font-medium">Tiempo mínimo encargos (horas)</label>
-              <input
-                type="number"
-                min={1}
-                className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
-                value={config.tiempo_minimo_encargo_horas ?? 48}
-                onChange={(e) =>
-                  setConfig({
-                    ...config,
-                    tiempo_minimo_encargo_horas: Math.max(1, Number(e.target.value) || 48),
-                  })
-                }
-              />
-              <p className="mt-1 text-xs text-stone-500">
-                El cliente no podrá pedir torta con entrega antes de ese plazo.
-              </p>
             </div>
 
             <Button onClick={guardarNegocio}>Guardar</Button>
@@ -272,7 +276,7 @@ export default function ConfiguracionPage() {
           </Card>
 
           {config.pedido_directo_habilitado && (
-            <Card className="max-w-lg space-y-2">
+            <Card className="space-y-2">
               <CardTitle>Links de pedido QR</CardTitle>
               <p className="text-sm text-stone-500">
                 Copia el link de cada mesa en{" "}
@@ -286,11 +290,11 @@ export default function ConfiguracionPage() {
               </code>
             </Card>
           )}
-        </>
+        </div>
       )}
 
       {tab === "cuenta" && (
-        <Card className="max-w-lg space-y-4">
+        <Card className="w-full space-y-4">
           <CardTitle className="flex items-center gap-2">
             <KeyRound className="h-4 w-4" />
             Mi cuenta
@@ -299,12 +303,12 @@ export default function ConfiguracionPage() {
             Corrige tu nombre, correo o contraseña. Para correo o clave necesitas la contraseña
             actual.
           </p>
-          <form onSubmit={guardarCuenta} className="space-y-3">
+          <form onSubmit={guardarCuenta} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <label className="mb-1 block text-sm font-medium">Nombre</label>
               <Input value={nombre} onChange={(e) => setNombre(e.target.value)} required />
             </div>
-            <div>
+            <div className="sm:col-span-1 lg:col-span-2">
               <label className="mb-1 block text-sm font-medium">Correo</label>
               <Input
                 type="email"
@@ -344,17 +348,19 @@ export default function ConfiguracionPage() {
                 autoComplete="new-password"
               />
             </div>
-            {cuentaErr && <p className="text-sm text-red-600">{cuentaErr}</p>}
-            {cuentaMsg && <p className="text-sm text-emerald-600">{cuentaMsg}</p>}
-            <Button type="submit" disabled={cuentaLoading}>
-              {cuentaLoading ? "Guardando..." : "Actualizar cuenta"}
-            </Button>
+            <div className="flex flex-col justify-end gap-2 sm:col-span-2 lg:col-span-3">
+              {cuentaErr && <p className="text-sm text-red-600">{cuentaErr}</p>}
+              {cuentaMsg && <p className="text-sm text-emerald-600">{cuentaMsg}</p>}
+              <Button type="submit" disabled={cuentaLoading} className="w-fit">
+                {cuentaLoading ? "Guardando..." : "Actualizar cuenta"}
+              </Button>
+            </div>
           </form>
         </Card>
       )}
 
       {tab === "alta" && canManageNegocio && (
-        <Card className="max-w-lg space-y-4">
+        <Card className="w-full space-y-4">
           <CardTitle className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             Alta de dueño + panadería
@@ -363,7 +369,7 @@ export default function ConfiguracionPage() {
             Crea un usuario dueño con su propia empresa. Quedará separado de este local y podrá
             gestionar catálogo, mesas y equipo.
           </p>
-          <form onSubmit={crearDueñoNegocio} className="space-y-3">
+          <form onSubmit={crearDueñoNegocio} className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium">Nombre del dueño</label>
               <Input
@@ -400,11 +406,13 @@ export default function ConfiguracionPage() {
                 placeholder="Ej. Dulce Bonanza Norte"
               />
             </div>
-            {altaErr && <p className="text-sm text-red-600">{altaErr}</p>}
-            {altaMsg && <p className="text-sm text-emerald-600">{altaMsg}</p>}
-            <Button type="submit" disabled={altaLoading}>
-              {altaLoading ? "Creando..." : "Crear dueño y negocio"}
-            </Button>
+            <div className="sm:col-span-2">
+              {altaErr && <p className="mb-2 text-sm text-red-600">{altaErr}</p>}
+              {altaMsg && <p className="mb-2 text-sm text-emerald-600">{altaMsg}</p>}
+              <Button type="submit" disabled={altaLoading}>
+                {altaLoading ? "Creando..." : "Crear dueño y negocio"}
+              </Button>
+            </div>
           </form>
         </Card>
       )}

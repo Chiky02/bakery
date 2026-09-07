@@ -63,9 +63,9 @@ export default function UsuariosPage() {
         <p className="text-sm text-stone-500">Equipo de esta panadería · roles y permisos</p>
       </div>
 
-      <Card className="max-w-xl space-y-3">
+      <Card className="w-full space-y-3">
         <CardTitle>Invitar / crear usuario</CardTitle>
-        <form onSubmit={invite} className="grid gap-3 sm:grid-cols-2">
+        <form onSubmit={invite} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Input
             placeholder="Nombre"
             value={nombre}
@@ -98,7 +98,7 @@ export default function UsuariosPage() {
               </option>
             ))}
           </select>
-          <Button type="submit" className="sm:col-span-2">
+          <Button type="submit" className="sm:col-span-2 lg:col-span-4">
             Crear y asignar
           </Button>
         </form>

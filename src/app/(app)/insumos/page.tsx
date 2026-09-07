@@ -78,9 +78,9 @@ export default function InsumosPage() {
         </p>
       </div>
 
-      <Card className="max-w-xl space-y-3">
+      <Card className="w-full space-y-3">
         <CardTitle>Nuevo insumo</CardTitle>
-        <form onSubmit={crear} className="grid gap-3 sm:grid-cols-2">
+        <form onSubmit={crear} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Input
             placeholder="Nombre (ej. Harina 50kg)"
             value={nombre}
@@ -93,7 +93,7 @@ export default function InsumosPage() {
             onChange={(e) => setBarras(e.target.value)}
           />
           <select
-            className="rounded-lg border px-3 py-2 text-sm dark:border-stone-600 dark:bg-stone-900 sm:col-span-2"
+            className="rounded-lg border px-3 py-2 text-sm dark:border-stone-600 dark:bg-stone-900 lg:col-span-1"
             value={categoriaId}
             onChange={(e) => setCategoriaId(e.target.value)}
           >

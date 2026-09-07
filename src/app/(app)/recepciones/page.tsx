@@ -332,7 +332,7 @@ export default function RecepcionesPage() {
       )}
 
       {tab === "nueva" && (
-        <Card className="max-w-3xl space-y-4">
+        <Card className="w-full max-w-5xl space-y-4">
           <CardTitle>Nueva orden / recepción</CardTitle>
           <form onSubmit={crearRecepcion} className="space-y-4">
             <div>
@@ -456,10 +456,11 @@ export default function RecepcionesPage() {
       )}
 
       {tab === "nuevo-proveedor" && (
-        <Card className="max-w-xl space-y-3">
+        <Card className="w-full space-y-3">
           <CardTitle>{provForm.id ? "Editar proveedor" : "Nuevo proveedor"}</CardTitle>
-          <form onSubmit={saveProveedor} className="space-y-3">
+          <form onSubmit={saveProveedor} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Input
+              className="sm:col-span-2 lg:col-span-3"
               placeholder="Nombre / razón social"
               value={provForm.nombre}
               onChange={(e) => setProvForm({ ...provForm, nombre: e.target.value })}
@@ -486,6 +487,7 @@ export default function RecepcionesPage() {
               onChange={(e) => setProvForm({ ...provForm, email: e.target.value })}
             />
             <Input
+              className="sm:col-span-2"
               placeholder="Dirección"
               value={provForm.direccion}
               onChange={(e) => setProvForm({ ...provForm, direccion: e.target.value })}
@@ -501,11 +503,12 @@ export default function RecepcionesPage() {
               onChange={(e) => setProvForm({ ...provForm, diasEntrega: e.target.value })}
             />
             <Input
+              className="sm:col-span-2 lg:col-span-3"
               placeholder="Condiciones de pago"
               value={provForm.condiciones}
               onChange={(e) => setProvForm({ ...provForm, condiciones: e.target.value })}
             />
-            <div className="flex gap-2">
+            <div className="flex gap-2 sm:col-span-2 lg:col-span-3">
               <Button type="submit">{provForm.id ? "Actualizar" : "Guardar"}</Button>
               <Button type="button" variant="ghost" onClick={() => setTab("proveedores")}>
                 Cancelar
