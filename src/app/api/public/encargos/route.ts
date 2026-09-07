@@ -50,42 +50,60 @@ export async function POST(request: Request) {
 
     let valor = body.valor ?? 0;
     let descripcion = body.descripcion;
+    let productoOk = true;
     if (body.producto_id) {
       const { data: producto } = await supabase
         .from("productos")
-        .select("nombre, precio, panaderia_id")
+        .select("nombre, precio, panaderia_id, encargable")
         .eq("id", body.producto_id)
         .eq("panaderia_id", body.panaderia_id)
         .single();
-      if (producto) {
+      if (!producto) {
+        productoOk = false;
+      } else if (producto.encargable === false) {
+        return NextResponse.json(
+          { error: "Este producto no está habilitado para encargos" },
+          { status: 400 },
+        );
+      } else {
         valor = producto.precio;
         if (!descripcion.toLowerCase().includes(producto.nombre.toLowerCase())) {
           descripcion = `${producto.nombre} — ${descripcion}`;
         }
+      }
+      if (!productoOk) {
+        return NextResponse.json({ error: "Producto inválido" }, { status: 400 });
       }
     }
 
     // fecha_envio = hoy (solicitud); fecha_acordada/entrega = pedida por cliente
     const hoy = new Date().toISOString().slice(0, 10);
 
-    const { data, error } = await supabase
-      .from("encargos")
-      .insert({
-        panaderia_id: body.panaderia_id,
-        descripcion,
-        cliente_nombre: body.cliente_nombre,
-        cliente_telefono: body.cliente_telefono,
-        fecha_entrega: body.fecha_entrega,
-        fecha_acordada: body.fecha_entrega,
-        fecha_envio: hoy,
-        valor,
-        notas: body.notas ?? null,
-        estado: "pendiente",
-      })
-      .select("id")
-      .single();
+    const insertBase = {
+      panaderia_id: body.panaderia_id,
+      descripcion,
+      cliente_nombre: body.cliente_nombre,
+      cliente_telefono: body.cliente_telefono,
+      fecha_entrega: body.fecha_entrega,
+      fecha_acordada: body.fecha_entrega,
+      fecha_envio: hoy,
+      valor,
+      notas: body.notas ?? null,
+      estado: "pendiente",
+      producto_id: body.producto_id ?? null,
+      estado_pago: "pendiente" as const,
+      abono: 0,
+    };
+
+    let { data, error } = await supabase.from("encargos").insert(insertBase).select("id").single();
+
+    if (error && (error.message.includes("producto_id") || error.message.includes("estado_pago"))) {
+      const { producto_id: _p, estado_pago: _e, abono: _a, ...legacy } = insertBase;
+      ({ data, error } = await supabase.from("encargos").insert(legacy).select("id").single());
+    }
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (!data) return NextResponse.json({ error: "No se creó el encargo" }, { status: 400 });
 
     await supabase.rpc("notify_panaderia", {
       p_panaderia: body.panaderia_id,

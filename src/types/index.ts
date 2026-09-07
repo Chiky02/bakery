@@ -71,6 +71,7 @@ export type Producto = {
   orden: number;
   codigo_barras?: string | null;
   tipo?: ProductoTipo;
+  encargable?: boolean;
   categorias?: Categoria;
 };
 
@@ -154,7 +155,11 @@ export type Encargo = {
   fecha_acordada?: string | null;
   valor: number;
   estado: "pendiente" | "entregado" | "cobrado" | "cancelado";
+  estado_pago?: "pendiente" | "abonado" | "pagado";
+  abono?: number;
+  producto_id?: string | null;
   notas: string | null;
+  productos?: { id: string; nombre: string; precio: number } | null;
 };
 
 /** @deprecated usar Panaderia; se mantiene alias para páginas que leían config_negocio */

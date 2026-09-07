@@ -33,6 +33,21 @@ export default function EncargarPage() {
       if (!panaderia) return;
       setPanaderiaId(panaderia.id);
 
+      // Prefer products marked encargable
+      const { data: marked, error: markErr } = await supabase
+        .from("productos")
+        .select("id, nombre, precio")
+        .eq("panaderia_id", panaderia.id)
+        .eq("disponible", true)
+        .eq("encargable", true)
+        .order("nombre");
+
+      if (!markErr && marked && marked.length > 0) {
+        setTortas(marked);
+        return;
+      }
+
+      // Fallback: tortas by category / name until migration is applied
       const { data: cats } = await supabase
         .from("categorias")
         .select("id, nombre")
@@ -61,16 +76,6 @@ export default function EncargarPage() {
           .eq("disponible", true)
           .or("nombre.ilike.%torta%,nombre.ilike.%ponqué%,nombre.ilike.%milky%")
           .order("nombre");
-        list = all ?? [];
-      }
-      if (list.length === 0) {
-        const { data: all } = await supabase
-          .from("productos")
-          .select("id, nombre, precio")
-          .eq("panaderia_id", panaderia.id)
-          .eq("disponible", true)
-          .order("nombre")
-          .limit(30);
         list = all ?? [];
       }
       setTortas(list);
@@ -126,8 +131,7 @@ export default function EncargarPage() {
       </p>
       <h1 className="mt-3 text-3xl font-bold text-white">Encargar torta</h1>
       <p className="mt-2 text-stone-400">
-        Indica la fecha de entrega. El sistema valida el tiempo mínimo de elaboración configurado
-        por la panadería y guarda automáticamente la fecha de solicitud.
+        Elige un producto disponible para encargo e indica la fecha de entrega.
       </p>
 
       <form onSubmit={submit} className="mt-8 space-y-4">

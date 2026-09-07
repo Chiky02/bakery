@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { EyeOff, Eye, Pencil, Trash2, Cake } from "lucide-react";
 
 type ProductForm = {
   id?: string;
@@ -16,6 +17,7 @@ type ProductForm = {
   precio: string;
   categoria_id: string;
   disponible: boolean;
+  encargable: boolean;
   orden: string;
   codigo_barras: string;
 };
@@ -25,6 +27,7 @@ const emptyProduct = (categoriaId = ""): ProductForm => ({
   precio: "",
   categoria_id: categoriaId,
   disponible: true,
+  encargable: false,
   orden: "0",
   codigo_barras: "",
 });
@@ -80,6 +83,7 @@ export default function ProductosPage() {
       precio: Math.max(0, Math.round(Number(form.precio) || 0)),
       categoria_id: form.categoria_id,
       disponible: form.disponible,
+      encargable: form.encargable,
       orden: Number(form.orden) || 0,
       codigo_barras: form.codigo_barras.trim() || null,
       tipo: "venta" as const,
@@ -89,15 +93,33 @@ export default function ProductosPage() {
     if (form.id) {
       const { error: err } = await supabase.from("productos").update(payload).eq("id", form.id);
       if (err) {
-        setError(err.message);
-        return;
+        if (err.message.includes("encargable")) {
+          const { encargable: _e, ...without } = payload;
+          const { error: err2 } = await supabase.from("productos").update(without).eq("id", form.id);
+          if (err2) {
+            setError(err2.message);
+            return;
+          }
+        } else {
+          setError(err.message);
+          return;
+        }
       }
       setMsg("Producto actualizado");
     } else {
       const { error: err } = await supabase.from("productos").insert(payload);
       if (err) {
-        setError(err.message);
-        return;
+        if (err.message.includes("encargable")) {
+          const { encargable: _e, ...without } = payload;
+          const { error: err2 } = await supabase.from("productos").insert(without);
+          if (err2) {
+            setError(err2.message);
+            return;
+          }
+        } else {
+          setError(err.message);
+          return;
+        }
       }
       setMsg("Producto creado");
     }
@@ -112,6 +134,7 @@ export default function ProductosPage() {
       precio: String(p.precio),
       categoria_id: p.categoria_id,
       disponible: p.disponible,
+      encargable: !!p.encargable,
       orden: String(p.orden),
       codigo_barras: p.codigo_barras ?? "",
     });
@@ -134,6 +157,23 @@ export default function ProductosPage() {
   async function toggleDisponible(id: string, disponible: boolean) {
     const supabase = createClient();
     await supabase.from("productos").update({ disponible: !disponible }).eq("id", id);
+    await load();
+  }
+
+  async function toggleEncargable(id: string, encargable: boolean) {
+    const supabase = createClient();
+    const { error: err } = await supabase
+      .from("productos")
+      .update({ encargable: !encargable })
+      .eq("id", id);
+    if (err) {
+      setError(
+        err.message.includes("encargable")
+          ? "Ejecuta la migración 20260907030000 (columna productos.encargable)"
+          : err.message,
+      );
+      return;
+    }
     await load();
   }
 
@@ -271,16 +311,24 @@ export default function ProductosPage() {
                     <Button
                       size="sm"
                       variant="secondary"
+                      title="Editar"
+                      aria-label="Editar"
                       onClick={() => {
                         setEditingCat(c);
                         setCatNombre(c.nombre);
                         setCatMedida(c.medida);
                       }}
                     >
-                      Editar
+                      <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button size="sm" variant="danger" onClick={() => deleteCategoria(c.id)}>
-                      Borrar
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      title="Borrar"
+                      aria-label="Borrar"
+                      onClick={() => deleteCategoria(c.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </li>
@@ -341,6 +389,14 @@ export default function ProductosPage() {
                 />
                 Disponible
               </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.encargable}
+                  onChange={(e) => setForm({ ...form, encargable: e.target.checked })}
+                />
+                Encargable (tortas / especiales)
+              </label>
               <div className="flex gap-2">
                 <Button type="submit">{form.id ? "Actualizar" : "Crear"}</Button>
                 {form.id && (
@@ -368,29 +424,53 @@ export default function ProductosPage() {
               <ul className="mt-4 divide-y dark:divide-stone-800">
                 {items.map((p) => (
                   <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                <div>
-                  <p className="font-medium">{p.nombre}</p>
-                  <p className="text-sm text-stone-500">
-                    {formatCOP(p.precio)}
-                    {p.codigo_barras ? ` · ${p.codigo_barras}` : ""}
-                  </p>
-                </div>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div>
+                      <p className="font-medium">{p.nombre}</p>
+                      <p className="text-sm text-stone-500">
+                        {formatCOP(p.precio)}
+                        {p.codigo_barras ? ` · ${p.codigo_barras}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1">
                       <Badge color={p.disponible ? "success" : "danger"}>
                         {p.disponible ? "Disponible" : "Agotado"}
                       </Badge>
+                      {p.encargable && <Badge color="info">Encargable</Badge>}
                       <Button
                         size="sm"
                         variant="secondary"
+                        title={p.disponible ? "Agotar" : "Disponible"}
+                        aria-label={p.disponible ? "Agotar" : "Disponible"}
                         onClick={() => toggleDisponible(p.id, p.disponible)}
                       >
-                        {p.disponible ? "Agotar" : "Disponible"}
+                        {p.disponible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </Button>
-                      <Button size="sm" variant="secondary" onClick={() => editProduct(p)}>
-                        Editar
+                      <Button
+                        size="sm"
+                        variant={p.encargable ? "primary" : "secondary"}
+                        title={p.encargable ? "Quitar encargable" : "Marcar encargable"}
+                        aria-label="Encargable"
+                        onClick={() => toggleEncargable(p.id, !!p.encargable)}
+                      >
+                        <Cake className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="danger" onClick={() => deleteProduct(p.id)}>
-                        Borrar
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        title="Editar"
+                        aria-label="Editar"
+                        onClick={() => editProduct(p)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        title="Borrar"
+                        aria-label="Borrar"
+                        onClick={() => deleteProduct(p.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </li>

@@ -10,7 +10,7 @@ import type { Mesa, Panaderia, Producto } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 
 type CartLine = { producto: Producto; cantidad: number };
 type Step = "menu" | "cart" | "sent";
@@ -24,6 +24,7 @@ export default function QrMenuPage() {
   const [search, setSearch] = useState("");
   const [step, setStep] = useState<Step>("menu");
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -53,7 +54,7 @@ export default function QrMenuPage() {
       }
       return [...prev, { producto, cantidad }];
     });
-    setStep("cart");
+    // Stay on menu so the customer can keep adding items
   }
 
   function updateQty(id: string, delta: number) {
@@ -67,6 +68,7 @@ export default function QrMenuPage() {
   async function enviarPedido() {
     if (cart.length === 0) return;
     setSending(true);
+    setError("");
     const res = await fetch(`/api/qr/${mesaId}/pedido`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -75,10 +77,13 @@ export default function QrMenuPage() {
       }),
     });
     setSending(false);
-    if (res.ok) {
-      setCart([]);
-      setStep("sent");
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setError(body.error ?? "No se pudo enviar el pedido");
+      return;
     }
+    setCart([]);
+    setStep("sent");
   }
 
   if (!mesa) return <div className="p-8 text-center">Cargando menú...</div>;
@@ -95,6 +100,7 @@ export default function QrMenuPage() {
   }
 
   const total = cart.reduce((s, i) => s + i.producto.precio * i.cantidad, 0);
+  const cartCount = cart.reduce((s, i) => s + i.cantidad, 0);
   const filtered = productos.filter(
     (p) =>
       p.nombre.toLowerCase().includes(search.toLowerCase()) ||
@@ -111,21 +117,32 @@ export default function QrMenuPage() {
             ? "El mesero confirmará tu pedido en unos momentos."
             : "Cocina ya recibió tu pedido."}
         </p>
-        <Button
-          onClick={() => {
-            setStep("menu");
-            setSearch("");
-          }}
-        >
-          Pedir más
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            onClick={() => {
+              setStep("menu");
+              setSearch("");
+            }}
+          >
+            Pedir más
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setStep("cart");
+            }}
+            disabled
+          >
+            Lista vacía — pide más para armar otro
+          </Button>
+        </div>
       </div>
     );
   }
 
   if (step === "cart") {
     return (
-      <div className="mx-auto min-h-screen max-w-lg bg-[#fff8f0] p-4">
+      <div className="mx-auto min-h-screen max-w-lg bg-[#fff8f0] p-4 pb-8">
         <header className="mb-4">
           <p className="text-xs font-semibold uppercase tracking-widest text-orange-800">
             {config.nombre_publico ?? config.nombre}
@@ -164,12 +181,13 @@ export default function QrMenuPage() {
           </ul>
         )}
         <p className="mt-4 text-2xl font-bold text-orange-800">{formatCOP(total)}</p>
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
         <div className="mt-4 flex flex-col gap-2">
           <Button className="w-full" disabled={cart.length === 0 || sending} onClick={enviarPedido}>
             {sending ? "Enviando..." : "Confirmar pedido"}
           </Button>
           <Button variant="secondary" className="w-full" onClick={() => setStep("menu")}>
-            Pedir más productos
+            Seguir agregando
           </Button>
         </div>
       </div>
@@ -177,7 +195,7 @@ export default function QrMenuPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fff8f0] p-4">
+    <div className="min-h-screen bg-[#fff8f0] pb-28 p-4">
       <div className="mx-auto max-w-2xl space-y-4">
         <header className="flex items-end justify-between gap-3">
           <div>
@@ -185,12 +203,8 @@ export default function QrMenuPage() {
               {config.nombre_publico ?? config.nombre}
             </p>
             <h1 className="text-xl font-bold">{mesa.nombre}</h1>
+            <p className="text-sm text-stone-500">Agrega productos y confirma al final</p>
           </div>
-          {cart.length > 0 && (
-            <Button size="sm" onClick={() => setStep("cart")}>
-              Ver pedido ({cart.reduce((s, i) => s + i.cantidad, 0)})
-            </Button>
-          )}
         </header>
 
         <Input
@@ -201,6 +215,21 @@ export default function QrMenuPage() {
 
         <ProductGrid productos={filtered} onSelect={addToCart} compact />
       </div>
+
+      {cartCount > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-orange-200 bg-white/95 p-3 shadow-lg backdrop-blur">
+          <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="flex items-center gap-1.5 text-sm font-medium">
+                <ShoppingBag className="h-4 w-4 shrink-0" />
+                {cartCount} {cartCount === 1 ? "producto" : "productos"}
+              </p>
+              <p className="text-lg font-bold text-orange-800">{formatCOP(total)}</p>
+            </div>
+            <Button onClick={() => setStep("cart")}>Ver pedido</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

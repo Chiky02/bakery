@@ -15,6 +15,7 @@ import {
   Users,
   Store,
   Building2,
+  TableProperties,
 } from "lucide-react";
 
 export const ROLE_LABELS: Record<UserRole, string> = {
@@ -34,6 +35,12 @@ export const NAV_ITEMS: {
 }[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["dueno", "admin"] },
   { href: "/mostrador", label: "Mostrador", icon: Calculator, roles: ["dueno", "admin", "mostrador", "caja"] },
+  {
+    href: "/mesas/gestion",
+    label: "Gestionar mesas",
+    icon: TableProperties,
+    roles: ["dueno", "admin"],
+  },
   { href: "/mesas", label: "Mesas", icon: Armchair, roles: ["dueno", "admin", "mesero", "caja"] },
   { href: "/cocina", label: "Cocina", icon: ChefHat, roles: ["dueno", "admin", "cocina"] },
   { href: "/caja", label: "Caja", icon: Wallet, roles: ["dueno", "admin", "caja"] },
@@ -54,7 +61,7 @@ export const NAV_ITEMS: {
   { href: "/reportes", label: "Reportes", icon: BarChart3, roles: ["dueno", "admin"] },
   { href: "/usuarios", label: "Usuarios", icon: Users, roles: ["dueno", "admin"] },
   { href: "/negocios", label: "Negocios", icon: Building2, roles: ["dueno", "admin"] },
-  { href: "/configuracion", label: "Configuración", icon: Settings, roles: ["dueno", "admin"] },
+  { href: "/configuracion", label: "Configuración", icon: Settings, roles: ["dueno", "admin", "mostrador", "mesero", "cocina", "caja"] },
   {
     href: "/panaderias",
     label: "Mis panaderías",
@@ -64,7 +71,9 @@ export const NAV_ITEMS: {
 ];
 
 export function canAccess(rol: UserRole, href: string): boolean {
-  const item = NAV_ITEMS.find((n) => href.startsWith(n.href));
+  const item = [...NAV_ITEMS]
+    .sort((a, b) => b.href.length - a.href.length)
+    .find((n) => href === n.href || href.startsWith(`${n.href}/`));
   if (!item) return rol === "dueno" || rol === "admin";
   return item.roles.includes(rol);
 }

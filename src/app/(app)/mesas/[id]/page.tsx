@@ -24,6 +24,8 @@ export default function MesaDetailPage() {
   const [search, setSearch] = useState("");
   const [nuevaSub, setNuevaSub] = useState("");
   const [medioPago, setMedioPago] = useState<"efectivo" | "electronico" | "mixto">("efectivo");
+  const [cerrarMsg, setCerrarMsg] = useState("");
+  const [cerrando, setCerrando] = useState(false);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -129,11 +131,19 @@ export default function MesaDetailPage() {
 
   async function cerrarMesa() {
     if (!cuentaId) return;
-    await fetch(`/api/cuentas/${cuentaId}/cerrar`, {
+    setCerrando(true);
+    setCerrarMsg("");
+    const res = await fetch(`/api/cuentas/${cuentaId}/cerrar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ total_final: total, medio_pago: medioPago }),
     });
+    setCerrando(false);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setCerrarMsg(body.error ?? "No se pudo cerrar la mesa");
+      return;
+    }
     window.location.href = "/mesas";
   }
 
@@ -249,8 +259,9 @@ export default function MesaDetailPage() {
             <p className="mt-2 text-xl font-bold text-orange-700 dark:text-orange-400">
               {formatCOP(total)}
             </p>
-            <Button className="mt-3 w-full" onClick={cerrarMesa}>
-              Cerrar y liberar mesa
+            {cerrarMsg && <p className="mt-2 text-sm text-red-600">{cerrarMsg}</p>}
+            <Button className="mt-3 w-full" onClick={cerrarMesa} disabled={cerrando}>
+              {cerrando ? "Cerrando..." : "Cerrar y liberar mesa"}
             </Button>
           </Card>
         </div>

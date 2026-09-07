@@ -27,7 +27,14 @@ export function ProductGrid({
   }, {});
 
   function getQty(id: string) {
-    return qty[id] ?? 1;
+    return qty[id] ?? 0;
+  }
+
+  function add(p: Producto) {
+    const n = getQty(p.id);
+    if (n <= 0) return;
+    onSelect(p, n);
+    setQty((q) => ({ ...q, [p.id]: 0 }));
   }
 
   return (
@@ -66,7 +73,7 @@ export function ProductGrid({
                       type="button"
                       className="rounded border p-1 dark:border-stone-600"
                       onClick={() =>
-                        setQty((q) => ({ ...q, [p.id]: Math.max(1, getQty(p.id) - 1) }))
+                        setQty((q) => ({ ...q, [p.id]: Math.max(0, getQty(p.id) - 1) }))
                       }
                     >
                       <Minus className="h-3.5 w-3.5" />
@@ -84,8 +91,8 @@ export function ProductGrid({
                 <Button
                   size="sm"
                   className="mt-2 w-full"
-                  disabled={!p.disponible}
-                  onClick={() => onSelect(p, getQty(p.id))}
+                  disabled={!p.disponible || (showQty && getQty(p.id) <= 0)}
+                  onClick={() => (showQty ? add(p) : onSelect(p, 1))}
                 >
                   Agregar
                 </Button>
