@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Sans, Geist_Mono } from "next/font/google";
-import { ThemeProvider } from "@/components/theme-provider";
+import { LightModeLock } from "@/components/light-mode-lock";
 import "./globals.css";
 
 const display = DM_Sans({
@@ -21,9 +21,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${display.variable} ${geistMono.variable} h-full`} suppressHydrationWarning>
-      <body className="min-h-full antialiased">
-        <ThemeProvider>{children}</ThemeProvider>
+    <html
+      lang="es"
+      className={`${display.variable} ${geistMono.variable} h-full`}
+      suppressHydrationWarning
+    >
+      <body className="min-h-full bg-background text-foreground antialiased">
+        <LightModeLock>{children}</LightModeLock>
       </body>
     </html>
   );

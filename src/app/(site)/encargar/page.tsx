@@ -125,35 +125,36 @@ export default function EncargarPage() {
   }
 
   return (
-    <main className="mx-auto min-h-screen max-w-xl px-4 pb-16 pt-28 md:px-6">
-      <p className="text-xs font-semibold uppercase tracking-[0.28em] text-orange-300">
+    <main className="mx-auto max-w-2xl px-4 pb-16 pt-10 md:px-6">
+      <p className="text-xs font-semibold uppercase tracking-[0.28em] text-orange-700">
         Dulce Bonanza
       </p>
-      <h1 className="mt-3 text-3xl font-bold text-white">Encargar torta</h1>
-      <p className="mt-2 text-stone-400">
+      <h1 className="mt-3 text-3xl font-bold text-stone-900">Encargar torta</h1>
+      <p className="mt-2 text-stone-600">
         Elige un producto disponible para encargo e indica la fecha de entrega.
       </p>
 
-      <form onSubmit={submit} className="mt-8 space-y-4">
-        <div>
-          <label className="mb-1 block text-sm text-stone-300">Torta / producto</label>
+      <form onSubmit={submit} className="mt-8 grid gap-4 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-sm font-medium text-stone-700">Torta / producto</label>
           <select
-            className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+            className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-900"
             value={productoId}
             onChange={(e) => setProductoId(e.target.value)}
           >
             <option value="">— Personalizada / otra —</option>
             {tortas.map((t) => (
-              <option key={t.id} value={t.id} className="text-stone-900">
+              <option key={t.id} value={t.id}>
                 {t.nombre} · {formatCOP(t.precio)}
               </option>
             ))}
           </select>
         </div>
-        <div>
-          <label className="mb-1 block text-sm text-stone-300">Descripción del pedido</label>
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-sm font-medium text-stone-700">
+            Descripción del pedido
+          </label>
           <Input
-            className="border-white/15 bg-white/5 text-white placeholder:text-stone-500"
             placeholder="Ej. Tres leches 20 personas, decoración cumpleaños"
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
@@ -161,60 +162,52 @@ export default function EncargarPage() {
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm text-stone-300">Tu nombre</label>
-          <Input
-            className="border-white/15 bg-white/5 text-white"
-            value={cliente}
-            onChange={(e) => setCliente(e.target.value)}
-            required
-          />
+          <label className="mb-1 block text-sm font-medium text-stone-700">Tu nombre</label>
+          <Input value={cliente} onChange={(e) => setCliente(e.target.value)} required />
         </div>
         <div>
-          <label className="mb-1 block text-sm text-stone-300">Teléfono</label>
-          <Input
-            className="border-white/15 bg-white/5 text-white"
-            value={telefono}
-            onChange={(e) => setTelefono(e.target.value)}
-            required
-          />
+          <label className="mb-1 block text-sm font-medium text-stone-700">Teléfono</label>
+          <Input value={telefono} onChange={(e) => setTelefono(e.target.value)} required />
         </div>
         <div>
-          <label className="mb-1 block text-sm text-stone-300">Fecha de entrega</label>
+          <label className="mb-1 block text-sm font-medium text-stone-700">Fecha de entrega</label>
           <Input
             type="date"
-            className="border-white/15 bg-white/5 text-white"
             value={fecha}
             onChange={(e) => setFecha(e.target.value)}
             required
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm text-stone-300">Notas</label>
+          <label className="mb-1 block text-sm font-medium text-stone-700">Notas</label>
           <Input
-            className="border-white/15 bg-white/5 text-white"
             value={notas}
             onChange={(e) => setNotas(e.target.value)}
             placeholder="Opcional"
           />
         </div>
 
-        {selected && (
-          <p className="text-sm text-orange-300">Valor referencia: {formatCOP(selected.precio)}</p>
-        )}
-        {error && <p className="text-sm text-red-400">{error}</p>}
-        {ok && (
-          <p className="text-sm text-emerald-400">
-            Encargo enviado. Te contactaremos para confirmar.
-          </p>
-        )}
+        <div className="sm:col-span-2 space-y-3">
+          {selected && (
+            <p className="text-sm text-orange-700">
+              Valor referencia: {formatCOP(selected.precio)}
+            </p>
+          )}
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          {ok && (
+            <p className="text-sm text-emerald-700">
+              Encargo enviado. Te contactaremos para confirmar.
+            </p>
+          )}
 
-        <Button type="submit" className="w-full" disabled={loading || !panaderiaId}>
-          {loading ? "Enviando..." : "Enviar encargo"}
-        </Button>
+          <Button type="submit" className="w-full sm:w-auto" disabled={loading || !panaderiaId}>
+            {loading ? "Enviando..." : "Enviar encargo"}
+          </Button>
+        </div>
       </form>
 
       <p className="mt-8 text-center text-sm text-stone-500">
-        <Link href="/" className="text-orange-300 hover:underline">
+        <Link href="/" className="text-orange-700 hover:underline">
           Volver al inicio
         </Link>
       </p>

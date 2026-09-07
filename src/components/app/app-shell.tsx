@@ -8,8 +8,7 @@ import { navForRole, ROLE_LABELS } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import type { Miembro, Notificacion, Panaderia, Profile, UserRole } from "@/types";
 import { Button } from "@/components/ui/button";
-import { useTheme } from "@/components/theme-provider";
-import { Bell, Moon, Sun } from "lucide-react";
+import { Bell } from "lucide-react";
 
 export function AppShell({
   profile,
@@ -27,7 +26,6 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const nav = navForRole(rol);
-  const { theme, toggle } = useTheme();
   const [notifs, setNotifs] = useState<Notificacion[]>([]);
   const [openNotif, setOpenNotif] = useState(false);
 
@@ -116,10 +114,6 @@ export function AppShell({
           })}
         </nav>
         <div className="shrink-0 space-y-2 border-t border-stone-200 p-3 dark:border-stone-800">
-          <Button variant="ghost" className="w-full justify-start gap-2" onClick={toggle}>
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            {theme === "dark" ? "Modo claro" : "Modo oscuro"}
-          </Button>
           <Button variant="ghost" className="w-full" onClick={logout}>
             Cerrar sesión
           </Button>
@@ -177,9 +171,6 @@ export function AppShell({
                 </div>
               )}
             </div>
-            <Button variant="ghost" size="sm" className="md:hidden" onClick={toggle}>
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
             <Button variant="ghost" size="sm" className="md:hidden" onClick={logout}>
               Salir
             </Button>
