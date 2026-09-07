@@ -3,37 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { ItemCuenta } from "@/types";
-import { formatCOP } from "@/lib/format";
 import { useBakeryId } from "@/lib/use-bakery-id";
 import { Button } from "@/components/ui/button";
-import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check } from "lucide-react";
+import { Check, ChefHat } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type ItemConMesa = ItemCuenta & {
   cuentas_mesa?: { panaderia_id?: string; mesas?: { nombre: string } | null } | null;
 };
 
-const ESTADO_COLOR: Record<string, "default" | "warning" | "info" | "success"> = {
-  pendiente: "warning",
-  pendiente_confirmacion: "info",
-  en_preparacion: "info",
-  listo: "success",
-  entregado: "default",
-};
-
-const ESTADO_LABEL: Record<string, string> = {
-  pendiente: "Pendiente",
-  pendiente_confirmacion: "Confirmar",
-  en_preparacion: "Preparando",
-  listo: "Listo",
-  entregado: "Entregado",
-};
-
 export default function CocinaPage() {
   const { panaderiaId } = useBakeryId();
   const [items, setItems] = useState<ItemConMesa[]>([]);
-  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
 
   async function load() {
     if (!panaderiaId) return;
@@ -66,172 +49,185 @@ export default function CocinaPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado }),
     });
-    load();
+    await load();
   }
 
-  async function bulk(estado: string, ids: string[]) {
+  async function bulk(ids: string[], estado: string) {
     await Promise.all(ids.map((id) => updateEstado(id, estado)));
-    setSelected({});
+    setChecked({});
   }
 
   const byMesa = useMemo(() => {
-    const map: Record<string, { nombre: string; items: ItemConMesa[] }> = {};
+    const map = new Map<string, { nombre: string; items: ItemConMesa[] }>();
     for (const item of items) {
-      const nombre = item.cuentas_mesa?.mesas?.nombre ?? "Mostrador / sin mesa";
-      const key = nombre;
-      (map[key] ??= { nombre, items: [] }).items.push(item);
+      const nombre = item.cuentas_mesa?.mesas?.nombre ?? "Sin mesa";
+      if (!map.has(nombre)) map.set(nombre, { nombre, items: [] });
+      map.get(nombre)!.items.push(item);
     }
-    return Object.values(map);
+    return [...map.values()];
   }, [items]);
-
-  function toggleMesa(mesaItems: ItemConMesa[], checked: boolean) {
-    setSelected((prev) => {
-      const next = { ...prev };
-      for (const i of mesaItems) next[i.id] = checked;
-      return next;
-    });
-  }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Cocina</h1>
-          <p className="text-sm text-stone-500">Pedidos agrupados por mesa</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() =>
-              bulk(
-                "en_preparacion",
-                Object.keys(selected).filter((id) => selected[id]),
-              )
-            }
-          >
-            Preparar seleccionados
-          </Button>
-          <Button
-            size="sm"
-            variant="success"
-            onClick={() =>
-              bulk(
-                "listo",
-                Object.keys(selected).filter((id) => selected[id]),
-              )
-            }
-          >
-            Marcar listos
-          </Button>
-        </div>
+      <div>
+        <h1 className="flex items-center gap-2 text-2xl font-bold">
+          <ChefHat className="h-6 w-6" /> Cocina
+        </h1>
+        <p className="text-sm text-stone-500">Una tarjeta por mesa · checklist de platillos</p>
       </div>
 
       {byMesa.length === 0 ? (
-        <p className="text-stone-500">Sin pedidos activos</p>
+        <p className="rounded-2xl border border-dashed border-stone-300 p-10 text-center text-stone-500 dark:border-stone-700">
+          Sin pedidos en cola
+        </p>
       ) : (
-        byMesa.map((grupo) => {
-          const allChecked = grupo.items.every((i) => selected[i.id]);
-          return (
-            <Card key={grupo.nombre} className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <CardTitle className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={allChecked}
-                    onChange={(e) => toggleMesa(grupo.items, e.target.checked)}
-                  />
-                  {grupo.nombre}
-                  <Badge>{grupo.items.length}</Badge>
-                </CardTitle>
-                <div className="flex gap-2">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {byMesa.map((grupo) => {
+            const ids = grupo.items.map((i) => i.id);
+            const allOn = ids.every((id) => checked[id]);
+            const selected = ids.filter((id) => checked[id]);
+            const pendientes = grupo.items.filter((i) =>
+              ["pendiente", "pendiente_confirmacion"].includes(i.estado),
+            ).length;
+
+            return (
+              <article
+                key={grupo.nombre}
+                className="flex flex-col rounded-2xl border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900"
+              >
+                <header className="flex items-start justify-between gap-2 border-b border-stone-100 px-4 py-3 dark:border-stone-800">
+                  <div>
+                    <label className="flex cursor-pointer items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded"
+                        checked={allOn}
+                        onChange={(e) => {
+                          const next = { ...checked };
+                          ids.forEach((id) => {
+                            next[id] = e.target.checked;
+                          });
+                          setChecked(next);
+                        }}
+                      />
+                      <span className="text-lg font-bold">{grupo.nombre}</span>
+                    </label>
+                    <p className="mt-0.5 text-xs text-stone-500">
+                      {grupo.items.length} ítem(s)
+                      {pendientes > 0 ? ` · ${pendientes} por empezar` : ""}
+                    </p>
+                  </div>
+                  <Badge color={pendientes ? "warning" : "success"}>
+                    {pendientes ? "En curso" : "Avanzado"}
+                  </Badge>
+                </header>
+
+                <ul className="flex-1 space-y-1 px-2 py-2">
+                  {grupo.items.map((item) => (
+                    <li
+                      key={item.id}
+                      className={cn(
+                        "flex items-center gap-3 rounded-xl px-2 py-2.5",
+                        item.estado === "listo" && "bg-emerald-50 dark:bg-emerald-950/30",
+                        item.estado === "en_preparacion" && "bg-amber-50 dark:bg-amber-950/20",
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 shrink-0 rounded"
+                        checked={!!checked[item.id]}
+                        onChange={(e) =>
+                          setChecked((c) => ({ ...c, [item.id]: e.target.checked }))
+                        }
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className={cn(
+                            "font-medium leading-tight",
+                            item.estado === "listo" && "line-through opacity-70",
+                          )}
+                        >
+                          {item.cantidad}× {item.productos?.nombre}
+                        </p>
+                        <p className="text-[11px] uppercase tracking-wide text-stone-500">
+                          {item.estado.replaceAll("_", " ")}
+                          {item.origen === "cliente_qr" ? " · QR" : ""}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 flex-col gap-1">
+                        {item.estado === "pendiente_confirmacion" && (
+                          <Button size="sm" onClick={() => updateEstado(item.id, "pendiente")}>
+                            OK
+                          </Button>
+                        )}
+                        {item.estado === "pendiente" && (
+                          <Button size="sm" onClick={() => updateEstado(item.id, "en_preparacion")}>
+                            Prep
+                          </Button>
+                        )}
+                        {item.estado === "en_preparacion" && (
+                          <Button
+                            size="sm"
+                            variant="success"
+                            onClick={() => updateEstado(item.id, "listo")}
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {item.estado === "listo" && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => updateEstado(item.id, "entregado")}
+                          >
+                            Entregar
+                          </Button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+
+                <footer className="flex flex-wrap gap-2 border-t border-stone-100 p-3 dark:border-stone-800">
                   <Button
                     size="sm"
                     variant="secondary"
+                    className="flex-1"
                     onClick={() =>
                       bulk(
+                        (selected.length ? selected : ids).filter((id) => {
+                          const it = grupo.items.find((x) => x.id === id);
+                          return it && ["pendiente", "pendiente_confirmacion"].includes(it.estado);
+                        }),
                         "en_preparacion",
-                        grupo.items.filter((i) => i.estado === "pendiente").map((i) => i.id),
                       )
                     }
                   >
-                    Preparar mesa
+                    Preparar
                   </Button>
                   <Button
                     size="sm"
                     variant="success"
+                    className="flex-1"
                     onClick={() =>
                       bulk(
+                        (selected.length ? selected : ids).filter((id) => {
+                          const it = grupo.items.find((x) => x.id === id);
+                          return (
+                            it && ["pendiente", "pendiente_confirmacion", "en_preparacion"].includes(it.estado)
+                          );
+                        }),
                         "listo",
-                        grupo.items
-                          .filter((i) => ["pendiente", "en_preparacion"].includes(i.estado))
-                          .map((i) => i.id),
                       )
                     }
                   >
-                    Toda la mesa lista
+                    Marcar listos
                   </Button>
-                </div>
-              </div>
-              <ul className="divide-y dark:divide-stone-800">
-                {grupo.items.map((item) => (
-                  <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                    <label className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={!!selected[item.id]}
-                        onChange={(e) =>
-                          setSelected((s) => ({ ...s, [item.id]: e.target.checked }))
-                        }
-                      />
-                      <div>
-                        <p className="font-semibold">
-                          {item.cantidad}× {item.productos?.nombre}
-                        </p>
-                        <p className="text-xs text-stone-500">
-                          {formatCOP(item.precio_al_momento * item.cantidad)}
-                        </p>
-                      </div>
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <Badge color={ESTADO_COLOR[item.estado]}>
-                        {ESTADO_LABEL[item.estado]}
-                      </Badge>
-                      {item.estado === "pendiente_confirmacion" && (
-                        <Button size="sm" onClick={() => updateEstado(item.id, "pendiente")}>
-                          Aprobar
-                        </Button>
-                      )}
-                      {item.estado === "pendiente" && (
-                        <Button size="sm" onClick={() => updateEstado(item.id, "en_preparacion")}>
-                          Preparar
-                        </Button>
-                      )}
-                      {item.estado === "en_preparacion" && (
-                        <Button
-                          size="sm"
-                          variant="success"
-                          onClick={() => updateEstado(item.id, "listo")}
-                        >
-                          <Check className="mr-1 h-4 w-4" /> Listo
-                        </Button>
-                      )}
-                      {item.estado === "listo" && (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => updateEstado(item.id, "entregado")}
-                        >
-                          Entregado
-                        </Button>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          );
-        })
+                </footer>
+              </article>
+            );
+          })}
+        </div>
       )}
     </div>
   );

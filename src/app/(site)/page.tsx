@@ -25,26 +25,27 @@ export default async function PublicHomePage() {
         .select("id, nombre")
         .eq("panaderia_id", panaderia.id)
         .eq("disponible", true)
-        .neq("tipo", "materia_prima")
         .in(
           "categoria_id",
           cats.map((c) => c.id),
         )
         .order("orden")
         .limit(6);
-      especialidades = data ?? [];
+      especialidades = (data ?? []).map((d) => ({ id: d.id, nombre: d.nombre }));
     }
 
     if (especialidades.length === 0) {
       const { data } = await supabase
         .from("productos")
-        .select("id, nombre")
+        .select("id, nombre, tipo")
         .eq("panaderia_id", panaderia.id)
         .eq("disponible", true)
-        .neq("tipo", "materia_prima")
         .order("orden")
-        .limit(6);
-      especialidades = data ?? [];
+        .limit(12);
+      especialidades = (data ?? [])
+        .filter((d) => ((d as { tipo?: string }).tipo ?? "venta") !== "materia_prima")
+        .slice(0, 6)
+        .map((d) => ({ id: d.id, nombre: d.nombre }));
     }
   }
 

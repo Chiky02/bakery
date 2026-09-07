@@ -49,10 +49,10 @@ export default function PanaderiasPage() {
 
   async function deleteBakery(id: string) {
     if (!confirm("¿Borrar esta panadería? Solo si no tiene datos.")) return;
-    const supabase = createClient();
-    const { error: err } = await supabase.rpc("delete_panaderia_if_empty", { p_id: id });
-    if (err) {
-      setError(err.message);
+    const res = await fetch(`/api/panaderias/${id}`, { method: "DELETE" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(body.error ?? "No se pudo borrar");
       return;
     }
     setError("");

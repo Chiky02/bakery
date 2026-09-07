@@ -22,7 +22,10 @@ export async function POST(
     .eq("id", producto_id)
     .single();
 
-  if (!producto?.disponible || producto.tipo === "materia_prima") {
+  if (!producto?.disponible) {
+    return NextResponse.json({ error: "Producto no disponible" }, { status: 400 });
+  }
+  if ((producto as { tipo?: string }).tipo === "materia_prima") {
     return NextResponse.json({ error: "Producto no disponible" }, { status: 400 });
   }
 

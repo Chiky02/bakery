@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ProductGrid } from "@/components/app/product-grid";
 import { formatCOP } from "@/lib/format";
+import { loadVentaProductos } from "@/lib/productos";
 import type { Mesa, Panaderia, Producto } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -32,18 +33,10 @@ export default function QrMenuPage() {
       return;
     }
     setMesa(m as Mesa);
-    const [{ data: c }, { data: p }] = await Promise.all([
-      supabase.from("panaderias").select("*").eq("id", m.panaderia_id).single(),
-      supabase
-        .from("productos")
-        .select("*, categorias(*)")
-        .eq("panaderia_id", m.panaderia_id)
-        .eq("disponible", true)
-        .neq("tipo", "materia_prima")
-        .order("orden"),
-    ]);
+    const { data: c } = await supabase.from("panaderias").select("*").eq("id", m.panaderia_id).single();
     setConfig(c as Panaderia);
-    setProductos((p as Producto[]) ?? []);
+    const list = await loadVentaProductos(supabase, m.panaderia_id, { onlyDisponible: true });
+    setProductos(list);
   }, [mesaId]);
 
   useEffect(() => {

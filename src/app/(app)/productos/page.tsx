@@ -55,11 +55,11 @@ export default function ProductosPage() {
         .from("productos")
         .select("*, categorias(*)")
         .eq("panaderia_id", panaderiaId)
-        .neq("tipo", "materia_prima")
         .order("orden"),
     ]);
     setCategorias((cats as Categoria[]) ?? []);
-    setProductos((prods as Producto[]) ?? []);
+    const all = (prods as Producto[]) ?? [];
+    setProductos(all.filter((p) => (p.tipo ?? "venta") !== "materia_prima"));
     if (!form.categoria_id && cats?.[0]) {
       setForm((f) => ({ ...f, categoria_id: cats[0].id }));
     }

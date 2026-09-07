@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { ProductGrid } from "@/components/app/product-grid";
 import { formatCOP } from "@/lib/format";
+import { loadVentaProductos } from "@/lib/productos";
 import type { ItemCuenta, Mesa, Producto, SubCuenta } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -30,15 +31,10 @@ export default function MesaDetailPage() {
     setMesa(mesaData as Mesa);
     if (!mesaData) return;
 
-    const { data: prods } = await supabase
-      .from("productos")
-      .select("*, categorias(*)")
-      .eq("panaderia_id", mesaData.panaderia_id)
-      .eq("disponible", true)
-      .neq("tipo", "materia_prima")
-      .order("orden");
-    setProductos((prods as Producto[]) ?? []);
-
+    const list = await loadVentaProductos(supabase, mesaData.panaderia_id, {
+      onlyDisponible: true,
+    });
+    setProductos(list);
     let { data: cuenta } = await supabase
       .from("cuentas_mesa")
       .select("*")

@@ -81,6 +81,7 @@ export type Mesa = {
   zona: string;
   estado: "libre" | "ocupada";
   qr_habilitado: boolean;
+  activa?: boolean;
 };
 
 export type CuentaMesa = {

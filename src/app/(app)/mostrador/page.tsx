@@ -6,6 +6,7 @@ import { ProductGrid } from "@/components/app/product-grid";
 import { CartPanel } from "@/components/app/cart-panel";
 import type { CartItem, Producto } from "@/types";
 import { Input } from "@/components/ui/input";
+import { loadVentaProductos } from "@/lib/productos";
 
 export default function MostradorPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -28,14 +29,10 @@ export default function MostradorPage() {
         .eq("id", user.id)
         .single();
       if (!profile?.panaderia_activa_id) return;
-      const { data } = await supabase
-        .from("productos")
-        .select("*, categorias(*)")
-        .eq("panaderia_id", profile.panaderia_activa_id)
-        .eq("disponible", true)
-        .neq("tipo", "materia_prima")
-        .order("orden");
-      setProductos((data as Producto[]) ?? []);
+      const list = await loadVentaProductos(supabase, profile.panaderia_activa_id, {
+        onlyDisponible: true,
+      });
+      setProductos(list);
     })();
   }, []);
 
