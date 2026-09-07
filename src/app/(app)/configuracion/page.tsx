@@ -35,8 +35,10 @@ export default function ConfiguracionPage() {
       .from("panaderias")
       .update({
         nombre: config.nombre,
+        nombre_publico: config.nombre,
         pedido_directo_habilitado: config.pedido_directo_habilitado,
         requiere_aprobacion_mesero: config.requiere_aprobacion_mesero,
+        tiempo_minimo_encargo_horas: config.tiempo_minimo_encargo_horas ?? 48,
         updated_at: new Date().toISOString(),
       })
       .eq("id", panaderiaId);
@@ -95,6 +97,25 @@ export default function ConfiguracionPage() {
             </p>
           </div>
         </label>
+
+        <div>
+          <label className="text-sm font-medium">Tiempo mínimo encargos (horas)</label>
+          <input
+            type="number"
+            min={1}
+            className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
+            value={config.tiempo_minimo_encargo_horas ?? 48}
+            onChange={(e) =>
+              setConfig({
+                ...config,
+                tiempo_minimo_encargo_horas: Math.max(1, Number(e.target.value) || 48),
+              })
+            }
+          />
+          <p className="mt-1 text-xs text-stone-500">
+            El cliente no podrá pedir torta con entrega antes de ese plazo.
+          </p>
+        </div>
 
         <Button onClick={guardar}>Guardar</Button>
         {saved && <p className="text-sm text-green-600">Guardado</p>}

@@ -30,6 +30,8 @@ export type Panaderia = {
   pedido_directo_habilitado: boolean;
   requiere_aprobacion_mesero: boolean;
   activa: boolean;
+  tiempo_minimo_encargo_horas?: number;
+  nombre_publico?: string | null;
 };
 
 export type Miembro = {
@@ -57,6 +59,8 @@ export type Categoria = {
   orden: number;
 };
 
+export type ProductoTipo = "venta" | "materia_prima";
+
 export type Producto = {
   id: string;
   panaderia_id: string;
@@ -65,6 +69,8 @@ export type Producto = {
   precio: number;
   disponible: boolean;
   orden: number;
+  codigo_barras?: string | null;
+  tipo?: ProductoTipo;
   categorias?: Categoria;
 };
 
@@ -143,6 +149,8 @@ export type Encargo = {
   cliente_nombre: string | null;
   cliente_telefono: string | null;
   fecha_entrega: string;
+  fecha_envio?: string | null;
+  fecha_acordada?: string | null;
   valor: number;
   estado: "pendiente" | "entregado" | "cobrado" | "cancelado";
   notas: string | null;
@@ -165,6 +173,23 @@ export type Proveedor = {
   email: string | null;
   notas: string | null;
   activo: boolean;
+  nit?: string | null;
+  contacto_nombre?: string | null;
+  direccion?: string | null;
+  ciudad?: string | null;
+  dias_entrega?: string | null;
+  condiciones_pago?: string | null;
+};
+
+export type Notificacion = {
+  id: string;
+  panaderia_id: string;
+  user_id: string | null;
+  tipo: string;
+  titulo: string;
+  cuerpo: string | null;
+  leida: boolean;
+  created_at: string;
 };
 
 export type RecepcionItem = {

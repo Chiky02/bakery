@@ -10,13 +10,23 @@ Sistema multitenant para panaderías: ventas de mostrador, mesas, cocina, encarg
 
 ## Configuración
 
-### 1. Supabase
+### Migraciones (CLI)
 
-1. Crea el proyecto en [supabase.com](https://supabase.com)
-2. En **SQL Editor**, ejecuta en orden:
-   - `supabase/migrations/20240902120000_initial.sql`
-   - `supabase/migrations/20260907000000_multitenant_recepciones.sql`
-3. En **Authentication → URL Configuration**, agrega `http://localhost:3000` y tu URL de Vercel
+```bash
+npm run db:login
+npx supabase link --project-ref TU_PROJECT_REF
+npm run db:push
+```
+
+Eso aplica `supabase/migrations/*` al proyecto remoto. Luego `npm run seed`.
+
+### Seguridad
+
+- RLS por panadería (`miembros` + helpers `is_member` / `has_rol`)
+- Materia prima (`tipo = materia_prima`) no sale en menú público QR
+- Creación de usuarios solo dueño/admin vía API con service role
+- Encargos públicos validados (fecha mínima) y notificaciones internas
+
 
 ### 2. Variables de entorno
 

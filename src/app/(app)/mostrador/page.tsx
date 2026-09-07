@@ -33,24 +33,27 @@ export default function MostradorPage() {
         .select("*, categorias(*)")
         .eq("panaderia_id", profile.panaderia_activa_id)
         .eq("disponible", true)
+        .neq("tipo", "materia_prima")
         .order("orden");
       setProductos((data as Producto[]) ?? []);
     })();
   }, []);
 
-  const filtered = productos.filter((p) =>
-    p.nombre.toLowerCase().includes(search.toLowerCase()),
+  const filtered = productos.filter(
+    (p) =>
+      p.nombre.toLowerCase().includes(search.toLowerCase()) ||
+      (p.codigo_barras ?? "").includes(search),
   );
 
-  function addToCart(producto: Producto) {
+  function addToCart(producto: Producto, cantidad: number) {
     setCart((prev) => {
       const existing = prev.find((i) => i.producto.id === producto.id);
       if (existing) {
         return prev.map((i) =>
-          i.producto.id === producto.id ? { ...i, cantidad: i.cantidad + 1 } : i,
+          i.producto.id === producto.id ? { ...i, cantidad: i.cantidad + cantidad } : i,
         );
       }
-      return [...prev, { producto, cantidad: 1 }];
+      return [...prev, { producto, cantidad }];
     });
   }
 

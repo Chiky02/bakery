@@ -122,11 +122,12 @@ export default function EncargarPage() {
   return (
     <main className="mx-auto min-h-screen max-w-xl px-4 pb-16 pt-28 md:px-6">
       <p className="text-xs font-semibold uppercase tracking-[0.28em] text-orange-300">
-        BakeryChiky02
+        Dulce Bonanza
       </p>
       <h1 className="mt-3 text-3xl font-bold text-white">Encargar torta</h1>
       <p className="mt-2 text-stone-400">
-        Déjanos tus datos y la fecha de entrega. Te confirmamos por teléfono.
+        Indica la fecha de entrega. El sistema valida el tiempo mínimo de elaboración configurado
+        por la panadería y guarda automáticamente la fecha de solicitud.
       </p>
 
       <form onSubmit={submit} className="mt-8 space-y-4">

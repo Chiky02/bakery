@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Minus, Plus, Trash2 } from "lucide-react";
 
 export default function MesaDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,7 +26,6 @@ export default function MesaDetailPage() {
 
   const load = useCallback(async () => {
     const supabase = createClient();
-
     const { data: mesaData } = await supabase.from("mesas").select("*").eq("id", id).single();
     setMesa(mesaData as Mesa);
     if (!mesaData) return;
@@ -35,6 +35,7 @@ export default function MesaDetailPage() {
       .select("*, categorias(*)")
       .eq("panaderia_id", mesaData.panaderia_id)
       .eq("disponible", true)
+      .neq("tipo", "materia_prima")
       .order("orden");
     setProductos((prods as Producto[]) ?? []);
 
@@ -71,35 +72,42 @@ export default function MesaDetailPage() {
     const supabase = createClient();
     const channel = supabase
       .channel(`mesa-${id}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "items_cuenta" },
-        () => load(),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "cuentas_mesa" },
-        () => load(),
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "items_cuenta" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "cuentas_mesa" }, () => load())
       .subscribe();
-
     return () => {
       supabase.removeChannel(channel);
     };
   }, [id, load]);
 
   const total = items.reduce((s, i) => s + i.precio_al_momento * i.cantidad, 0);
-  const filtered = productos.filter((p) =>
-    p.nombre.toLowerCase().includes(search.toLowerCase()),
+  const filtered = productos.filter(
+    (p) =>
+      p.nombre.toLowerCase().includes(search.toLowerCase()) ||
+      (p.codigo_barras ?? "").includes(search),
   );
 
-  async function addProducto(producto: Producto) {
+  async function addProducto(producto: Producto, cantidad: number) {
     if (!cuentaId) return;
     await fetch(`/api/cuentas/${cuentaId}/items`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ producto_id: producto.id, origen: "mesero" }),
+      body: JSON.stringify({ producto_id: producto.id, origen: "mesero", cantidad }),
     });
+    load();
+  }
+
+  async function setCantidad(itemId: string, cantidad: number) {
+    await fetch(`/api/items/${itemId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cantidad }),
+    });
+    load();
+  }
+
+  async function quitar(itemId: string) {
+    await fetch(`/api/items/${itemId}`, { method: "DELETE" });
     load();
   }
 
@@ -139,7 +147,7 @@ export default function MesaDetailPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <Link href="/mesas" className="text-sm text-amber-700 hover:underline">
+          <Link href="/mesas" className="text-sm text-orange-700 hover:underline dark:text-orange-300">
             ← Mesas
           </Link>
           <h1 className="text-2xl font-bold">{mesa.nombre}</h1>
@@ -148,30 +156,52 @@ export default function MesaDetailPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-4">
-          <Input placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        <div className="space-y-4 lg:col-span-2">
+          <Input
+            placeholder="Buscar producto o código de barras..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
           <ProductGrid productos={filtered} onSelect={addProducto} compact />
         </div>
 
         <div className="space-y-4">
           <Card>
             <CardTitle>Ítems de la cuenta</CardTitle>
-            <ul className="mt-3 max-h-60 space-y-2 overflow-y-auto">
+            <ul className="mt-3 max-h-72 space-y-2 overflow-y-auto">
               {items.map((item) => (
                 <li key={item.id} className="rounded-lg bg-stone-50 p-2 text-sm dark:bg-stone-800">
-                  <div className="flex justify-between">
-                    <span>
-                      {item.cantidad}x {item.productos?.nombre}
-                    </span>
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-medium">{item.productos?.nombre}</span>
+                    <button type="button" onClick={() => quitar(item.id)} aria-label="Quitar">
+                      <Trash2 className="h-4 w-4 text-red-600" />
+                    </button>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        className="rounded border p-1 dark:border-stone-600"
+                        onClick={() => setCantidad(item.id, item.cantidad - 1)}
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                      </button>
+                      <span className="min-w-6 text-center font-medium">{item.cantidad}</span>
+                      <button
+                        type="button"
+                        className="rounded border p-1 dark:border-stone-600"
+                        onClick={() => setCantidad(item.id, item.cantidad + 1)}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                     <span>{formatCOP(item.precio_al_momento * item.cantidad)}</span>
                   </div>
                   {subCuentas.length > 0 && (
                     <select
-                      className="mt-1 w-full rounded border px-1 py-0.5 text-xs"
+                      className="mt-1 w-full rounded border px-1 py-0.5 text-xs dark:border-stone-600 dark:bg-stone-900"
                       value={item.sub_cuenta_id ?? ""}
-                      onChange={(e) =>
-                        asignarItem(item.id, e.target.value || null)
-                      }
+                      onChange={(e) => asignarItem(item.id, e.target.value || null)}
                     >
                       <option value="">General</option>
                       {subCuentas.map((s) => (
@@ -212,7 +242,7 @@ export default function MesaDetailPage() {
           <Card>
             <CardTitle>Cerrar mesa</CardTitle>
             <select
-              className="mt-2 w-full rounded-lg border px-3 py-2 text-sm"
+              className="mt-2 w-full rounded-lg border px-3 py-2 text-sm dark:border-stone-600 dark:bg-stone-900"
               value={medioPago}
               onChange={(e) => setMedioPago(e.target.value as typeof medioPago)}
             >
@@ -220,7 +250,9 @@ export default function MesaDetailPage() {
               <option value="electronico">Electrónico</option>
               <option value="mixto">Mixto</option>
             </select>
-            <p className="mt-2 text-xl font-bold text-amber-700">{formatCOP(total)}</p>
+            <p className="mt-2 text-xl font-bold text-orange-700 dark:text-orange-400">
+              {formatCOP(total)}
+            </p>
             <Button className="mt-3 w-full" onClick={cerrarMesa}>
               Cerrar y liberar mesa
             </Button>

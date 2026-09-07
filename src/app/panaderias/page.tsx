@@ -39,12 +39,24 @@ export default function PanaderiasPage() {
     load();
   }, []);
 
-  async function selectBakery(id: string) {
+  async function enterBakery(id: string) {
     if (!userId) return;
     const supabase = createClient();
     await supabase.from("profiles").update({ panaderia_activa_id: id }).eq("id", userId);
     router.push("/dashboard");
     router.refresh();
+  }
+
+  async function deleteBakery(id: string) {
+    if (!confirm("¿Borrar esta panadería? Solo si no tiene datos.")) return;
+    const supabase = createClient();
+    const { error: err } = await supabase.rpc("delete_panaderia_if_empty", { p_id: id });
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    setError("");
+    await load();
   }
 
   async function createBakery(e: React.FormEvent) {
@@ -56,13 +68,13 @@ export default function PanaderiasPage() {
     const base = slugify(nombre) || "panaderia";
     const slug = `${base}-${Math.random().toString(36).slice(2, 6)}`;
 
-    const { data: bakeryId, error: bakErr } = await supabase.rpc("create_panaderia", {
+    const { error: bakErr } = await supabase.rpc("create_panaderia", {
       p_nombre: nombre.trim(),
       p_slug: slug,
     });
 
-    if (bakErr || !bakeryId) {
-      setError(bakErr?.message ?? "No se pudo crear la panadería");
+    if (bakErr) {
+      setError(bakErr.message);
       setLoading(false);
       return;
     }
@@ -76,14 +88,15 @@ export default function PanaderiasPage() {
     <div className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-6 p-6">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-700 dark:text-orange-400">
-          BakeryChiky02
+          Dulce Bonanza
         </p>
         <h1 className="mt-2 text-3xl font-bold">Tus panaderías</h1>
         <p className="mt-1 text-stone-500">
-          Elige con cuál trabajar o crea una nueva. Cada una tiene su propio catálogo, mesas y
-          cuentas.
+          Entra a un local o crea uno nuevo. Cada uno tiene su catálogo y cuentas.
         </p>
       </div>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="grid gap-3">
         {memberships.length === 0 ? (
@@ -94,15 +107,20 @@ export default function PanaderiasPage() {
           memberships.map((m) => {
             const p = m.panaderias as Panaderia;
             return (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => selectBakery(m.panaderia_id)}
-                className="rounded-xl border border-stone-200 bg-white p-4 text-left transition hover:border-orange-300 hover:bg-orange-50 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-orange-800 dark:hover:bg-orange-950/30"
-              >
-                <p className="font-semibold">{p?.nombre ?? "Panadería"}</p>
-                <p className="text-sm text-stone-500 capitalize">{m.rol}</p>
-              </button>
+              <Card key={m.id} className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="font-semibold">{p?.nombre ?? "Panadería"}</p>
+                  <p className="text-sm capitalize text-stone-500">{m.rol}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={() => enterBakery(m.panaderia_id)}>Entrar</Button>
+                  {m.rol === "dueno" && (
+                    <Button variant="danger" onClick={() => deleteBakery(m.panaderia_id)}>
+                      Borrar
+                    </Button>
+                  )}
+                </div>
+              </Card>
             );
           })
         )}
@@ -112,12 +130,11 @@ export default function PanaderiasPage() {
         <CardTitle>Crear panadería</CardTitle>
         <form onSubmit={createBakery} className="space-y-3">
           <Input
-            placeholder="Nombre (ej. BakeryChiky02 Centro)"
+            placeholder="Nombre (ej. Dulce Bonanza Norte)"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             required
           />
-          {error && <p className="text-sm text-red-600">{error}</p>}
           <Button type="submit" disabled={loading} className="w-full">
             {loading ? "Creando..." : "Crear y entrar"}
           </Button>

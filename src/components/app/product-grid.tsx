@@ -1,24 +1,34 @@
 "use client";
 
+import { useState } from "react";
 import { formatCOP } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Producto } from "@/types";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Minus, Plus } from "lucide-react";
 
 export function ProductGrid({
   productos,
   onSelect,
   compact = false,
+  showQty = true,
 }: {
   productos: Producto[];
-  onSelect: (p: Producto) => void;
+  onSelect: (p: Producto, cantidad: number) => void;
   compact?: boolean;
+  showQty?: boolean;
 }) {
+  const [qty, setQty] = useState<Record<string, number>>({});
   const byCategory = productos.reduce<Record<string, Producto[]>>((acc, p) => {
     const cat = p.categorias?.nombre ?? "Sin categoría";
     (acc[cat] ??= []).push(p);
     return acc;
   }, {});
+
+  function getQty(id: string) {
+    return qty[id] ?? 1;
+  }
 
   return (
     <div className="space-y-6">
@@ -34,24 +44,52 @@ export function ProductGrid({
             )}
           >
             {items.map((p) => (
-              <button
+              <div
                 key={p.id}
-                type="button"
-                onClick={() => onSelect(p)}
-                disabled={!p.disponible}
                 className={cn(
-                  "rounded-xl border p-3 text-left transition-all hover:border-amber-400 hover:shadow-md",
+                  "rounded-xl border p-3 text-left",
                   p.disponible
                     ? "border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-900"
-                    : "cursor-not-allowed border-stone-100 bg-stone-50 opacity-50 dark:border-stone-800",
+                    : "border-stone-100 bg-stone-50 opacity-50 dark:border-stone-800",
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
                   <span className="text-sm font-medium leading-tight">{p.nombre}</span>
                   {!p.disponible && <Badge color="danger">Agotado</Badge>}
                 </div>
-                <p className="mt-2 text-sm font-semibold text-amber-700">{formatCOP(p.precio)}</p>
-              </button>
+                <p className="mt-2 text-sm font-semibold text-orange-700 dark:text-orange-400">
+                  {formatCOP(p.precio)}
+                </p>
+                {showQty && p.disponible && (
+                  <div className="mt-2 flex items-center gap-1">
+                    <button
+                      type="button"
+                      className="rounded border p-1 dark:border-stone-600"
+                      onClick={() =>
+                        setQty((q) => ({ ...q, [p.id]: Math.max(1, getQty(p.id) - 1) }))
+                      }
+                    >
+                      <Minus className="h-3.5 w-3.5" />
+                    </button>
+                    <span className="min-w-6 text-center text-sm font-medium">{getQty(p.id)}</span>
+                    <button
+                      type="button"
+                      className="rounded border p-1 dark:border-stone-600"
+                      onClick={() => setQty((q) => ({ ...q, [p.id]: getQty(p.id) + 1 }))}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+                <Button
+                  size="sm"
+                  className="mt-2 w-full"
+                  disabled={!p.disponible}
+                  onClick={() => onSelect(p, getQty(p.id))}
+                >
+                  Agregar
+                </Button>
+              </div>
             ))}
           </div>
         </section>

@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BakeryChiky02",
-  description: "Sistema multitenant de panaderías — ventas, mesas, encargos y recepciones",
+  title: "Dulce Bonanza",
+  description: "Panadería artesanal — tortas a pedido y pan de cada día",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -17,6 +17,7 @@ type ProductForm = {
   categoria_id: string;
   disponible: boolean;
   orden: string;
+  codigo_barras: string;
 };
 
 const emptyProduct = (categoriaId = ""): ProductForm => ({
@@ -25,6 +26,7 @@ const emptyProduct = (categoriaId = ""): ProductForm => ({
   categoria_id: categoriaId,
   disponible: true,
   orden: "0",
+  codigo_barras: "",
 });
 
 export default function ProductosPage() {
@@ -53,6 +55,7 @@ export default function ProductosPage() {
         .from("productos")
         .select("*, categorias(*)")
         .eq("panaderia_id", panaderiaId)
+        .neq("tipo", "materia_prima")
         .order("orden"),
     ]);
     setCategorias((cats as Categoria[]) ?? []);
@@ -78,6 +81,8 @@ export default function ProductosPage() {
       categoria_id: form.categoria_id,
       disponible: form.disponible,
       orden: Number(form.orden) || 0,
+      codigo_barras: form.codigo_barras.trim() || null,
+      tipo: "venta" as const,
       updated_at: new Date().toISOString(),
     };
 
@@ -108,6 +113,7 @@ export default function ProductosPage() {
       categoria_id: p.categoria_id,
       disponible: p.disponible,
       orden: String(p.orden),
+      codigo_barras: p.codigo_barras ?? "",
     });
     setTab("productos");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -177,8 +183,10 @@ export default function ProductosPage() {
     await load();
   }
 
-  const filtered = productos.filter((p) =>
-    p.nombre.toLowerCase().includes(search.toLowerCase()),
+  const filtered = productos.filter(
+    (p) =>
+      p.nombre.toLowerCase().includes(search.toLowerCase()) ||
+      (p.codigo_barras ?? "").includes(search),
   );
 
   const byCat = filtered.reduce<Record<string, Producto[]>>((acc, p) => {
@@ -301,6 +309,11 @@ export default function ProductosPage() {
                 onChange={(e) => setForm({ ...form, precio: e.target.value })}
                 required
               />
+              <Input
+                placeholder="Código de barras"
+                value={form.codigo_barras}
+                onChange={(e) => setForm({ ...form, codigo_barras: e.target.value })}
+              />
               <select
                 className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm dark:border-stone-600 dark:bg-stone-800"
                 value={form.categoria_id}
@@ -355,10 +368,13 @@ export default function ProductosPage() {
               <ul className="mt-4 divide-y dark:divide-stone-800">
                 {items.map((p) => (
                   <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                    <div>
-                      <p className="font-medium">{p.nombre}</p>
-                      <p className="text-sm text-stone-500">{formatCOP(p.precio)}</p>
-                    </div>
+                <div>
+                  <p className="font-medium">{p.nombre}</p>
+                  <p className="text-sm text-stone-500">
+                    {formatCOP(p.precio)}
+                    {p.codigo_barras ? ` · ${p.codigo_barras}` : ""}
+                  </p>
+                </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge color={p.disponible ? "success" : "danger"}>
                         {p.disponible ? "Disponible" : "Agotado"}

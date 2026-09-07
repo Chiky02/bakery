@@ -37,6 +37,13 @@ export default function RecepcionesPage() {
   const [items, setItems] = useState<DraftItem[]>([emptyItem()]);
   const [nuevoProveedor, setNuevoProveedor] = useState("");
   const [telefono, setTelefono] = useState("");
+  const [nit, setNit] = useState("");
+  const [contacto, setContacto] = useState("");
+  const [direccion, setDireccion] = useState("");
+  const [ciudad, setCiudad] = useState("");
+  const [emailProv, setEmailProv] = useState("");
+  const [diasEntrega, setDiasEntrega] = useState("");
+  const [condiciones, setCondiciones] = useState("");
   const [selected, setSelected] = useState<Recepcion | null>(null);
   const [msg, setMsg] = useState("");
 
@@ -91,6 +98,13 @@ export default function RecepcionesPage() {
       panaderia_id: panaderiaId,
       nombre: nuevoProveedor.trim(),
       telefono: telefono || null,
+      email: emailProv || null,
+      nit: nit || null,
+      contacto_nombre: contacto || null,
+      direccion: direccion || null,
+      ciudad: ciudad || null,
+      dias_entrega: diasEntrega || null,
+      condiciones_pago: condiciones || null,
     });
     if (error) {
       setMsg(error.message);
@@ -98,6 +112,13 @@ export default function RecepcionesPage() {
     }
     setNuevoProveedor("");
     setTelefono("");
+    setNit("");
+    setContacto("");
+    setDireccion("");
+    setCiudad("");
+    setEmailProv("");
+    setDiasEntrega("");
+    setCondiciones("");
     setMsg("Proveedor creado");
     await loadAll(panaderiaId);
   }
@@ -343,15 +364,46 @@ export default function RecepcionesPage() {
             <CardTitle>Nuevo proveedor</CardTitle>
             <form onSubmit={crearProveedor} className="space-y-3">
               <Input
-                placeholder="Nombre"
+                placeholder="Nombre / razón social"
                 value={nuevoProveedor}
                 onChange={(e) => setNuevoProveedor(e.target.value)}
                 required
+              />
+              <Input placeholder="NIT" value={nit} onChange={(e) => setNit(e.target.value)} />
+              <Input
+                placeholder="Contacto"
+                value={contacto}
+                onChange={(e) => setContacto(e.target.value)}
               />
               <Input
                 placeholder="Teléfono"
                 value={telefono}
                 onChange={(e) => setTelefono(e.target.value)}
+              />
+              <Input
+                placeholder="Email"
+                value={emailProv}
+                onChange={(e) => setEmailProv(e.target.value)}
+              />
+              <Input
+                placeholder="Dirección"
+                value={direccion}
+                onChange={(e) => setDireccion(e.target.value)}
+              />
+              <Input
+                placeholder="Ciudad"
+                value={ciudad}
+                onChange={(e) => setCiudad(e.target.value)}
+              />
+              <Input
+                placeholder="Días de entrega"
+                value={diasEntrega}
+                onChange={(e) => setDiasEntrega(e.target.value)}
+              />
+              <Input
+                placeholder="Condiciones de pago"
+                value={condiciones}
+                onChange={(e) => setCondiciones(e.target.value)}
               />
               <Button type="submit">Guardar</Button>
             </form>
@@ -362,7 +414,11 @@ export default function RecepcionesPage() {
               {proveedores.map((p) => (
                 <li key={p.id} className="py-2 text-sm">
                   <p className="font-medium">{p.nombre}</p>
-                  <p className="text-stone-500">{p.telefono ?? "Sin teléfono"}</p>
+                  <p className="text-stone-500">
+                    {[p.nit && `NIT ${p.nit}`, p.contacto_nombre, p.telefono, p.ciudad]
+                      .filter(Boolean)
+                      .join(" · ") || "Sin datos extra"}
+                  </p>
                 </li>
               ))}
             </ul>

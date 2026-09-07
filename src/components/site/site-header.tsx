@@ -10,7 +10,6 @@ const LINKS = [
   { href: "/", label: "Inicio" },
   { href: "/#especialidades", label: "Especialidades" },
   { href: "/encargar", label: "Encargar torta" },
-  { href: "/login", label: "Iniciar sesión" },
 ];
 
 export function SiteHeader() {
@@ -22,31 +21,33 @@ export function SiteHeader() {
     <header className="absolute inset-x-0 top-0 z-40">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 md:px-6">
         <Link href="/" className="group">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-orange-100/90">
-            BakeryChiky02
+          <p className="font-[family-name:var(--font-display)] text-lg font-bold tracking-tight text-white drop-shadow md:text-xl">
+            Dulce Bonanza
           </p>
-          <p className="font-semibold text-white group-hover:text-orange-50">Panadería artesanal</p>
+          <p className="text-[11px] uppercase tracking-[0.22em] text-orange-100/80">
+            Panadería artesanal
+          </p>
         </Link>
 
-        <nav className="relative hidden items-center gap-1 md:flex">
+        <nav className="relative hidden items-center gap-2 md:flex">
           <div className="relative">
             <button
               type="button"
               onClick={() => setOpen((v) => !v)}
-              className="inline-flex items-center gap-1 rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white backdrop-blur hover:bg-white/20"
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/25 px-4 py-2 text-sm font-medium text-white backdrop-blur-md transition hover:bg-black/40"
             >
-              Menú
+              Explorar
               <ChevronDown className={cn("h-4 w-4 transition", open && "rotate-180")} />
             </button>
             {open && (
-              <div className="absolute right-0 mt-2 w-52 overflow-hidden rounded-xl border border-white/10 bg-stone-950/95 py-1 shadow-xl backdrop-blur">
+              <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-white/15 bg-[#1a120c]/95 py-2 shadow-2xl backdrop-blur-xl">
                 {LINKS.map((l) => (
                   <Link
                     key={l.href}
                     href={l.href}
                     onClick={() => setOpen(false)}
                     className={cn(
-                      "block px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10",
+                      "block px-4 py-2.5 text-sm text-stone-200 transition hover:bg-white/10 hover:text-white",
                       pathname === l.href && "bg-white/10 text-white",
                     )}
                   >
@@ -58,21 +59,15 @@ export function SiteHeader() {
           </div>
           <Link
             href="/encargar"
-            className="rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-400"
+            className="rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-orange-900/30 transition hover:from-orange-400 hover:to-amber-400"
           >
-            Encargar
-          </Link>
-          <Link
-            href="/login"
-            className="rounded-full border border-white/30 px-4 py-2 text-sm font-medium text-white hover:bg-white/10"
-          >
-            Iniciar sesión
+            Encargar torta
           </Link>
         </nav>
 
         <button
           type="button"
-          className="rounded-lg bg-white/10 p-2 text-white md:hidden"
+          className="rounded-full border border-white/25 bg-black/25 p-2.5 text-white backdrop-blur md:hidden"
           onClick={() => setMobileOpen((v) => !v)}
           aria-label="Abrir menú"
         >
@@ -81,17 +76,24 @@ export function SiteHeader() {
       </div>
 
       {mobileOpen && (
-        <div className="mx-4 rounded-2xl border border-white/10 bg-stone-950/95 p-3 backdrop-blur md:hidden">
+        <div className="mx-4 overflow-hidden rounded-2xl border border-white/15 bg-[#1a120c]/95 p-2 shadow-2xl backdrop-blur-xl md:hidden">
           {LINKS.map((l) => (
             <Link
               key={l.href}
               href={l.href}
               onClick={() => setMobileOpen(false)}
-              className="block rounded-lg px-3 py-2.5 text-sm text-stone-100 hover:bg-white/10"
+              className="block rounded-xl px-4 py-3 text-sm font-medium text-stone-100 hover:bg-white/10"
             >
               {l.label}
             </Link>
           ))}
+          <Link
+            href="/encargar"
+            onClick={() => setMobileOpen(false)}
+            className="mt-1 block rounded-xl bg-orange-500/90 px-4 py-3 text-center text-sm font-semibold text-white"
+          >
+            Encargar torta
+          </Link>
         </div>
       )}
     </header>

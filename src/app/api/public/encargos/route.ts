@@ -28,12 +28,24 @@ export async function POST(request: Request) {
 
     const { data: panaderia } = await supabase
       .from("panaderias")
-      .select("id, activa")
+      .select("id, activa, tiempo_minimo_encargo_horas")
       .eq("id", body.panaderia_id)
       .single();
 
     if (!panaderia?.activa) {
       return NextResponse.json({ error: "Panadería no disponible" }, { status: 404 });
+    }
+
+    const minHours = panaderia.tiempo_minimo_encargo_horas ?? 48;
+    const entrega = new Date(`${body.fecha_entrega}T12:00:00`);
+    const minDate = new Date(Date.now() + minHours * 60 * 60 * 1000);
+    if (entrega < minDate) {
+      return NextResponse.json(
+        {
+          error: `La fecha de entrega debe ser al menos en ${minHours} horas (tiempo mínimo de elaboración).`,
+        },
+        { status: 400 },
+      );
     }
 
     let valor = body.valor ?? 0;
@@ -53,6 +65,9 @@ export async function POST(request: Request) {
       }
     }
 
+    // fecha_envio = hoy (solicitud); fecha_acordada/entrega = pedida por cliente
+    const hoy = new Date().toISOString().slice(0, 10);
+
     const { data, error } = await supabase
       .from("encargos")
       .insert({
@@ -61,6 +76,8 @@ export async function POST(request: Request) {
         cliente_nombre: body.cliente_nombre,
         cliente_telefono: body.cliente_telefono,
         fecha_entrega: body.fecha_entrega,
+        fecha_acordada: body.fecha_entrega,
+        fecha_envio: hoy,
         valor,
         notas: body.notas ?? null,
         estado: "pendiente",
@@ -69,6 +86,15 @@ export async function POST(request: Request) {
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+    await supabase.rpc("notify_panaderia", {
+      p_panaderia: body.panaderia_id,
+      p_tipo: "encargo",
+      p_titulo: "Nuevo encargo de torta",
+      p_cuerpo: `${body.cliente_nombre} · entrega ${body.fecha_entrega}`,
+      p_roles: ["dueno", "admin", "mostrador"],
+    });
+
     return NextResponse.json({ ok: true, id: data.id });
   } catch (e) {
     if (e instanceof z.ZodError) {

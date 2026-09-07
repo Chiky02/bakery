@@ -90,5 +90,13 @@ export async function POST(
   const { error } = await supabase.from("items_cuenta").insert(inserts);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
+  await supabase.rpc("notify_panaderia", {
+    p_panaderia: mesa.panaderia_id,
+    p_tipo: "pedido_qr",
+    p_titulo: `Pedido QR · ${mesa.nombre}`,
+    p_cuerpo: `${inserts.length} ítem(s) nuevos`,
+    p_roles: ["dueno", "admin", "mesero", "cocina"],
+  });
+
   return NextResponse.json({ ok: true, cuenta_id: cuenta.id });
 }

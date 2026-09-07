@@ -57,6 +57,23 @@ SET panaderia_activa_id = (
   SELECT m.panaderia_id FROM miembros m WHERE m.user_id = pr.id AND m.activo LIMIT 1
 );
 
+-- Quitar políticas viejas ANTES de borrar profiles.rol (dependen de esa columna)
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN
+    SELECT schemaname, tablename, policyname
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename IN (
+        'profiles','config_negocio','categorias','productos','mesas','cuentas_mesa','sub_cuentas',
+        'items_cuenta','ventas_mostrador','encargos'
+      )
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %I.%I', r.policyname, r.schemaname, r.tablename);
+  END LOOP;
+END $$;
+
 ALTER TABLE profiles DROP COLUMN IF EXISTS rol;
 
 -- ─── Scoped columns ────────────────────────────────────────────────────────

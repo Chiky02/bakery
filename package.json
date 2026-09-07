@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "db:login": "npx supabase login",
+    "db:link": "npx supabase link",
+    "db:push": "npx supabase db push",
+    "db:status": "npx supabase migration list"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",

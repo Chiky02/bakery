@@ -49,7 +49,8 @@ async function ensurePanaderia() {
     await supabase
       .from("panaderias")
       .update({
-        nombre: "BakeryChiky02",
+        nombre: "Dulce Bonanza",
+        nombre_publico: "Dulce Bonanza",
         moneda: data.negocio.moneda,
         updated_at: new Date().toISOString(),
       })
@@ -60,11 +61,13 @@ async function ensurePanaderia() {
   const { data: created, error } = await supabase
     .from("panaderias")
     .insert({
-      nombre: "BakeryChiky02",
+      nombre: "Dulce Bonanza",
+      nombre_publico: "Dulce Bonanza",
       slug: "bakerychiky02",
       moneda: data.negocio.moneda,
       pedido_directo_habilitado: false,
       requiere_aprobacion_mesero: true,
+      tiempo_minimo_encargo_horas: 48,
     })
     .select()
     .single();
@@ -197,7 +200,7 @@ async function seed() {
   );
 
   console.log(
-    `\n✅ Listo: BakeryChiky02 — ${data.categorias.length} categorías, ${uniqueProductos.length} productos, ${data.mesas.length} mesas`,
+    `\n✅ Listo: Dulce Bonanza — ${data.categorias.length} categorías, ${uniqueProductos.length} productos, ${data.mesas.length} mesas`,
   );
   console.log("\nCredenciales de prueba (cambiar en producción):");
   for (const u of data.usuarios) {

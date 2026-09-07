@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { navForRole, ROLE_LABELS } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
-import type { Miembro, Panaderia, Profile, UserRole } from "@/types";
+import type { Miembro, Notificacion, Panaderia, Profile, UserRole } from "@/types";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/theme-provider";
-import { Moon, Sun } from "lucide-react";
+import { Bell, Moon, Sun } from "lucide-react";
 
 export function AppShell({
   profile,
@@ -27,6 +28,27 @@ export function AppShell({
   const router = useRouter();
   const nav = navForRole(rol);
   const { theme, toggle } = useTheme();
+  const [notifs, setNotifs] = useState<Notificacion[]>([]);
+  const [openNotif, setOpenNotif] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase
+      .from("notificaciones")
+      .select("*")
+      .eq("user_id", profile.id)
+      .order("created_at", { ascending: false })
+      .limit(20)
+      .then(({ data }) => setNotifs((data as Notificacion[]) ?? []));
+  }, [profile.id, pathname]);
+
+  const unread = notifs.filter((n) => !n.leida).length;
+
+  async function markRead(id: string) {
+    const supabase = createClient();
+    await supabase.from("notificaciones").update({ leida: true }).eq("id", id);
+    setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, leida: true } : n)));
+  }
 
   async function logout() {
     const supabase = createClient();
@@ -46,7 +68,7 @@ export function AppShell({
       <aside className="hidden w-64 flex-col border-r border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900 md:flex">
         <div className="border-b border-stone-200 p-5 dark:border-stone-800">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-700 dark:text-orange-400">
-            BakeryChiky02
+            Dulce Bonanza
           </p>
           <h1 className="mt-1 text-lg font-bold leading-tight">{panaderia.nombre}</h1>
           <p className="mt-1 text-sm text-stone-500">
@@ -67,21 +89,24 @@ export function AppShell({
           )}
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {nav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                pathname.startsWith(item.href)
-                  ? "bg-orange-100 text-orange-950 dark:bg-orange-950/50 dark:text-orange-100"
-                  : "text-stone-600 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800",
-              )}
-            >
-              <span>{item.icon}</span>
-              {item.label}
-            </Link>
-          ))}
+          {nav.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  pathname.startsWith(item.href)
+                    ? "bg-orange-100 text-orange-950 dark:bg-orange-950/50 dark:text-orange-100"
+                    : "text-stone-600 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800",
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
         <div className="space-y-2 border-t border-stone-200 p-3 dark:border-stone-800">
           <Button variant="ghost" className="w-full justify-start gap-2" onClick={toggle}>
@@ -94,19 +119,61 @@ export function AppShell({
         </div>
       </aside>
       <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-stone-200 bg-white px-4 py-3 md:hidden dark:border-stone-800 dark:bg-stone-900">
-          <div>
+        <header className="flex items-center justify-between border-b border-stone-200 bg-white px-4 py-3 dark:border-stone-800 dark:bg-stone-900">
+          <div className="md:hidden">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-orange-700">
-              BakeryChiky02
+              Dulce Bonanza
             </p>
             <p className="font-semibold">{panaderia.nombre}</p>
-            <p className="text-xs text-stone-500">{ROLE_LABELS[rol]}</p>
           </div>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={toggle} aria-label="Cambiar tema">
+          <div className="ml-auto flex items-center gap-1">
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setOpenNotif((v) => !v)}
+                aria-label="Notificaciones"
+              >
+                <Bell className="h-4 w-4" />
+                {unread > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-600 px-1 text-[10px] text-white">
+                    {unread}
+                  </span>
+                )}
+              </Button>
+              {openNotif && (
+                <div className="absolute right-0 z-50 mt-2 w-80 rounded-xl border border-stone-200 bg-white shadow-lg dark:border-stone-700 dark:bg-stone-900">
+                  <p className="border-b px-3 py-2 text-sm font-semibold dark:border-stone-700">
+                    Notificaciones
+                  </p>
+                  <ul className="max-h-72 overflow-y-auto">
+                    {notifs.length === 0 ? (
+                      <li className="px-3 py-4 text-sm text-stone-500">Sin avisos</li>
+                    ) : (
+                      notifs.map((n) => (
+                        <li key={n.id}>
+                          <button
+                            type="button"
+                            className={cn(
+                              "w-full px-3 py-2 text-left text-sm hover:bg-stone-50 dark:hover:bg-stone-800",
+                              !n.leida && "bg-orange-50/60 dark:bg-orange-950/20",
+                            )}
+                            onClick={() => markRead(n.id)}
+                          >
+                            <p className="font-medium">{n.titulo}</p>
+                            {n.cuerpo && <p className="text-xs text-stone-500">{n.cuerpo}</p>}
+                          </button>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                </div>
+              )}
+            </div>
+            <Button variant="ghost" size="sm" className="md:hidden" onClick={toggle}>
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
-            <Button variant="ghost" size="sm" onClick={logout}>
+            <Button variant="ghost" size="sm" className="md:hidden" onClick={logout}>
               Salir
             </Button>
           </div>
