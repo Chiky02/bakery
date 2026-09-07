@@ -88,6 +88,7 @@ export default function ConfiguracionPage() {
         nombre_publico: config.nombre,
         telefono: config.telefono?.trim() || null,
         direccion: config.direccion?.trim() || null,
+        maps_url: config.maps_url?.trim() || null,
         pedido_directo_habilitado: config.pedido_directo_habilitado,
         requiere_aprobacion_mesero: config.requiere_aprobacion_mesero,
         tiempo_minimo_encargo_horas: config.tiempo_minimo_encargo_horas ?? 48,
@@ -243,6 +244,19 @@ export default function ConfiguracionPage() {
                   value={config.direccion ?? ""}
                   onChange={(e) => setConfig({ ...config, direccion: e.target.value })}
                 />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium">Enlace Google Maps</label>
+                <Input
+                  className="mt-1"
+                  placeholder="https://maps.google.com/... o https://maps.app.goo.gl/..."
+                  value={config.maps_url ?? ""}
+                  onChange={(e) => setConfig({ ...config, maps_url: e.target.value })}
+                />
+                <p className="mt-1 text-xs text-stone-500">
+                  En el sitio público se muestra “Cómo llegar” para abrir la ruta.
+                </p>
               </div>
 
               <label className="flex items-start gap-3 rounded-lg border border-stone-200 p-3">

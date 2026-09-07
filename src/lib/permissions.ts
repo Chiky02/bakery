@@ -27,59 +27,157 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   caja: "Caja",
 };
 
-export const NAV_ITEMS: {
-  href: string;
+/** Claves de funcionalidad del panel (menú). */
+export const FEATURE_PERMISOS: {
+  key: string;
   label: string;
+  href: string;
   icon: LucideIcon;
-  roles: UserRole[];
+  defaultRoles: UserRole[];
 }[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["dueno", "admin"] },
-  { href: "/mostrador", label: "Mostrador", icon: Calculator, roles: ["dueno", "admin", "mostrador", "caja"] },
   {
-    href: "/mesas/gestion",
+    key: "dashboard",
+    label: "Dashboard",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+    defaultRoles: ["dueno", "admin"],
+  },
+  {
+    key: "mostrador",
+    label: "Mostrador",
+    href: "/mostrador",
+    icon: Calculator,
+    defaultRoles: ["dueno", "admin", "mostrador", "caja"],
+  },
+  {
+    key: "mesas_gestion",
     label: "Gestionar mesas",
+    href: "/mesas/gestion",
     icon: TableProperties,
-    roles: ["dueno", "admin"],
+    defaultRoles: ["dueno", "admin"],
   },
-  { href: "/mesas", label: "Mesas", icon: Armchair, roles: ["dueno", "admin", "mesero", "caja"] },
-  { href: "/cocina", label: "Cocina", icon: ChefHat, roles: ["dueno", "admin", "cocina"] },
-  { href: "/caja", label: "Caja", icon: Wallet, roles: ["dueno", "admin", "caja"] },
-  { href: "/encargos", label: "Encargos", icon: Package, roles: ["dueno", "admin", "mostrador", "mesero"] },
   {
-    href: "/recepciones",
+    key: "mesas",
+    label: "Mesas",
+    href: "/mesas",
+    icon: Armchair,
+    defaultRoles: ["dueno", "admin", "mesero", "caja"],
+  },
+  {
+    key: "cocina",
+    label: "Cocina",
+    href: "/cocina",
+    icon: ChefHat,
+    defaultRoles: ["dueno", "admin", "cocina"],
+  },
+  {
+    key: "caja",
+    label: "Caja",
+    href: "/caja",
+    icon: Wallet,
+    defaultRoles: ["dueno", "admin", "caja"],
+  },
+  {
+    key: "encargos",
+    label: "Encargos",
+    href: "/encargos",
+    icon: Package,
+    defaultRoles: ["dueno", "admin", "mostrador", "mesero"],
+  },
+  {
+    key: "recepciones",
     label: "Recepciones",
+    href: "/recepciones",
     icon: Truck,
-    roles: ["dueno", "admin", "mostrador", "caja"],
+    defaultRoles: ["dueno", "admin", "mostrador", "caja"],
   },
-  { href: "/productos", label: "Productos", icon: Croissant, roles: ["dueno", "admin"] },
   {
-    href: "/insumos",
+    key: "productos",
+    label: "Productos",
+    href: "/productos",
+    icon: Croissant,
+    defaultRoles: ["dueno", "admin"],
+  },
+  {
+    key: "insumos",
     label: "Materia prima",
+    href: "/insumos",
     icon: Wheat,
-    roles: ["dueno", "admin", "mostrador", "caja"],
+    defaultRoles: ["dueno", "admin", "mostrador", "caja"],
   },
-  { href: "/reportes", label: "Reportes", icon: BarChart3, roles: ["dueno", "admin"] },
-  { href: "/usuarios", label: "Usuarios", icon: Users, roles: ["dueno", "admin"] },
-  { href: "/negocios", label: "Negocios", icon: Building2, roles: ["dueno", "admin"] },
-  { href: "/configuracion", label: "Configuración", icon: Settings, roles: ["dueno", "admin", "mostrador", "mesero", "cocina", "caja"] },
   {
-    href: "/panaderias",
+    key: "reportes",
+    label: "Reportes",
+    href: "/reportes",
+    icon: BarChart3,
+    defaultRoles: ["dueno", "admin"],
+  },
+  {
+    key: "usuarios",
+    label: "Usuarios",
+    href: "/usuarios",
+    icon: Users,
+    defaultRoles: ["dueno", "admin"],
+  },
+  {
+    key: "negocios",
+    label: "Negocios",
+    href: "/negocios",
+    icon: Building2,
+    defaultRoles: ["dueno", "admin"],
+  },
+  {
+    key: "configuracion",
+    label: "Configuración",
+    href: "/configuracion",
+    icon: Settings,
+    defaultRoles: ["dueno", "admin", "mostrador", "mesero", "cocina", "caja"],
+  },
+  {
+    key: "panaderias",
     label: "Mis panaderías",
+    href: "/panaderias",
     icon: Store,
-    roles: ["dueno", "admin", "mostrador", "mesero", "cocina", "caja"],
+    defaultRoles: ["dueno", "admin", "mostrador", "mesero", "cocina", "caja"],
   },
 ];
 
-export function canAccess(rol: UserRole, href: string): boolean {
-  const item = [...NAV_ITEMS]
+export const NAV_ITEMS = FEATURE_PERMISOS.map((f) => ({
+  href: f.href,
+  label: f.label,
+  icon: f.icon,
+  roles: f.defaultRoles,
+  key: f.key,
+}));
+
+export function defaultPermisosForRole(rol: UserRole): string[] {
+  return FEATURE_PERMISOS.filter((f) => f.defaultRoles.includes(rol)).map((f) => f.key);
+}
+
+export function canAccess(rol: UserRole, href: string, permisos?: string[] | null): boolean {
+  const item = [...FEATURE_PERMISOS]
     .sort((a, b) => b.href.length - a.href.length)
     .find((n) => href === n.href || href.startsWith(`${n.href}/`));
   if (!item) return rol === "dueno" || rol === "admin";
-  return item.roles.includes(rol);
+  if (permisos && permisos.length > 0) return permisos.includes(item.key);
+  return item.defaultRoles.includes(rol);
 }
 
-export function navForRole(rol: UserRole) {
-  return NAV_ITEMS.filter((n) => n.roles.includes(rol));
+export function navForRole(rol: UserRole, permisos?: string[] | null) {
+  if (permisos && permisos.length > 0) {
+    return FEATURE_PERMISOS.filter((n) => permisos.includes(n.key)).map((n) => ({
+      href: n.href,
+      label: n.label,
+      icon: n.icon,
+      key: n.key,
+    }));
+  }
+  return FEATURE_PERMISOS.filter((n) => n.defaultRoles.includes(rol)).map((n) => ({
+    href: n.href,
+    label: n.label,
+    icon: n.icon,
+    key: n.key,
+  }));
 }
 
 export function slugify(name: string) {

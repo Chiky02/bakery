@@ -18,6 +18,7 @@ type LocalOption = {
   slug: string;
   telefono?: string | null;
   direccion?: string | null;
+  maps_url?: string | null;
 };
 
 export default function EncargarForm() {
@@ -91,7 +92,7 @@ export default function EncargarForm() {
       const supabase = createClient();
       const { data } = await supabase
         .from("panaderias")
-        .select("id, nombre, nombre_publico, slug, telefono, direccion")
+        .select("id, nombre, nombre_publico, slug, telefono, direccion, maps_url")
         .eq("activa", true)
         .order("nombre");
       const list = (data as LocalOption[]) ?? [];
@@ -205,6 +206,16 @@ export default function EncargarForm() {
               <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               {selectedLocal.direccion}
             </p>
+          )}
+          {selectedLocal?.maps_url && (
+            <a
+              href={selectedLocal.maps_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-flex items-center gap-1.5 text-xs font-medium text-orange-700 hover:underline"
+            >
+              Cómo llegar en Maps
+            </a>
           )}
           {selectedLocal?.telefono && (
             <a

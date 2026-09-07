@@ -9,6 +9,7 @@ const schema = z.object({
   nombre: z.string().min(2),
   password: z.string().min(8),
   rol: z.enum(["dueno", "admin", "mostrador", "mesero", "cocina", "caja"]),
+  role_id: z.string().uuid().optional(),
 });
 
 function getServiceClient() {
@@ -58,11 +59,37 @@ export async function POST(request: Request) {
       panaderia_activa_id: body.panaderia_id,
     });
 
+    let rol = body.rol;
+    let roleId = body.role_id ?? null;
+
+    if (roleId) {
+      const { data: role } = await admin
+        .from("roles")
+        .select("id, rol_base, activo")
+        .eq("id", roleId)
+        .eq("panaderia_id", body.panaderia_id)
+        .maybeSingle();
+      if (!role || !role.activo) {
+        return NextResponse.json({ error: "Rol inválido" }, { status: 400 });
+      }
+      rol = role.rol_base;
+    } else {
+      await admin.rpc("seed_default_roles", { p_panaderia_id: body.panaderia_id });
+      const { data: role } = await admin
+        .from("roles")
+        .select("id")
+        .eq("panaderia_id", body.panaderia_id)
+        .eq("codigo", body.rol)
+        .maybeSingle();
+      roleId = role?.id ?? null;
+    }
+
     const { error: memErr } = await admin.from("miembros").upsert(
       {
         panaderia_id: body.panaderia_id,
         user_id: userId,
-        rol: body.rol,
+        rol,
+        role_id: roleId,
         activo: true,
       },
       { onConflict: "panaderia_id,user_id" },

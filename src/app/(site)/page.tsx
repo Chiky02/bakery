@@ -5,7 +5,7 @@ import {
   listPublicBakeries,
   primaryBrandName,
 } from "@/lib/public-bakery";
-import { MapPin, Cake, Phone } from "lucide-react";
+import { MapPin, Cake, Phone, ExternalLink } from "lucide-react";
 
 function telHref(phone: string) {
   const digits = phone.replace(/[^\d+]/g, "");
@@ -123,6 +123,17 @@ export default async function PublicHomePage() {
                     ) : (
                       <p className="mt-2 text-sm text-stone-400">Dirección por confirmar</p>
                     )}
+                    {local.maps_url ? (
+                      <a
+                        href={local.maps_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-orange-700 hover:underline"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Cómo llegar
+                      </a>
+                    ) : null}
                     {local.telefono ? (
                       <a
                         href={telHref(local.telefono)}

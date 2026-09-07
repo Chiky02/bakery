@@ -34,6 +34,25 @@ export type Panaderia = {
   nombre_publico?: string | null;
   telefono?: string | null;
   direccion?: string | null;
+  maps_url?: string | null;
+};
+
+export type RolePermiso = {
+  role_id: string;
+  permiso: string;
+};
+
+export type RolCustom = {
+  id: string;
+  panaderia_id: string;
+  codigo: string;
+  nombre: string;
+  descripcion?: string | null;
+  rol_base: UserRole;
+  activo: boolean;
+  es_sistema: boolean;
+  created_at?: string;
+  role_permisos?: RolePermiso[];
 };
 
 export type Miembro = {
@@ -41,15 +60,19 @@ export type Miembro = {
   panaderia_id: string;
   user_id: string;
   rol: UserRole;
+  role_id?: string | null;
   activo: boolean;
   panaderias?: Panaderia;
   profiles?: Profile;
+  roles?: RolCustom | null;
 };
 
 export type SessionContext = {
   profile: Profile;
   panaderia: Panaderia;
   rol: UserRole;
+  roleLabel: string;
+  permisos: string[];
   memberships: Miembro[];
 };
 

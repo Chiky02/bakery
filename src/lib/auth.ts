@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Miembro, Panaderia, Profile, SessionContext, UserRole } from "@/types";
+import type { Miembro, Panaderia, Profile, RolCustom, SessionContext, UserRole } from "@/types";
+import { ROLE_LABELS, defaultPermisosForRole } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 
 export async function getSessionProfile(): Promise<Profile | null> {
@@ -24,6 +25,12 @@ export async function requireProfile(): Promise<Profile> {
   return profile;
 }
 
+function resolvePermisos(rol: UserRole, custom?: RolCustom | null): string[] {
+  const fromDb = custom?.role_permisos?.map((p) => p.permiso) ?? [];
+  if (fromDb.length > 0) return fromDb;
+  return defaultPermisosForRole(rol);
+}
+
 export async function getSessionContext(): Promise<SessionContext | null> {
   const supabase = await createClient();
   const {
@@ -41,7 +48,7 @@ export async function getSessionContext(): Promise<SessionContext | null> {
 
   const { data: memberships } = await supabase
     .from("miembros")
-    .select("*, panaderias(*)")
+    .select("*, panaderias(*), roles(*, role_permisos(permiso))")
     .eq("user_id", user.id)
     .eq("activo", true);
 
@@ -61,10 +68,17 @@ export async function getSessionContext(): Promise<SessionContext | null> {
   const panaderia = active.panaderias as Panaderia;
   if (!panaderia) return null;
 
+  const rol = active.rol as UserRole;
+  const custom = (active.roles as RolCustom | null | undefined) ?? null;
+  const roleLabel = custom?.nombre?.trim() || ROLE_LABELS[rol];
+  const permisos = resolvePermisos(rol, custom);
+
   return {
     profile: profile as Profile,
     panaderia,
-    rol: active.rol as UserRole,
+    rol,
+    roleLabel,
+    permisos,
     memberships: list,
   };
 }

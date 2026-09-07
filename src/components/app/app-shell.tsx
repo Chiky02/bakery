@@ -4,31 +4,81 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { navForRole, ROLE_LABELS } from "@/lib/permissions";
+import { navForRole } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import type { Miembro, Notificacion, Panaderia, Profile, UserRole } from "@/types";
 import { Button } from "@/components/ui/button";
-import { Bell, X } from "lucide-react";
+import { Bell, Menu, X } from "lucide-react";
 import { notificationHref } from "@/lib/notifications";
+
+function NavLinks({
+  nav,
+  pathname,
+  onNavigate,
+}: {
+  nav: ReturnType<typeof navForRole>;
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  return (
+    <>
+      {nav.map((item) => {
+        const Icon = item.icon;
+        const active =
+          item.href === "/mesas"
+            ? pathname === "/mesas" ||
+              (pathname.startsWith("/mesas/") && !pathname.startsWith("/mesas/gestion"))
+            : item.href === "/mesas/gestion"
+              ? pathname.startsWith("/mesas/gestion")
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={onNavigate}
+            className={cn(
+              "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              active
+                ? "bg-orange-100 text-orange-950"
+                : "text-stone-600 hover:bg-stone-100",
+            )}
+          >
+            <Icon className="h-4 w-4 shrink-0" />
+            {item.label}
+          </Link>
+        );
+      })}
+    </>
+  );
+}
 
 export function AppShell({
   profile,
   panaderia,
   rol,
+  roleLabel,
+  permisos,
   memberships,
   children,
 }: {
   profile: Profile;
   panaderia: Panaderia;
   rol: UserRole;
+  roleLabel: string;
+  permisos: string[];
   memberships: Miembro[];
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const nav = navForRole(rol);
+  const nav = navForRole(rol, permisos);
   const [notifs, setNotifs] = useState<Notificacion[]>([]);
   const [openNotif, setOpenNotif] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -55,7 +105,6 @@ export function AppShell({
     const supabase = createClient();
     const { error } = await supabase.from("notificaciones").delete().eq("id", id);
     if (error) {
-      // Si aún no está la política DELETE, marca leída y oculta en UI
       await supabase.from("notificaciones").update({ leida: true }).eq("id", id);
     }
     setNotifs((prev) => prev.filter((n) => n.id !== id));
@@ -91,22 +140,22 @@ export function AppShell({
     router.refresh();
   }
 
+  const brand = panaderia.nombre_publico?.trim() || panaderia.nombre;
+
   return (
     <div className="flex h-dvh overflow-hidden bg-background">
-      <aside className="hidden h-dvh w-64 shrink-0 flex-col overflow-hidden border-r border-stone-200 bg-white   md:flex">
-        <div className="shrink-0 border-b border-stone-200 p-5 ">
+      <aside className="hidden h-dvh w-64 shrink-0 flex-col overflow-hidden border-r border-stone-200 bg-white md:flex">
+        <div className="shrink-0 border-b border-stone-200 p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-700">
             Panel
           </p>
-          <h1 className="mt-1 text-lg font-bold leading-tight">
-            {panaderia.nombre_publico?.trim() || panaderia.nombre}
-          </h1>
+          <h1 className="mt-1 text-lg font-bold leading-tight">{brand}</h1>
           <p className="mt-1 text-sm text-stone-500">
-            {profile.nombre} · {ROLE_LABELS[rol]}
+            {profile.nombre} · {roleLabel}
           </p>
           {memberships.length > 1 && (
             <select
-              className="mt-3 w-full rounded-lg border border-stone-200 bg-stone-50 px-2 py-1.5 text-sm  "
+              className="mt-3 w-full rounded-lg border border-stone-200 bg-stone-50 px-2 py-1.5 text-sm"
               value={panaderia.id}
               onChange={(e) => switchBakery(e.target.value)}
             >
@@ -119,44 +168,28 @@ export function AppShell({
           )}
         </div>
         <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
-          {nav.map((item) => {
-            const Icon = item.icon;
-            const active =
-              item.href === "/mesas"
-                ? pathname === "/mesas" ||
-                  (pathname.startsWith("/mesas/") && !pathname.startsWith("/mesas/gestion"))
-                : item.href === "/mesas/gestion"
-                  ? pathname.startsWith("/mesas/gestion")
-                  : pathname === item.href || pathname.startsWith(`${item.href}/`);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-orange-100 text-orange-950  "
-                    : "text-stone-600 hover:bg-stone-100  ",
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                {item.label}
-              </Link>
-            );
-          })}
+          <NavLinks nav={nav} pathname={pathname} />
         </nav>
-        <div className="shrink-0 space-y-2 border-t border-stone-200 p-3 ">
+        <div className="shrink-0 space-y-2 border-t border-stone-200 p-3">
           <Button variant="ghost" className="w-full" onClick={logout}>
             Cerrar sesión
           </Button>
         </div>
       </aside>
+
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex shrink-0 items-center justify-between border-b border-stone-200 bg-white px-4 py-3  ">
-          <div className="md:hidden">
-            <p className="font-semibold">
-              {panaderia.nombre_publico?.trim() || panaderia.nombre}
-            </p>
+        <header className="flex shrink-0 items-center justify-between gap-2 border-b border-stone-200 bg-white px-3 py-3 md:px-4">
+          <div className="flex min-w-0 items-center gap-2 md:hidden">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="shrink-0"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Abrir menú"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <p className="truncate font-semibold">{brand}</p>
           </div>
           <div className="ml-auto flex items-center gap-1">
             <div className="relative">
@@ -174,7 +207,7 @@ export function AppShell({
                 )}
               </Button>
               {openNotif && (
-                <div className="absolute right-0 z-50 mt-2 w-80 rounded-xl border border-stone-200 bg-white shadow-lg">
+                <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-stone-200 bg-white shadow-lg">
                   <div className="flex items-center justify-between border-b border-stone-100 px-3 py-2">
                     <p className="text-sm font-semibold">Notificaciones</p>
                     {notifs.length > 0 && (
@@ -192,7 +225,10 @@ export function AppShell({
                       <li className="px-3 py-4 text-sm text-stone-500">Sin avisos</li>
                     ) : (
                       notifs.map((n) => (
-                        <li key={n.id} className="flex items-start border-b border-stone-50 last:border-0">
+                        <li
+                          key={n.id}
+                          className="flex items-start border-b border-stone-50 last:border-0"
+                        >
                           <button
                             type="button"
                             className={cn(
@@ -203,7 +239,9 @@ export function AppShell({
                           >
                             <p className="font-medium text-stone-900">{n.titulo}</p>
                             {n.cuerpo && (
-                              <p className="mt-0.5 line-clamp-2 text-xs text-stone-500">{n.cuerpo}</p>
+                              <p className="mt-0.5 line-clamp-2 text-xs text-stone-500">
+                                {n.cuerpo}
+                              </p>
                             )}
                           </button>
                           <button
@@ -227,6 +265,66 @@ export function AppShell({
             </Button>
           </div>
         </header>
+
+        {mobileOpen && (
+          <div className="fixed inset-0 z-50 md:hidden">
+            <button
+              type="button"
+              className="absolute inset-0 bg-stone-900/40"
+              aria-label="Cerrar menú"
+              onClick={() => setMobileOpen(false)}
+            />
+            <aside className="absolute inset-y-0 left-0 flex w-[min(20rem,88vw)] flex-col bg-white shadow-xl">
+              <div className="flex items-start justify-between border-b border-stone-200 p-4">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-700">
+                    Panel
+                  </p>
+                  <p className="mt-1 truncate font-bold">{brand}</p>
+                  <p className="mt-0.5 text-sm text-stone-500">
+                    {profile.nombre} · {roleLabel}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setMobileOpen(false)}
+                  aria-label="Cerrar"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              {memberships.length > 1 && (
+                <div className="border-b border-stone-100 px-4 py-3">
+                  <select
+                    className="w-full rounded-lg border border-stone-200 bg-stone-50 px-2 py-1.5 text-sm"
+                    value={panaderia.id}
+                    onChange={(e) => switchBakery(e.target.value)}
+                  >
+                    {memberships.map((m) => (
+                      <option key={m.panaderia_id} value={m.panaderia_id}>
+                        {(m.panaderias as Panaderia | undefined)?.nombre ?? m.panaderia_id}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
+                <NavLinks
+                  nav={nav}
+                  pathname={pathname}
+                  onNavigate={() => setMobileOpen(false)}
+                />
+              </nav>
+              <div className="border-t border-stone-200 p-3">
+                <Button variant="ghost" className="w-full" onClick={logout}>
+                  Cerrar sesión
+                </Button>
+              </div>
+            </aside>
+          </div>
+        )}
+
         <main className="min-h-0 flex-1 overflow-auto p-4 md:p-6">{children}</main>
       </div>
     </div>
