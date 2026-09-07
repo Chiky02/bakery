@@ -63,8 +63,8 @@ export function AppShell({
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background">
-      <aside className="hidden h-dvh w-64 shrink-0 flex-col overflow-hidden border-r border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900 md:flex">
-        <div className="shrink-0 border-b border-stone-200 p-5 dark:border-stone-800">
+      <aside className="hidden h-dvh w-64 shrink-0 flex-col overflow-hidden border-r border-stone-200 bg-white   md:flex">
+        <div className="shrink-0 border-b border-stone-200 p-5 ">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-700">
             Panel
           </p>
@@ -76,7 +76,7 @@ export function AppShell({
           </p>
           {memberships.length > 1 && (
             <select
-              className="mt-3 w-full rounded-lg border border-stone-200 bg-stone-50 px-2 py-1.5 text-sm dark:border-stone-700 dark:bg-stone-800"
+              className="mt-3 w-full rounded-lg border border-stone-200 bg-stone-50 px-2 py-1.5 text-sm  "
               value={panaderia.id}
               onChange={(e) => switchBakery(e.target.value)}
             >
@@ -105,8 +105,8 @@ export function AppShell({
                 className={cn(
                   "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                   active
-                    ? "bg-orange-100 text-orange-950 dark:bg-orange-950/50 dark:text-orange-100"
-                    : "text-stone-600 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800",
+                    ? "bg-orange-100 text-orange-950  "
+                    : "text-stone-600 hover:bg-stone-100  ",
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0" />
@@ -115,14 +115,14 @@ export function AppShell({
             );
           })}
         </nav>
-        <div className="shrink-0 space-y-2 border-t border-stone-200 p-3 dark:border-stone-800">
+        <div className="shrink-0 space-y-2 border-t border-stone-200 p-3 ">
           <Button variant="ghost" className="w-full" onClick={logout}>
             Cerrar sesión
           </Button>
         </div>
       </aside>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex shrink-0 items-center justify-between border-b border-stone-200 bg-white px-4 py-3 dark:border-stone-800 dark:bg-stone-900">
+        <header className="flex shrink-0 items-center justify-between border-b border-stone-200 bg-white px-4 py-3  ">
           <div className="md:hidden">
             <p className="font-semibold">
               {panaderia.nombre_publico?.trim() || panaderia.nombre}
@@ -144,8 +144,8 @@ export function AppShell({
                 )}
               </Button>
               {openNotif && (
-                <div className="absolute right-0 z-50 mt-2 w-80 rounded-xl border border-stone-200 bg-white shadow-lg dark:border-stone-700 dark:bg-stone-900">
-                  <p className="border-b px-3 py-2 text-sm font-semibold dark:border-stone-700">
+                <div className="absolute right-0 z-50 mt-2 w-80 rounded-xl border border-stone-200 bg-white shadow-lg  ">
+                  <p className="border-b px-3 py-2 text-sm font-semibold ">
                     Notificaciones
                   </p>
                   <ul className="max-h-72 overflow-y-auto">
@@ -157,8 +157,8 @@ export function AppShell({
                           <button
                             type="button"
                             className={cn(
-                              "w-full px-3 py-2 text-left text-sm hover:bg-stone-50 dark:hover:bg-stone-800",
-                              !n.leida && "bg-orange-50/60 dark:bg-orange-950/20",
+                              "w-full px-3 py-2 text-left text-sm hover:bg-stone-50 ",
+                              !n.leida && "bg-orange-50/60 ",
                             )}
                             onClick={() => markRead(n.id)}
                           >

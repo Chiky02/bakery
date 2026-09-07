@@ -176,7 +176,7 @@ export default function MesaDetailPage() {
     return (
       <div className="space-y-4">
         <div>
-          <Link href="/mesas" className="text-sm text-orange-700 hover:underline dark:text-orange-300">
+          <Link href="/mesas" className="text-sm text-orange-700 hover:underline ">
             ← Mesas
           </Link>
           <h1 className="text-2xl font-bold">{mesa.nombre}</h1>
@@ -200,7 +200,7 @@ export default function MesaDetailPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <Link href="/mesas" className="text-sm text-orange-700 hover:underline dark:text-orange-300">
+          <Link href="/mesas" className="text-sm text-orange-700 hover:underline ">
             ← Mesas
           </Link>
           <h1 className="text-2xl font-bold">{mesa.nombre}</h1>
@@ -223,7 +223,7 @@ export default function MesaDetailPage() {
             <CardTitle>Ítems de la cuenta</CardTitle>
             <ul className="mt-3 max-h-72 space-y-2 overflow-y-auto">
               {items.map((item) => (
-                <li key={item.id} className="rounded-lg bg-stone-50 p-2 text-sm dark:bg-stone-800">
+                <li key={item.id} className="rounded-lg bg-stone-50 p-2 text-sm ">
                   <div className="flex items-start justify-between gap-2">
                     <span className="font-medium">{item.productos?.nombre}</span>
                     <button type="button" onClick={() => quitar(item.id)} aria-label="Quitar">
@@ -234,7 +234,7 @@ export default function MesaDetailPage() {
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
-                        className="rounded border p-1 dark:border-stone-600"
+                        className="rounded border p-1 "
                         onClick={() => setCantidad(item.id, item.cantidad - 1)}
                       >
                         <Minus className="h-3.5 w-3.5" />
@@ -242,7 +242,7 @@ export default function MesaDetailPage() {
                       <span className="min-w-6 text-center font-medium">{item.cantidad}</span>
                       <button
                         type="button"
-                        className="rounded border p-1 dark:border-stone-600"
+                        className="rounded border p-1 "
                         onClick={() => setCantidad(item.id, item.cantidad + 1)}
                       >
                         <Plus className="h-3.5 w-3.5" />
@@ -252,7 +252,7 @@ export default function MesaDetailPage() {
                   </div>
                   {subCuentas.length > 0 && (
                     <select
-                      className="mt-1 w-full rounded border px-1 py-0.5 text-xs dark:border-stone-600 dark:bg-stone-900"
+                      className="mt-1 w-full rounded border px-1 py-0.5 text-xs  "
                       value={item.sub_cuenta_id ?? ""}
                       onChange={(e) => asignarItem(item.id, e.target.value || null)}
                     >
@@ -295,7 +295,7 @@ export default function MesaDetailPage() {
           <Card>
             <CardTitle>Cerrar mesa</CardTitle>
             <select
-              className="mt-2 w-full rounded-lg border px-3 py-2 text-sm dark:border-stone-600 dark:bg-stone-900"
+              className="mt-2 w-full rounded-lg border px-3 py-2 text-sm  "
               value={medioPago}
               onChange={(e) => setMedioPago(e.target.value as typeof medioPago)}
             >
@@ -303,7 +303,7 @@ export default function MesaDetailPage() {
               <option value="electronico">Electrónico</option>
               <option value="mixto">Mixto</option>
             </select>
-            <p className="mt-2 text-xl font-bold text-orange-700 dark:text-orange-400">
+            <p className="mt-2 text-xl font-bold text-orange-700 ">
               {formatCOP(total)}
             </p>
             {cerrarMsg && <p className="mt-2 text-sm text-red-600">{cerrarMsg}</p>}

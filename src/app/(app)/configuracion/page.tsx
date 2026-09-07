@@ -211,7 +211,7 @@ export default function ConfiguracionPage() {
             <div>
               <label className="text-sm font-medium">Nombre del negocio</label>
               <input
-                className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
+                className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm  "
                 value={config.nombre}
                 onChange={(e) => setConfig({ ...config, nombre: e.target.value })}
               />
@@ -220,7 +220,7 @@ export default function ConfiguracionPage() {
               </p>
             </div>
 
-              <label className="flex items-start gap-3 rounded-lg border border-stone-200 p-3 dark:border-stone-700">
+              <label className="flex items-start gap-3 rounded-lg border border-stone-200 p-3 ">
                 <input
                   type="checkbox"
                   className="mt-1"
@@ -237,7 +237,7 @@ export default function ConfiguracionPage() {
                 </div>
               </label>
 
-              <label className="flex items-start gap-3 rounded-lg border border-stone-200 p-3 dark:border-stone-700">
+              <label className="flex items-start gap-3 rounded-lg border border-stone-200 p-3 ">
                 <input
                   type="checkbox"
                   className="mt-1"
@@ -259,7 +259,7 @@ export default function ConfiguracionPage() {
                 <input
                   type="number"
                   min={1}
-                  className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
+                  className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm  "
                   value={config.tiempo_minimo_encargo_horas ?? 48}
                   onChange={(e) =>
                     setConfig({
@@ -283,12 +283,12 @@ export default function ConfiguracionPage() {
               <CardTitle>Links de pedido QR</CardTitle>
               <p className="text-sm text-stone-500">
                 Copia el link de cada mesa en{" "}
-                <a href="/mesas" className="text-orange-700 underline dark:text-orange-300">
+                <a href="/mesas" className="text-orange-700 underline ">
                   Mesas
                 </a>
                 .
               </p>
-              <code className="block break-all rounded-lg bg-stone-100 p-3 text-xs dark:bg-stone-800">
+              <code className="block break-all rounded-lg bg-stone-100 p-3 text-xs ">
                 {origin}/qr/[id-de-mesa]
               </code>
             </Card>

@@ -106,7 +106,7 @@ export default async function PublicHomePage() {
       </section>
 
       <footer className="border-t border-orange-100 py-8 text-center text-xs text-stone-500">
-        © {new Date().getFullYear()} {brand}
+        © {new Date().getFullYear()} Chiky02
       </footer>
     </main>
   );

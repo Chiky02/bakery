@@ -19,14 +19,20 @@ export const metadata: Metadata = {
   description: "Gestión de panadería — ventas, mesas, encargos y recepciones",
 };
 
+const forceLightScript = `(function(){var r=document.documentElement;r.classList.remove("dark");r.style.colorScheme="light";try{localStorage.removeItem("bakerychiky-theme");localStorage.removeItem("app-theme");}catch(e){}})();`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="es"
-      className={`${display.variable} ${geistMono.variable} h-full`}
+      className={`${display.variable} ${geistMono.variable} h-full light`}
+      style={{ colorScheme: "light" }}
       suppressHydrationWarning
     >
-      <body className="min-h-full bg-background text-foreground antialiased">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: forceLightScript }} />
+      </head>
+      <body className="min-h-full bg-[#f7f4ef] text-stone-900 antialiased">
         <LightModeLock>{children}</LightModeLock>
       </body>
     </html>

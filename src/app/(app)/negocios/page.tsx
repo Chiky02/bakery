@@ -33,7 +33,7 @@ export default async function NegociosPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardTitle>Panaderías ({panaderias?.length ?? 0})</CardTitle>
-          <ul className="mt-3 divide-y dark:divide-stone-800">
+          <ul className="mt-3 divide-y ">
             {panaderias?.map((p) => (
               <li key={p.id} className="flex justify-between py-2 text-sm">
                 <div>
@@ -50,7 +50,7 @@ export default async function NegociosPage() {
 
         <Card>
           <CardTitle>Personas ({miembros?.length ?? 0})</CardTitle>
-          <ul className="mt-3 max-h-96 divide-y overflow-y-auto dark:divide-stone-800">
+          <ul className="mt-3 max-h-96 divide-y overflow-y-auto ">
             {miembros?.map((m) => {
               const profile = m.profiles as { nombre?: string } | null;
               return (

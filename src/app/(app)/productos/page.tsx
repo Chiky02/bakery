@@ -300,7 +300,7 @@ export default function ProductosPage() {
           </Card>
           <Card>
             <CardTitle>Listado ({categorias.length})</CardTitle>
-            <ul className="mt-3 divide-y dark:divide-stone-800">
+            <ul className="mt-3 divide-y ">
               {categorias.map((c) => (
                 <li key={c.id} className="flex items-center justify-between gap-2 py-2">
                   <div>
@@ -363,7 +363,7 @@ export default function ProductosPage() {
                 onChange={(e) => setForm({ ...form, codigo_barras: e.target.value })}
               />
               <select
-                className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm dark:border-stone-600 dark:bg-stone-800"
+                className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm  "
                 value={form.categoria_id}
                 onChange={(e) => setForm({ ...form, categoria_id: e.target.value })}
                 required
@@ -421,7 +421,7 @@ export default function ProductosPage() {
           {Object.entries(byCat).map(([cat, items]) => (
             <Card key={cat}>
               <CardTitle>{cat}</CardTitle>
-              <ul className="mt-4 divide-y dark:divide-stone-800">
+              <ul className="mt-4 divide-y ">
                 {items.map((p) => (
                   <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                     <div>

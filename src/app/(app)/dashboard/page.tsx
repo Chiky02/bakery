@@ -71,7 +71,7 @@ export default async function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <p className="text-sm text-stone-500">Ventas app hoy</p>
-          <p className="mt-1 text-2xl font-bold text-orange-700 dark:text-orange-400">
+          <p className="mt-1 text-2xl font-bold text-orange-700 ">
             {formatCOP(totalHoy)}
           </p>
           <p className="text-xs text-stone-400">{countHoy} transacciones</p>
@@ -133,7 +133,7 @@ export default async function DashboardPage() {
         {!encargos?.length ? (
           <p className="mt-4 text-sm text-stone-500">No hay encargos pendientes</p>
         ) : (
-          <ul className="mt-4 divide-y divide-stone-100 dark:divide-stone-800">
+          <ul className="mt-4 divide-y divide-stone-100 ">
             {encargos.map((e) => (
               <li key={e.id} className="flex justify-between py-3 text-sm">
                 <div>

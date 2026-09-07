@@ -165,7 +165,7 @@ export default function EncargosPage() {
             <div className="sm:col-span-2">
               <label className="mb-1 block text-sm font-medium">Producto encargable</label>
               <select
-                className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm dark:border-stone-600 dark:bg-stone-800"
+                className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm  "
                 value={form.producto_id}
                 onChange={(e) => onPickProducto(e.target.value)}
               >
@@ -215,7 +215,7 @@ export default function EncargosPage() {
             <div>
               <label className="mb-1 block text-sm font-medium">Estado de pago</label>
               <select
-                className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm dark:border-stone-600 dark:bg-stone-800"
+                className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm  "
                 value={form.estado_pago}
                 onChange={(e) =>
                   setForm({ ...form, estado_pago: e.target.value as FormState["estado_pago"] })
@@ -252,7 +252,7 @@ export default function EncargosPage() {
         {proximos.length === 0 ? (
           <p className="mt-4 text-sm text-stone-500">Sin encargos pendientes</p>
         ) : (
-          <ul className="mt-4 divide-y dark:divide-stone-800">
+          <ul className="mt-4 divide-y ">
             {proximos.map((e) => (
               <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 py-4">
                 <div>
@@ -323,7 +323,7 @@ export default function EncargosPage() {
       {otros.length > 0 && (
         <Card>
           <CardTitle>Historial</CardTitle>
-          <ul className="mt-4 divide-y dark:divide-stone-800">
+          <ul className="mt-4 divide-y ">
             {otros.map((e) => (
               <li key={e.id} className="flex justify-between py-3 text-sm">
                 <div>

@@ -68,7 +68,7 @@ export default function MesasPage() {
           Abre cuentas y atiende mesas activas. La creación y desactivación está en Gestionar mesas.
         </p>
         {!qrOn && (
-          <p className="mt-2 text-sm text-orange-700 dark:text-orange-300">
+          <p className="mt-2 text-sm text-orange-700 ">
             Pedido QR desactivado.{" "}
             <Link href="/configuracion" className="underline">
               Configuración
@@ -100,7 +100,7 @@ export default function MesasPage() {
                   </div>
                   <p className="text-sm text-stone-500">{mesa.zona}</p>
                   {cuentaAbierta && (
-                    <p className="mt-2 text-xs text-orange-700 dark:text-orange-300">
+                    <p className="mt-2 text-xs text-orange-700 ">
                       Cuenta abierta
                     </p>
                   )}

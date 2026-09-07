@@ -111,7 +111,7 @@ export default function MostradorPage() {
           <div>
             <label className="mb-1 block text-sm font-medium">Medio de pago</label>
             <select
-              className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm dark:border-stone-600 dark:bg-stone-800"
+              className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm  "
               value={medioPago}
               onChange={(e) => setMedioPago(e.target.value as typeof medioPago)}
             >

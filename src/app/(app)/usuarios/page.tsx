@@ -88,7 +88,7 @@ export default function UsuariosPage() {
             minLength={8}
           />
           <select
-            className="rounded-lg border px-3 py-2 text-sm dark:border-stone-600 dark:bg-stone-900"
+            className="rounded-lg border px-3 py-2 text-sm  "
             value={rol}
             onChange={(e) => setRol(e.target.value as UserRole)}
           >
@@ -108,7 +108,7 @@ export default function UsuariosPage() {
 
       <Card>
         <CardTitle>Equipo ({miembros.length})</CardTitle>
-        <ul className="mt-4 divide-y dark:divide-stone-800">
+        <ul className="mt-4 divide-y ">
           {miembros.map((m) => {
             const p = m.profiles as Profile | undefined;
             return (

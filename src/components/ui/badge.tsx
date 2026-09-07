@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { HTMLAttributes } from "react";
 
 const colors: Record<string, string> = {
-  default: "bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300",
+  default: "bg-stone-100 text-stone-700",
   success: "bg-emerald-100 text-emerald-800",
   warning: "bg-amber-100 text-amber-800",
   danger: "bg-red-100 text-red-800",

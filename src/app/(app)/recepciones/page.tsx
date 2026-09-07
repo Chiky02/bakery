@@ -284,7 +284,7 @@ export default function RecepcionesPage() {
         </div>
       </div>
 
-      {msg && <p className="text-sm text-orange-700 dark:text-orange-300">{msg}</p>}
+      {msg && <p className="text-sm text-orange-700 ">{msg}</p>}
 
       {tab === "lista" && (
         <div className="space-y-3">
@@ -338,7 +338,7 @@ export default function RecepcionesPage() {
             <div>
               <label className="text-sm font-medium">Proveedor</label>
               <select
-                className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
+                className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm  "
                 value={proveedorId}
                 onChange={(e) => setProveedorId(e.target.value)}
               >
@@ -359,7 +359,7 @@ export default function RecepcionesPage() {
               {items.map((item, idx) => (
                 <div
                   key={idx}
-                  className="grid gap-2 rounded-lg border border-stone-200 p-3 dark:border-stone-800 md:grid-cols-6"
+                  className="grid gap-2 rounded-lg border border-stone-200 p-3  md:grid-cols-6"
                 >
                   <div className="md:col-span-2">
                     <label className="mb-1 block text-xs font-medium text-stone-500">Descripción</label>
@@ -376,7 +376,7 @@ export default function RecepcionesPage() {
                   <div>
                     <label className="mb-1 block text-xs font-medium text-stone-500">Producto</label>
                     <select
-                      className="w-full rounded-lg border border-stone-200 bg-white px-2 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
+                      className="w-full rounded-lg border border-stone-200 bg-white px-2 py-2 text-sm  "
                       value={item.producto_id}
                       onChange={(e) => {
                         const prod = productos.find((p) => p.id === e.target.value);
@@ -533,7 +533,7 @@ export default function RecepcionesPage() {
               <Plus className="h-4 w-4" /> Nuevo
             </Button>
           </div>
-          <ul className="divide-y dark:divide-stone-800">
+          <ul className="divide-y ">
             {proveedoresActivos.length === 0 ? (
               <li className="py-4 text-sm text-stone-500">Sin proveedores.</li>
             ) : (
@@ -652,7 +652,7 @@ export default function RecepcionesPage() {
               Cerrar
             </Button>
           </div>
-          <ul className="divide-y dark:divide-stone-800">
+          <ul className="divide-y ">
             {(selected.recepcion_items ?? []).map((i) => (
               <li key={i.id} className="flex justify-between py-2 text-sm">
                 <span>{i.descripcion}</span>

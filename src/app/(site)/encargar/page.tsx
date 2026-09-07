@@ -213,6 +213,7 @@ export default function EncargarPage() {
         <Link href="/" className="text-orange-700 hover:underline">
           Volver al inicio
         </Link>
+        <span className="mt-3 block text-xs">© {new Date().getFullYear()} Chiky02</span>
       </p>
     </main>
   );

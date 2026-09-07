@@ -93,7 +93,7 @@ export default function InsumosPage() {
             onChange={(e) => setBarras(e.target.value)}
           />
           <select
-            className="rounded-lg border px-3 py-2 text-sm dark:border-stone-600 dark:bg-stone-900 lg:col-span-1"
+            className="rounded-lg border px-3 py-2 text-sm   lg:col-span-1"
             value={categoriaId}
             onChange={(e) => setCategoriaId(e.target.value)}
           >
@@ -110,7 +110,7 @@ export default function InsumosPage() {
 
       <Card>
         <CardTitle>Inventario de insumos ({items.length})</CardTitle>
-        <ul className="mt-3 divide-y dark:divide-stone-800">
+        <ul className="mt-3 divide-y ">
           {items.map((i) => (
             <li key={i.id} className="flex items-center justify-between py-2 text-sm">
               <div>

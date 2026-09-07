@@ -18,8 +18,8 @@ export function MesaQrLink({ mesaId, mesaNombre }: { mesaId: string; mesaNombre:
   }
 
   return (
-    <div className="mt-3 space-y-2 rounded-lg bg-stone-50 p-3 text-xs dark:bg-stone-800/60">
-      <p className="font-medium text-stone-700 dark:text-stone-200">Pedido QR · {mesaNombre}</p>
+    <div className="mt-3 space-y-2 rounded-lg bg-stone-50 p-3 text-xs ">
+      <p className="font-medium text-stone-700 ">Pedido QR · {mesaNombre}</p>
       <p className="break-all text-stone-500">{absolute}</p>
       <div className="flex gap-2">
         <Button size="sm" variant="secondary" type="button" onClick={copy}>

@@ -109,7 +109,7 @@ export default function CocinaPage() {
       </div>
 
       {byMesa.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-stone-300 p-10 text-center text-stone-500 dark:border-stone-700">
+        <p className="rounded-2xl border border-dashed border-stone-300 p-10 text-center text-stone-500 ">
           Sin pedidos en cola
         </p>
       ) : (
@@ -125,9 +125,9 @@ export default function CocinaPage() {
             return (
               <article
                 key={grupo.key}
-                className="flex flex-col rounded-2xl border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900"
+                className="flex flex-col rounded-2xl border border-stone-200 bg-white shadow-sm  "
               >
-                <header className="flex items-start justify-between gap-2 border-b border-stone-100 px-4 py-3 dark:border-stone-800">
+                <header className="flex items-start justify-between gap-2 border-b border-stone-100 px-4 py-3 ">
                   <div>
                     <label className="flex cursor-pointer items-center gap-2">
                       <input
@@ -158,7 +158,7 @@ export default function CocinaPage() {
                       key={item.id}
                       className={cn(
                         "flex items-center gap-3 rounded-xl px-2 py-2.5",
-                        item.estado === "en_preparacion" && "bg-amber-50 dark:bg-amber-950/20",
+                        item.estado === "en_preparacion" && "bg-amber-50 ",
                       )}
                     >
                       <input
@@ -204,7 +204,7 @@ export default function CocinaPage() {
                   ))}
                 </ul>
 
-                <footer className="flex flex-wrap gap-2 border-t border-stone-100 p-3 dark:border-stone-800">
+                <footer className="flex flex-wrap gap-2 border-t border-stone-100 p-3 ">
                   <Button
                     size="sm"
                     variant="secondary"

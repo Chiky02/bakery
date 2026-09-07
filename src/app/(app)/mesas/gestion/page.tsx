@@ -97,14 +97,14 @@ export default function MesasGestionPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/mesas" className="text-sm text-orange-700 hover:underline dark:text-orange-300">
+        <Link href="/mesas" className="text-sm text-orange-700 hover:underline ">
           ← Volver a mesas
         </Link>
         <h1 className="text-2xl font-bold">Gestionar mesas</h1>
         <p className="text-sm text-stone-500">Crear, activar, desactivar o eliminar mesas (admin/dueño).</p>
       </div>
 
-      {msg && <p className="text-sm text-stone-600 dark:text-stone-300">{msg}</p>}
+      {msg && <p className="text-sm text-stone-600 ">{msg}</p>}
 
       <Card className="w-full max-w-4xl space-y-3 p-4">
         <CardTitle>Nueva mesa</CardTitle>
@@ -148,7 +148,7 @@ export default function MesasGestionPage() {
                 </div>
                 <p className="text-sm text-stone-500">{mesa.zona}</p>
                 {cuentaAbierta && (
-                  <p className="mt-2 text-xs text-orange-700 dark:text-orange-300">Cuenta abierta</p>
+                  <p className="mt-2 text-xs text-orange-700 ">Cuenta abierta</p>
                 )}
                 {mesa.qr_habilitado && activa && (
                   <MesaQrLink mesaId={mesa.id} mesaNombre={mesa.nombre} />

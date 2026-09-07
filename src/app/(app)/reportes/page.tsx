@@ -176,7 +176,7 @@ export default async function ReportesPage() {
         <CardTitle>Historial de ventas por mesa</CardTitle>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="border-b text-stone-500 dark:border-stone-700">
+            <thead className="border-b text-stone-500 ">
               <tr>
                 <th className="pb-2 pr-3 font-medium">Mesa</th>
                 <th className="pb-2 pr-3 font-medium">Apertura</th>
@@ -185,7 +185,7 @@ export default async function ReportesPage() {
                 <th className="pb-2 text-right font-medium">Total</th>
               </tr>
             </thead>
-            <tbody className="divide-y dark:divide-stone-800">
+            <tbody className="divide-y ">
               {(cuentasMesa ?? []).length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-6 text-center text-stone-500">

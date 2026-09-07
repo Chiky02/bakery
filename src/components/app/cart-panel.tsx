@@ -34,7 +34,7 @@ export function CartPanel({
           {items.map((item) => (
             <li
               key={item.producto.id}
-              className="flex items-center justify-between gap-2 rounded-lg bg-stone-50 p-2 dark:bg-stone-800"
+              className="flex items-center justify-between gap-2 rounded-lg bg-stone-50 p-2 "
             >
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{item.producto.nombre}</p>
@@ -64,7 +64,7 @@ export function CartPanel({
           ))}
         </ul>
       )}
-      <div className="mt-4 border-t border-stone-200 pt-4 dark:border-stone-700">
+      <div className="mt-4 border-t border-stone-200 pt-4 ">
         <div className="flex items-center justify-between">
           <span className="text-sm text-stone-500">Total referencia</span>
           <span className="text-2xl font-bold text-amber-700">{formatCOP(total)}</span>
