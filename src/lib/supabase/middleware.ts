@@ -1,13 +1,29 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+function readEnv(name: string) {
+  return process.env[name]?.trim().replace(/^["']|["']$/g, "") ?? "";
+}
+
 export async function updateSession(request: NextRequest) {
+  const supabaseUrl = readEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const supabaseAnonKey = readEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+
+  if (!/^https?:\/\//i.test(supabaseUrl) || !supabaseAnonKey) {
+    console.error("Supabase env inválida en middleware", {
+      hasUrl: Boolean(supabaseUrl),
+      urlLooksLikeHttp: /^https?:\/\//i.test(supabaseUrl),
+      hasAnonKey: Boolean(supabaseAnonKey),
+    });
+    return new NextResponse(
+      "Falta NEXT_PUBLIC_SUPABASE_URL (debe ser https://xxxx.supabase.co) o NEXT_PUBLIC_SUPABASE_ANON_KEY. Revísalas en Vercel → Settings → Environment Variables y vuelve a desplegar.",
+      { status: 500 },
+    );
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
