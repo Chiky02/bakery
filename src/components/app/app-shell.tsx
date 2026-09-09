@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { navForRole } from "@/lib/permissions";
+import { navForRole, canAccess } from "@/lib/permissions";
 import { useBakery } from "@/lib/use-bakery-id";
 import { cn } from "@/lib/utils";
 import type { Notificacion, Panaderia } from "@/types";
@@ -66,6 +66,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (pathname.startsWith("/facturas")) return;
+    if (pathname.startsWith("/panaderias")) return;
+    if (!canAccess(rol, pathname, permisos)) {
+      const fallback = nav[0]?.href ?? "/panaderias";
+      router.replace(fallback);
+    }
+  }, [pathname, rol, permisos, nav, router]);
 
   useEffect(() => {
     const supabase = createClient();

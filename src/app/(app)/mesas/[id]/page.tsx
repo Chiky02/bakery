@@ -33,6 +33,15 @@ export default function MesaDetailPage() {
   const [cerrando, setCerrando] = useState(false);
   const [abriendo, setAbriendo] = useState(false);
   const [cuentaOpen, setCuentaOpen] = useState(false);
+  const [emitirFactura, setEmitirFactura] = useState(false);
+  const [ivaPct, setIvaPct] = useState("0");
+  const [cliente, setCliente] = useState({
+    nombre: "",
+    documento: "",
+    email: "",
+    telefono: "",
+    direccion: "",
+  });
 
   /** Solo ítems + subcuentas (rápido). No recarga catálogo. */
   const refreshCuenta = useCallback(async (cid: string) => {
@@ -263,9 +272,19 @@ export default function MesaDetailPage() {
 
   async function cerrarMesa() {
     if (!cuentaId) return;
+    if (emitirFactura && !cliente.nombre.trim()) {
+      setCerrarMsg("Indica razón social / nombre del cliente para la factura");
+      return;
+    }
     setCerrando(true);
     setCerrarMsg("");
     closingRef.current = true;
+    const detalleFactura = items.map((i) => ({
+      producto_id: i.producto_id,
+      nombre: i.productos?.nombre ?? "Ítem",
+      cantidad: i.cantidad,
+      precio: i.precio_al_momento,
+    }));
     const res = await fetch(`/api/cuentas/${cuentaId}/cerrar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -278,6 +297,31 @@ export default function MesaDetailPage() {
       setCerrarMsg(body.error ?? "No se pudo cerrar la mesa");
       return;
     }
+
+    if (emitirFactura) {
+      const fRes = await fetch("/api/facturas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          origen: "mesa",
+          cuenta_mesa_id: cuentaId,
+          cliente_nombre: cliente.nombre.trim(),
+          cliente_documento: cliente.documento.trim() || null,
+          cliente_email: cliente.email.trim() || null,
+          cliente_telefono: cliente.telefono.trim() || null,
+          cliente_direccion: cliente.direccion.trim() || null,
+          medio_pago: medioPago,
+          iva_porcentaje: Number(ivaPct) || 0,
+          detalle: detalleFactura,
+          notas: "Documento comercial de venta (no es factura electrónica DIAN).",
+        }),
+      });
+      if (fRes.ok) {
+        const f = await fRes.json();
+        window.open(`/facturas/${f.id}`, "_blank");
+      }
+    }
+
     setCuentaId(null);
     setItems([]);
     router.replace("/mesas");
@@ -410,6 +454,42 @@ export default function MesaDetailPage() {
         <option value="mixto">Mixto</option>
       </select>
       <p className="mt-2 text-xl font-bold text-orange-700">{formatCOP(total)}</p>
+      <label className="mt-3 flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={emitirFactura}
+          onChange={(e) => setEmitirFactura(e.target.checked)}
+        />
+        Emitir factura de venta (impresa)
+      </label>
+      {emitirFactura && (
+        <div className="mt-2 space-y-2">
+          <p className="text-xs text-stone-500">
+            Documento comercial para empresas. No es factura electrónica DIAN.
+          </p>
+          <Input
+            placeholder="Razón social / nombre *"
+            value={cliente.nombre}
+            onChange={(e) => setCliente({ ...cliente, nombre: e.target.value })}
+          />
+          <Input
+            placeholder="NIT / CC"
+            value={cliente.documento}
+            onChange={(e) => setCliente({ ...cliente, documento: e.target.value })}
+          />
+          <Input
+            placeholder="Email"
+            value={cliente.email}
+            onChange={(e) => setCliente({ ...cliente, email: e.target.value })}
+          />
+          <Input
+            type="number"
+            placeholder="% IVA (0 si no aplica)"
+            value={ivaPct}
+            onChange={(e) => setIvaPct(e.target.value)}
+          />
+        </div>
+      )}
       {cerrarMsg && <p className="mt-2 text-sm text-red-600">{cerrarMsg}</p>}
       <Button className="mt-3 w-full" onClick={cerrarMesa} disabled={cerrando}>
         {cerrando ? "Cerrando..." : "Cerrar y liberar mesa"}

@@ -204,25 +204,14 @@ export default function RecepcionesPage() {
 
   async function marcarRecibida(rec: Recepcion) {
     if (!panaderiaId || !userId) return;
-    const supabase = createClient();
-    const lines = (rec.recepcion_items as RecepcionItem[]) ?? [];
-    for (const line of lines) {
-      await supabase
-        .from("recepcion_items")
-        .update({ cantidad_recibida: line.cantidad_pedida })
-        .eq("id", line.id);
+    const res = await fetch(`/api/recepciones/${rec.id}/recibir`, { method: "POST" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setMsg(body.error ?? "No se pudo marcar como recibida");
+      return;
     }
-    await supabase
-      .from("recepciones")
-      .update({
-        estado: "recibida",
-        fecha_recepcion: new Date().toISOString().slice(0, 10),
-        recibido_por: userId,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", rec.id);
     setSelected(null);
-    setMsg("Recepción marcada como recibida");
+    setMsg("Recepción marcada como recibida · stock actualizado");
     await loadAll(panaderiaId);
   }
 

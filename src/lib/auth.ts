@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { Miembro, Panaderia, Profile, RolCustom, SessionContext, UserRole } from "@/types";
-import { ROLE_LABELS, defaultPermisosForRole } from "@/lib/permissions";
+import { ROLE_LABELS, defaultPermisosForRole, canAccess, FEATURE_PERMISOS } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 
 function resolvePermisos(rol: UserRole, custom?: RolCustom | null): string[] {
@@ -93,6 +93,19 @@ export async function requireBakeryContext(): Promise<SessionContext> {
     const profile = await getSessionProfile();
     if (!profile) redirect("/login");
     redirect("/panaderias");
+  }
+  return ctx;
+}
+
+/** Bloquea página si el rol/permisos no incluyen el módulo. */
+export async function requireFeature(featureKey: string): Promise<SessionContext> {
+  const ctx = await requireBakeryContext();
+  const feature = FEATURE_PERMISOS.find((f) => f.key === featureKey);
+  const href = feature?.href ?? `/${featureKey}`;
+  if (!canAccess(ctx.rol, href, ctx.permisos)) {
+    const fallback =
+      FEATURE_PERMISOS.find((f) => canAccess(ctx.rol, f.href, ctx.permisos))?.href ?? "/panaderias";
+    redirect(fallback);
   }
   return ctx;
 }

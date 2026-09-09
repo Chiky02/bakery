@@ -104,4 +104,7 @@ En `/recepciones` puedes:
 ## Notas
 
 - Las ventas en app son un subconjunto del negocio; la caja fiscal sigue aparte.
-- Disponibilidad de producto = toggle, no inventario de unidades (las recepciones registran entrada, no stock automático aún).
+- Stock opcional por producto (`control_stock`): se descuenta en ventas de mostrador y al cerrar mesas; las recepciones suman inventario.
+- Facturas de venta imprimibles (NIT, razón social, prefijo en Configuración): documento comercial, **no** factura electrónica DIAN. Emisión desde mostrador, cierre de mesa o Caja.
+- Reportes y dashboard usan zona horaria America/Bogota y combinan mostrador + mesas + encargos.
+- Tras desplegar, aplica migraciones con `npm run db:push` (stock, turnos de caja, facturas).

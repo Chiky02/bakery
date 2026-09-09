@@ -18,6 +18,8 @@ type ProductForm = {
   categoria_id: string;
   disponible: boolean;
   encargable: boolean;
+  control_stock: boolean;
+  stock: string;
   orden: string;
   codigo_barras: string;
 };
@@ -28,6 +30,8 @@ const emptyProduct = (categoriaId = ""): ProductForm => ({
   categoria_id: categoriaId,
   disponible: true,
   encargable: false,
+  control_stock: false,
+  stock: "0",
   orden: "0",
   codigo_barras: "",
 });
@@ -84,42 +88,55 @@ export default function ProductosPage() {
       categoria_id: form.categoria_id,
       disponible: form.disponible,
       encargable: form.encargable,
+      control_stock: form.control_stock,
+      stock: Number(form.stock) || 0,
       orden: Number(form.orden) || 0,
       codigo_barras: form.codigo_barras.trim() || null,
       tipo: "venta" as const,
       updated_at: new Date().toISOString(),
     };
 
+    async function persist(
+      op: "update" | "insert",
+      data: typeof payload,
+    ): Promise<string | null> {
+      const res =
+        op === "update"
+          ? await supabase.from("productos").update(data).eq("id", form.id!)
+          : await supabase.from("productos").insert(data);
+      if (!res.error) return null;
+      if (
+        res.error.message.includes("encargable") ||
+        res.error.message.includes("control_stock") ||
+        res.error.message.includes("stock")
+      ) {
+        const {
+          encargable: _e,
+          control_stock: _c,
+          stock: _s,
+          ...without
+        } = data;
+        const res2 =
+          op === "update"
+            ? await supabase.from("productos").update(without).eq("id", form.id!)
+            : await supabase.from("productos").insert(without);
+        return res2.error?.message ?? null;
+      }
+      return res.error.message;
+    }
+
     if (form.id) {
-      const { error: err } = await supabase.from("productos").update(payload).eq("id", form.id);
-      if (err) {
-        if (err.message.includes("encargable")) {
-          const { encargable: _e, ...without } = payload;
-          const { error: err2 } = await supabase.from("productos").update(without).eq("id", form.id);
-          if (err2) {
-            setError(err2.message);
-            return;
-          }
-        } else {
-          setError(err.message);
-          return;
-        }
+      const errMsg = await persist("update", payload);
+      if (errMsg) {
+        setError(errMsg);
+        return;
       }
       setMsg("Producto actualizado");
     } else {
-      const { error: err } = await supabase.from("productos").insert(payload);
-      if (err) {
-        if (err.message.includes("encargable")) {
-          const { encargable: _e, ...without } = payload;
-          const { error: err2 } = await supabase.from("productos").insert(without);
-          if (err2) {
-            setError(err2.message);
-            return;
-          }
-        } else {
-          setError(err.message);
-          return;
-        }
+      const errMsg = await persist("insert", payload);
+      if (errMsg) {
+        setError(errMsg);
+        return;
       }
       setMsg("Producto creado");
     }
@@ -135,6 +152,8 @@ export default function ProductosPage() {
       categoria_id: p.categoria_id,
       disponible: p.disponible,
       encargable: !!p.encargable,
+      control_stock: !!p.control_stock,
+      stock: String(p.stock ?? 0),
       orden: String(p.orden),
       codigo_barras: p.codigo_barras ?? "",
     });
@@ -397,6 +416,23 @@ export default function ProductosPage() {
                 />
                 Encargable (tortas / especiales)
               </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.control_stock}
+                  onChange={(e) => setForm({ ...form, control_stock: e.target.checked })}
+                />
+                Controlar stock
+              </label>
+              {form.control_stock && (
+                <Input
+                  type="number"
+                  step="0.001"
+                  placeholder="Stock actual"
+                  value={form.stock}
+                  onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                />
+              )}
               <div className="flex gap-2">
                 <Button type="submit">{form.id ? "Actualizar" : "Crear"}</Button>
                 {form.id && (
@@ -429,6 +465,7 @@ export default function ProductosPage() {
                       <p className="text-sm text-stone-500">
                         {formatCOP(p.precio)}
                         {p.codigo_barras ? ` · ${p.codigo_barras}` : ""}
+                        {p.control_stock ? ` · stock ${p.stock ?? 0}` : ""}
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-1">
@@ -436,6 +473,7 @@ export default function ProductosPage() {
                         {p.disponible ? "Disponible" : "Agotado"}
                       </Badge>
                       {p.encargable && <Badge color="info">Encargable</Badge>}
+                      {p.control_stock && <Badge color="warning">Stock</Badge>}
                       <Button
                         size="sm"
                         variant="secondary"

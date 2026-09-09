@@ -69,6 +69,10 @@ export default function ConfiguracionPage() {
         direccion: config.direccion?.trim() || null,
         maps_url: config.maps_url?.trim() || null,
         whatsapp: config.whatsapp?.trim() || null,
+        nit: config.nit?.trim() || null,
+        razon_social: config.razon_social?.trim() || null,
+        prefijo_factura: config.prefijo_factura?.trim() || "FV",
+        texto_legal_factura: config.texto_legal_factura?.trim() || null,
         pedido_directo_habilitado: config.pedido_directo_habilitado,
         requiere_aprobacion_mesero: config.requiere_aprobacion_mesero,
         tiempo_minimo_encargo_horas: config.tiempo_minimo_encargo_horas ?? 48,
@@ -225,6 +229,41 @@ export default function ConfiguracionPage() {
                 <p className="mt-1 text-xs text-stone-500">
                   Con código de país (57…). Botón flotante en el home.
                 </p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">NIT (facturas)</label>
+                <Input
+                  className="mt-1"
+                  value={config.nit ?? ""}
+                  onChange={(e) => setConfig({ ...config, nit: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Razón social</label>
+                <Input
+                  className="mt-1"
+                  value={config.razon_social ?? ""}
+                  onChange={(e) => setConfig({ ...config, razon_social: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Prefijo factura</label>
+                <Input
+                  className="mt-1"
+                  placeholder="FV"
+                  value={config.prefijo_factura ?? "FV"}
+                  onChange={(e) => setConfig({ ...config, prefijo_factura: e.target.value })}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium">Texto legal en factura</label>
+                <Input
+                  className="mt-1"
+                  placeholder="Documento comercial… (no FE DIAN)"
+                  value={config.texto_legal_factura ?? ""}
+                  onChange={(e) => setConfig({ ...config, texto_legal_factura: e.target.value })}
+                />
               </div>
 
               <div>

@@ -36,6 +36,12 @@ export type Panaderia = {
   direccion?: string | null;
   maps_url?: string | null;
   whatsapp?: string | null;
+  nit?: string | null;
+  razon_social?: string | null;
+  regimen?: string | null;
+  prefijo_factura?: string | null;
+  consecutivo_factura?: number;
+  texto_legal_factura?: string | null;
 };
 
 export type RolePermiso = {
@@ -98,6 +104,8 @@ export type Producto = {
   codigo_barras?: string | null;
   tipo?: ProductoTipo;
   encargable?: boolean;
+  stock?: number;
+  control_stock?: boolean;
   categorias?: Categoria;
 };
 
@@ -254,4 +262,53 @@ export type Recepcion = {
 export type CartItem = {
   producto: Producto;
   cantidad: number;
+};
+
+export type TurnoCaja = {
+  id: string;
+  panaderia_id: string;
+  abierto_por: string;
+  cerrado_por?: string | null;
+  estado: "abierto" | "cerrado";
+  apertura_at: string;
+  cierre_at?: string | null;
+  fondo_inicial: number;
+  efectivo_contado?: number | null;
+  electronico_contado?: number | null;
+  notas_apertura?: string | null;
+  notas_cierre?: string | null;
+  detalle_apertura?: Record<string, number> | null;
+  detalle_cierre?: Record<string, number> | null;
+};
+
+export type FacturaDetalleItem = {
+  producto_id?: string;
+  nombre: string;
+  cantidad: number;
+  precio: number;
+  subtotal: number;
+};
+
+export type Factura = {
+  id: string;
+  panaderia_id: string;
+  numero: string;
+  consecutivo: number;
+  origen: "mostrador" | "mesa" | "encargo" | "manual";
+  venta_id?: string | null;
+  cuenta_mesa_id?: string | null;
+  encargo_id?: string | null;
+  cliente_nombre: string;
+  cliente_documento?: string | null;
+  cliente_email?: string | null;
+  cliente_direccion?: string | null;
+  cliente_telefono?: string | null;
+  subtotal: number;
+  iva: number;
+  total: number;
+  medio_pago?: MedioPago | null;
+  detalle: FacturaDetalleItem[];
+  notas?: string | null;
+  emitida_por?: string | null;
+  created_at: string;
 };
