@@ -27,23 +27,27 @@ export default async function DashboardPage() {
       .from("ventas_mostrador")
       .select("total, fecha_hora")
       .eq("panaderia_id", pid)
+      .eq("anulado", false)
       .gte("fecha_hora", hoyIso),
     supabase
       .from("cuentas_mesa")
       .select("total_final, hora_cierre")
       .eq("panaderia_id", pid)
       .eq("estado", "cerrada")
+      .gt("total_final", 0)
       .gte("hora_cierre", hoyIso),
     supabase
       .from("ventas_mostrador")
       .select("total")
       .eq("panaderia_id", pid)
+      .eq("anulado", false)
       .gte("fecha_hora", mesIso),
     supabase
       .from("cuentas_mesa")
       .select("total_final")
       .eq("panaderia_id", pid)
       .eq("estado", "cerrada")
+      .gt("total_final", 0)
       .gte("hora_cierre", mesIso),
     supabase
       .from("encargos")
@@ -61,6 +65,7 @@ export default async function DashboardPage() {
       .from("ventas_mostrador")
       .select("detalle, fecha_hora")
       .eq("panaderia_id", pid)
+      .eq("anulado", false)
       .gte("fecha_hora", hoyIso),
   ]);
 

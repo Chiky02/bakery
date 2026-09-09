@@ -20,8 +20,9 @@ export default async function CajaPage() {
         .order("hora_apertura"),
       supabase
         .from("ventas_mostrador")
-        .select("id, fecha_hora, total, medio_pago, detalle, factura_id")
+        .select("id, fecha_hora, total, medio_pago, detalle, factura_id, anulado")
         .eq("panaderia_id", pid)
+        .eq("anulado", false)
         .gte("fecha_hora", desde)
         .order("fecha_hora", { ascending: false })
         .limit(50),
@@ -30,6 +31,7 @@ export default async function CajaPage() {
         .select("id, hora_cierre, total_final, medio_pago, mesas(nombre)")
         .eq("panaderia_id", pid)
         .eq("estado", "cerrada")
+        .gt("total_final", 0)
         .gte("hora_cierre", desde)
         .order("hora_cierre", { ascending: false })
         .limit(40),
@@ -86,6 +88,7 @@ export default async function CajaPage() {
       producto_id?: string;
     }[],
     factura_id: (v.factura_id as string | null) ?? null,
+    anulado: !!(v as { anulado?: boolean }).anulado,
   }));
 
   const mesasHoy = (mesasCerradas ?? []).map((c) => ({

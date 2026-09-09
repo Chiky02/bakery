@@ -47,4 +47,10 @@ body {
     box-shadow: none !important;
     border: none !important;
   }
+  .print-ticket {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
+  }
 }

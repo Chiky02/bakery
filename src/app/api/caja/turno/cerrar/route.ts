@@ -30,17 +30,55 @@ export async function POST(request: Request) {
 
     const detalle = body.detalle_cierre ?? null;
     const efectivo =
-      body.efectivo_contado ??
-      (detalle ? totalConteo(detalle) : 0);
+      body.efectivo_contado ?? (detalle ? totalConteo(detalle) : 0);
+    const electronico = body.electronico_contado ?? 0;
 
-    const payload = {
-      estado: "cerrado" as const,
+    // Esperado del turno: fondo + ventas/mesas asociadas al turno
+    let esperadoEfectivo = Number(turno.fondo_inicial) || 0;
+    let esperadoElectronico = 0;
+
+    const [{ data: ventasTurno }, { data: mesasTurno }] = await Promise.all([
+      supabase
+        .from("ventas_mostrador")
+        .select("total, medio_pago")
+        .eq("panaderia_id", ctx.panaderia.id)
+        .eq("turno_id", turno.id)
+        .eq("anulado", false),
+      supabase
+        .from("cuentas_mesa")
+        .select("total_final, medio_pago")
+        .eq("panaderia_id", ctx.panaderia.id)
+        .eq("turno_id", turno.id)
+        .eq("estado", "cerrada")
+        .gt("total_final", 0),
+    ]);
+
+    function applyMedio(medio: string | null | undefined, total: number) {
+      if (medio === "efectivo") esperadoEfectivo += total;
+      else if (medio === "electronico") esperadoElectronico += total;
+      else if (medio === "mixto") {
+        // Sin desglose: mitad/mitad como aproximación operativa
+        const half = Math.round(total / 2);
+        esperadoEfectivo += half;
+        esperadoElectronico += total - half;
+      }
+    }
+
+    for (const v of ventasTurno ?? []) applyMedio(v.medio_pago, Number(v.total) || 0);
+    for (const c of mesasTurno ?? []) applyMedio(c.medio_pago, Number(c.total_final) || 0);
+
+    const payload: Record<string, unknown> = {
+      estado: "cerrado",
       cerrado_por: ctx.profile.id,
       cierre_at: new Date().toISOString(),
       efectivo_contado: efectivo,
-      electronico_contado: body.electronico_contado,
+      electronico_contado: electronico,
       detalle_cierre: detalle,
       notas_cierre: body.notas_cierre ?? null,
+      esperado_efectivo: esperadoEfectivo,
+      esperado_electronico: esperadoElectronico,
+      diferencia_efectivo: efectivo - esperadoEfectivo,
+      diferencia_electronico: electronico - esperadoElectronico,
     };
 
     const { data, error } = await supabase
@@ -51,16 +89,30 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      if (error.message.includes("detalle_cierre")) {
-        const { detalle_cierre: _d, ...without } = payload;
+      // Fallback sin columnas de conciliación / detalle
+      if (/esperado_|diferencia_|detalle_cierre/i.test(error.message)) {
+        const basic = {
+          estado: "cerrado",
+          cerrado_por: ctx.profile.id,
+          cierre_at: new Date().toISOString(),
+          efectivo_contado: efectivo,
+          electronico_contado: electronico,
+          notas_cierre: body.notas_cierre ?? null,
+        };
         const { data: data2, error: err2 } = await supabase
           .from("turnos_caja")
-          .update(without)
+          .update(basic)
           .eq("id", turno.id)
           .select()
           .single();
         if (err2) return NextResponse.json({ error: err2.message }, { status: 400 });
-        return NextResponse.json(data2);
+        return NextResponse.json({
+          ...data2,
+          _esperado_efectivo: esperadoEfectivo,
+          _esperado_electronico: esperadoElectronico,
+          _diferencia_efectivo: efectivo - esperadoEfectivo,
+          _diferencia_electronico: electronico - esperadoElectronico,
+        });
       }
       return NextResponse.json({ error: error.message }, { status: 400 });
     }

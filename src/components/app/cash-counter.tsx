@@ -9,34 +9,54 @@ import {
 } from "@/lib/caja-denominaciones";
 import { Input } from "@/components/ui/input";
 
-function denomLabel(value: number) {
-  return `$${value.toLocaleString("es-CO")}`;
+function denomShort(value: number) {
+  if (value >= 1000) {
+    const k = value / 1000;
+    return `$${Number.isInteger(k) ? k : String(k).replace(".", ",")} mil`;
+  }
+  return `$${value}`;
 }
 
-function Row({
+function Cell({
+  id,
   value,
   qty,
   onChange,
 }: {
+  id: string;
   value: number;
   qty: number;
   onChange: (n: number) => void;
 }) {
-  const sub = value * qty;
+  const name = `cash-${id}-${value}`;
   return (
-    <div className="grid grid-cols-[1fr_5.5rem_auto] items-center gap-2 text-sm">
-      <span className="font-medium">{denomLabel(value)}</span>
+    <label
+      htmlFor={name}
+      className="flex items-center gap-1.5 rounded-md bg-white px-2 py-1.5 ring-1 ring-stone-200"
+    >
+      <span className="w-[4.25rem] shrink-0 text-xs font-semibold tabular-nums text-stone-700">
+        {denomShort(value)}
+      </span>
       <Input
+        id={name}
+        name={name}
         type="number"
         min={0}
         inputMode="numeric"
-        className="h-9 text-center"
+        autoComplete="off"
+        className="h-8 w-14 shrink-0 px-1.5 text-center text-sm tabular-nums"
         value={qty === 0 ? "" : String(qty)}
         placeholder="0"
         onChange={(e) => onChange(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
       />
-      <span className="min-w-[5.5rem] text-right text-stone-500">{formatCOP(sub)}</span>
-    </div>
+      {qty > 0 ? (
+        <span className="min-w-0 flex-1 truncate text-[10px] text-stone-400">
+          {formatCOP(value * qty)}
+        </span>
+      ) : (
+        <span className="min-w-0 flex-1" />
+      )}
+    </label>
   );
 }
 
@@ -44,10 +64,12 @@ export function CashCounter({
   value,
   onChange,
   title = "Conteo de efectivo",
+  idPrefix = "caja",
 }: {
   value: ConteoDenominaciones;
   onChange: (next: ConteoDenominaciones) => void;
   title?: string;
+  idPrefix?: string;
 }) {
   const total = totalConteo(value);
 
@@ -56,42 +78,46 @@ export function CashCounter({
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-stone-200 bg-stone-50/80 p-3">
-      <div className="flex items-center justify-between gap-2">
+    <div className="space-y-2.5 rounded-xl border border-stone-200 bg-stone-50/90 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-semibold">{title}</p>
-        <p className="text-sm font-bold text-orange-700">{formatCOP(total)}</p>
+        <p className="text-base font-bold tabular-nums text-orange-700">{formatCOP(total)}</p>
       </div>
 
-      <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">
-          Billetes
-        </p>
-        <div className="space-y-1.5">
-          {BILLETES_COP.map((d) => (
-            <Row
-              key={d}
-              value={d}
-              qty={Math.max(0, Math.floor(Number(value[String(d)]) || 0))}
-              onChange={(n) => setQty(d, n)}
-            />
-          ))}
-        </div>
-      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <fieldset className="min-w-0 space-y-1.5">
+          <legend className="px-0.5 text-[11px] font-semibold uppercase tracking-wide text-stone-500">
+            Billetes
+          </legend>
+          <div className="grid grid-cols-2 gap-1.5">
+            {BILLETES_COP.map((d) => (
+              <Cell
+                key={d}
+                id={`${idPrefix}-b`}
+                value={d}
+                qty={Math.max(0, Math.floor(Number(value[String(d)]) || 0))}
+                onChange={(n) => setQty(d, n)}
+              />
+            ))}
+          </div>
+        </fieldset>
 
-      <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">
-          Monedas
-        </p>
-        <div className="space-y-1.5">
-          {MONEDAS_COP.map((d) => (
-            <Row
-              key={`m-${d}`}
-              value={d}
-              qty={Math.max(0, Math.floor(Number(value[String(d)]) || 0))}
-              onChange={(n) => setQty(d, n)}
-            />
-          ))}
-        </div>
+        <fieldset className="min-w-0 space-y-1.5">
+          <legend className="px-0.5 text-[11px] font-semibold uppercase tracking-wide text-stone-500">
+            Monedas
+          </legend>
+          <div className="grid grid-cols-2 gap-1.5">
+            {MONEDAS_COP.map((d) => (
+              <Cell
+                key={`m-${d}`}
+                id={`${idPrefix}-m`}
+                value={d}
+                qty={Math.max(0, Math.floor(Number(value[String(d)]) || 0))}
+                onChange={(n) => setQty(d, n)}
+              />
+            ))}
+          </div>
+        </fieldset>
       </div>
     </div>
   );

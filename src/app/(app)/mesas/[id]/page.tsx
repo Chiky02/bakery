@@ -298,7 +298,7 @@ export default function MesaDetailPage() {
       return;
     }
 
-    if (emitirFactura) {
+    if (emitirFactura && total > 0) {
       const fRes = await fetch("/api/facturas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -443,56 +443,70 @@ export default function MesaDetailPage() {
 
   const cerrarBlock = (
     <div className="shrink-0 border-t border-stone-200 pt-3">
-      <p className="text-sm font-semibold">Cerrar mesa</p>
-      <select
-        className="mt-2 w-full rounded-lg border px-3 py-2 text-sm"
-        value={medioPago}
-        onChange={(e) => setMedioPago(e.target.value as typeof medioPago)}
-      >
-        <option value="efectivo">Efectivo</option>
-        <option value="electronico">Electrónico</option>
-        <option value="mixto">Mixto</option>
-      </select>
+      <p className="text-sm font-semibold">{total > 0 ? "Cerrar mesa" : "Liberar mesa"}</p>
+      {total > 0 ? (
+        <select
+          className="mt-2 w-full rounded-lg border px-3 py-2 text-sm"
+          value={medioPago}
+          onChange={(e) => setMedioPago(e.target.value as typeof medioPago)}
+        >
+          <option value="efectivo">Efectivo</option>
+          <option value="electronico">Electrónico</option>
+          <option value="mixto">Mixto</option>
+        </select>
+      ) : (
+        <p className="mt-2 text-xs text-stone-500">
+          Sin ítems cobrables: se libera la mesa y no se registra venta.
+        </p>
+      )}
       <p className="mt-2 text-xl font-bold text-orange-700">{formatCOP(total)}</p>
-      <label className="mt-3 flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={emitirFactura}
-          onChange={(e) => setEmitirFactura(e.target.checked)}
-        />
-        Emitir factura de venta (impresa)
-      </label>
-      {emitirFactura && (
-        <div className="mt-2 space-y-2">
-          <p className="text-xs text-stone-500">
-            Documento comercial para empresas. No es factura electrónica DIAN.
-          </p>
-          <Input
-            placeholder="Razón social / nombre *"
-            value={cliente.nombre}
-            onChange={(e) => setCliente({ ...cliente, nombre: e.target.value })}
-          />
-          <Input
-            placeholder="NIT / CC"
-            value={cliente.documento}
-            onChange={(e) => setCliente({ ...cliente, documento: e.target.value })}
-          />
-          <Input
-            placeholder="Email"
-            value={cliente.email}
-            onChange={(e) => setCliente({ ...cliente, email: e.target.value })}
-          />
-          <Input
-            type="number"
-            placeholder="% IVA (0 si no aplica)"
-            value={ivaPct}
-            onChange={(e) => setIvaPct(e.target.value)}
-          />
-        </div>
+      {total > 0 && (
+        <>
+          <label className="mt-3 flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={emitirFactura}
+              onChange={(e) => setEmitirFactura(e.target.checked)}
+            />
+            Emitir factura de venta (impresa)
+          </label>
+          {emitirFactura && (
+            <div className="mt-2 space-y-2">
+              <p className="text-xs text-stone-500">
+                Documento comercial para empresas. No es factura electrónica DIAN.
+              </p>
+              <Input
+                placeholder="Razón social / nombre *"
+                value={cliente.nombre}
+                onChange={(e) => setCliente({ ...cliente, nombre: e.target.value })}
+              />
+              <Input
+                placeholder="NIT / CC"
+                value={cliente.documento}
+                onChange={(e) => setCliente({ ...cliente, documento: e.target.value })}
+              />
+              <Input
+                placeholder="Email"
+                value={cliente.email}
+                onChange={(e) => setCliente({ ...cliente, email: e.target.value })}
+              />
+              <Input
+                type="number"
+                placeholder="% IVA (0 si no aplica)"
+                value={ivaPct}
+                onChange={(e) => setIvaPct(e.target.value)}
+              />
+            </div>
+          )}
+        </>
       )}
       {cerrarMsg && <p className="mt-2 text-sm text-red-600">{cerrarMsg}</p>}
       <Button className="mt-3 w-full" onClick={cerrarMesa} disabled={cerrando}>
-        {cerrando ? "Cerrando..." : "Cerrar y liberar mesa"}
+        {cerrando
+          ? "Procesando..."
+          : total > 0
+            ? "Cerrar y registrar venta"
+            : "Liberar sin venta"}
       </Button>
     </div>
   );

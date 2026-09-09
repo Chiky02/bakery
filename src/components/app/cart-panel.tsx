@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { formatCOP } from "@/lib/format";
 import type { CartItem, MedioPago } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -100,7 +100,7 @@ function CartFooter({
   message?: string;
 }) {
   return (
-    <div className="shrink-0 border-t border-stone-200 pt-3">
+    <div className="shrink-0 border-t border-stone-200 bg-white pt-3">
       <div className="flex items-center justify-between">
         <span className="text-sm text-stone-500">Total referencia</span>
         <span className="text-2xl font-bold text-amber-700">{formatCOP(total)}</span>
@@ -131,6 +131,7 @@ export function CartPanel({
   disabled = false,
   hint = "Digita este valor en la caja fiscal",
   message,
+  extra,
 }: {
   items: CartItem[];
   medioPago: MedioPago;
@@ -143,6 +144,8 @@ export function CartPanel({
   disabled?: boolean;
   hint?: string;
   message?: string;
+  /** Formulario adicional (ej. datos de factura) dentro del scroll, encima del total. */
+  extra?: ReactNode;
 }) {
   const total = items.reduce((s, i) => s + i.producto.precio * i.cantidad, 0);
   const count = items.reduce((s, i) => s + i.cantidad, 0);
@@ -154,46 +157,35 @@ export function CartPanel({
     prevCount.current = count;
   }, [count]);
 
-  const mobileBody = (
+  const scrollBody = (
     <div className="space-y-4">
       <PagoSelect value={medioPago} onChange={onMedioPago} />
       <CartItemsList items={items} onUpdateQty={onUpdateQty} onRemove={onRemove} />
-      <CartFooter
-        total={total}
-        itemsLength={items.length}
-        onClear={onClear}
-        onCheckout={onCheckout}
-        checkoutLabel={checkoutLabel}
-        disabled={disabled}
-        hint={hint}
-        message={message}
-      />
+      {extra}
     </div>
+  );
+
+  const footer = (
+    <CartFooter
+      total={total}
+      itemsLength={items.length}
+      onClear={onClear}
+      onCheckout={onCheckout}
+      checkoutLabel={checkoutLabel}
+      disabled={disabled}
+      hint={hint}
+      message={message}
+    />
   );
 
   return (
     <>
-      {/* Desktop: panel fijo en viewport; ítems scrollean; total/acción siempre visibles */}
       <Card className="sticky top-4 hidden max-h-[calc(100dvh-6.5rem)] flex-col overflow-hidden lg:flex">
         <CardTitle className="shrink-0">Cuenta actual</CardTitle>
-        <div className="mt-3 shrink-0">
-          <PagoSelect value={medioPago} onChange={onMedioPago} />
+        <div className="mt-3 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-1">
+          {scrollBody}
         </div>
-        <div className="mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
-          <CartItemsList items={items} onUpdateQty={onUpdateQty} onRemove={onRemove} />
-        </div>
-        <div className="mt-3 shrink-0">
-          <CartFooter
-            total={total}
-            itemsLength={items.length}
-            onClear={onClear}
-            onCheckout={onCheckout}
-            checkoutLabel={checkoutLabel}
-            disabled={disabled}
-            hint={hint}
-            message={message}
-          />
-        </div>
+        <div className="mt-3 shrink-0">{footer}</div>
       </Card>
 
       <MobileAccountSheet
@@ -204,7 +196,10 @@ export function CartPanel({
         open={sheetOpen}
         onOpenChange={setSheetOpen}
       >
-        {mobileBody}
+        <div className="space-y-4">
+          {scrollBody}
+          {footer}
+        </div>
       </MobileAccountSheet>
     </>
   );

@@ -10,5 +10,5 @@ export default async function MostradorPage() {
     onlyDisponible: true,
   });
 
-  return <MostradorClient productos={productos} />;
+  return <MostradorClient productos={productos} panaderia={panaderia} />;
 }

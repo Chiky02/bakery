@@ -69,6 +69,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (pathname.startsWith("/facturas")) return;
+    if (pathname.startsWith("/ventas")) return;
     if (pathname.startsWith("/panaderias")) return;
     if (!canAccess(rol, pathname, permisos)) {
       const fallback = nav[0]?.href ?? "/panaderias";

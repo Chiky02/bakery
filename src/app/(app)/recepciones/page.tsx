@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Eye, Pencil, Trash2, Plus, Check } from "lucide-react";
 import { useBakery } from "@/lib/use-bakery-id";
+import { ProductSearchSelect } from "@/components/app/product-search-select";
+import { resolveUnidades } from "@/lib/unidades-medida";
 
 type DraftItem = {
   descripcion: string;
@@ -56,6 +58,7 @@ export default function RecepcionesPage() {
   const { profile, panaderia } = useBakery();
   const panaderiaId = panaderia.id;
   const userId = profile.id;
+  const unidades = resolveUnidades(panaderia.unidades_medida);
   const [recepciones, setRecepciones] = useState<Recepcion[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -332,12 +335,38 @@ export default function RecepcionesPage() {
               {items.map((item, idx) => (
                 <div
                   key={idx}
-                  className="grid gap-2 rounded-lg border border-stone-200 p-3  md:grid-cols-6"
+                  className="grid gap-2 rounded-lg border border-stone-200 p-3 md:grid-cols-6"
                 >
                   <div className="md:col-span-2">
-                    <label className="mb-1 block text-xs font-medium text-stone-500">Descripción</label>
+                    <label className="mb-1 block text-xs font-medium text-stone-500">
+                      Producto
+                    </label>
+                    <ProductSearchSelect
+                      id={`rec-prod-${idx}`}
+                      name={`rec-prod-${idx}`}
+                      options={productos.map((p) => ({
+                        id: p.id,
+                        label: p.nombre,
+                        hint: p.codigo_barras ?? undefined,
+                      }))}
+                      value={item.producto_id}
+                      onChange={(id, opt) => {
+                        const next = [...items];
+                        next[idx] = {
+                          ...item,
+                          producto_id: id,
+                          descripcion: opt?.label || item.descripcion,
+                        };
+                        setItems(next);
+                      }}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="mb-1 block text-xs font-medium text-stone-500">
+                      Descripción
+                    </label>
                     <Input
-                      placeholder="Descripción"
+                      placeholder="Detalle opcional"
                       value={item.descripcion}
                       onChange={(e) => {
                         const next = [...items];
@@ -345,30 +374,6 @@ export default function RecepcionesPage() {
                         setItems(next);
                       }}
                     />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-stone-500">Producto</label>
-                    <select
-                      className="w-full rounded-lg border border-stone-200 bg-white px-2 py-2 text-sm  "
-                      value={item.producto_id}
-                      onChange={(e) => {
-                        const prod = productos.find((p) => p.id === e.target.value);
-                        const next = [...items];
-                        next[idx] = {
-                          ...item,
-                          producto_id: e.target.value,
-                          descripcion: prod?.nombre ?? item.descripcion,
-                        };
-                        setItems(next);
-                      }}
-                    >
-                      <option value="">Opcional</option>
-                      {productos.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.nombre}
-                        </option>
-                      ))}
-                    </select>
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-stone-500">Cantidad</label>
@@ -386,7 +391,30 @@ export default function RecepcionesPage() {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-stone-500">Costo unitario</label>
+                    <label className="mb-1 block text-xs font-medium text-stone-500">Unidad</label>
+                    <select
+                      className="w-full rounded-lg border border-stone-200 bg-white px-2 py-2 text-sm"
+                      value={item.unidad}
+                      onChange={(e) => {
+                        const next = [...items];
+                        next[idx] = { ...item, unidad: e.target.value };
+                        setItems(next);
+                      }}
+                    >
+                      {unidades.map((u) => (
+                        <option key={u} value={u}>
+                          {u}
+                        </option>
+                      ))}
+                      {!unidades.includes(item.unidad) && item.unidad && (
+                        <option value={item.unidad}>{item.unidad}</option>
+                      )}
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="mb-1 block text-xs font-medium text-stone-500">
+                      Costo unitario
+                    </label>
                     <Input
                       type="number"
                       min={0}
@@ -395,18 +423,6 @@ export default function RecepcionesPage() {
                       onChange={(e) => {
                         const next = [...items];
                         next[idx] = { ...item, costo_unitario: Number(e.target.value) };
-                        setItems(next);
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-stone-500">Unidad</label>
-                    <Input
-                      placeholder="unidad"
-                      value={item.unidad}
-                      onChange={(e) => {
-                        const next = [...items];
-                        next[idx] = { ...item, unidad: e.target.value };
                         setItems(next);
                       }}
                     />

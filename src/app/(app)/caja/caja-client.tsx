@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { formatCOP, formatDateTime } from "@/lib/format";
 import {
@@ -15,6 +15,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+
+function todayInputLocal() {
+  const d = new Date();
+  // Mostrar fechas en UI; el API filtra con Bogotá
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function monthStartInputLocal() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}-01`;
+}
 
 type CuentaRow = {
   id: string;
@@ -35,6 +51,7 @@ type VentaRow = {
     producto_id?: string;
   }[];
   factura_id?: string | null;
+  anulado?: boolean;
 };
 
 type MesaCerradaRow = {
@@ -74,6 +91,7 @@ export function CajaClient({
   turnoInicial: TurnoCaja | null;
   totalMesasAbiertas: number;
 }) {
+  const [ventas, setVentas] = useState(ventasHoy);
   const [turno, setTurno] = useState<TurnoCaja | null>(turnoInicial);
   const [conteoApertura, setConteoApertura] = useState<ConteoDenominaciones>(() => emptyConteo());
   const [conteoCierre, setConteoCierre] = useState<ConteoDenominaciones>(() => emptyConteo());
@@ -89,10 +107,37 @@ export function CajaClient({
     direccion: "",
   });
   const [ivaPct, setIvaPct] = useState("0");
+  const [histDesde, setHistDesde] = useState(monthStartInputLocal);
+  const [histHasta, setHistHasta] = useState(todayInputLocal);
+  const [historial, setHistorial] = useState<TurnoCaja[]>([]);
+  const [histLoading, setHistLoading] = useState(false);
+  const [histMsg, setHistMsg] = useState("");
+
+  async function cargarHistorial(desde = histDesde, hasta = histHasta) {
+    setHistLoading(true);
+    setHistMsg("");
+    const res = await fetch(
+      `/api/caja/turnos?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`,
+    );
+    const body = await res.json().catch(() => ({}));
+    setHistLoading(false);
+    if (!res.ok) {
+      setHistMsg(body.error ?? "No se pudo cargar el historial");
+      setHistorial([]);
+      return;
+    }
+    setHistorial((body.turnos as TurnoCaja[]) ?? []);
+    if (body.error) setHistMsg(body.error);
+  }
+
+  useEffect(() => {
+    void cargarHistorial();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- carga inicial
+  }, []);
 
   const totalMostrador = useMemo(
-    () => ventasHoy.reduce((s, v) => s + v.total, 0),
-    [ventasHoy],
+    () => ventas.reduce((s, v) => s + v.total, 0),
+    [ventas],
   );
   const totalMesasHoy = useMemo(
     () => mesasCerradasHoy.reduce((s, m) => s + m.total, 0),
@@ -100,7 +145,7 @@ export function CajaClient({
   );
   const porMedio = useMemo(() => {
     const m: Record<string, number> = {};
-    ventasHoy.forEach((v) => {
+    ventas.forEach((v) => {
       m[v.medio_pago] = (m[v.medio_pago] ?? 0) + v.total;
     });
     mesasCerradasHoy.forEach((c) => {
@@ -108,7 +153,49 @@ export function CajaClient({
       m[key] = (m[key] ?? 0) + c.total;
     });
     return m;
-  }, [ventasHoy, mesasCerradasHoy]);
+  }, [ventas, mesasCerradasHoy]);
+
+  const esperadoEfectivoPreview = useMemo(() => {
+    let e = turno?.fondo_inicial ?? 0;
+    ventas.forEach((v) => {
+      if (v.medio_pago === "efectivo") e += v.total;
+      else if (v.medio_pago === "mixto") e += Math.round(v.total / 2);
+    });
+    mesasCerradasHoy.forEach((c) => {
+      if (c.medio_pago === "efectivo") e += c.total;
+      else if (c.medio_pago === "mixto") e += Math.round(c.total / 2);
+    });
+    return e;
+  }, [turno, ventas, mesasCerradasHoy]);
+
+  const esperadoElectronicoPreview = useMemo(() => {
+    let e = 0;
+    ventas.forEach((v) => {
+      if (v.medio_pago === "electronico") e += v.total;
+      else if (v.medio_pago === "mixto") e += v.total - Math.round(v.total / 2);
+    });
+    mesasCerradasHoy.forEach((c) => {
+      if (c.medio_pago === "electronico") e += c.total;
+      else if (c.medio_pago === "mixto") e += c.total - Math.round(c.total / 2);
+    });
+    return e;
+  }, [ventas, mesasCerradasHoy]);
+
+  async function anularVenta(id: string) {
+    if (!confirm("¿Anular esta venta? Se quitará de reportes y se revertirá stock controlado.")) {
+      return;
+    }
+    setBusy(true);
+    const res = await fetch(`/api/ventas/${id}/anular`, { method: "POST" });
+    const body = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) {
+      setMsg(body.error ?? "No se pudo anular");
+      return;
+    }
+    setVentas((prev) => prev.filter((v) => v.id !== id));
+    setMsg("Venta anulada");
+  }
 
   async function abrirTurno() {
     setBusy(true);
@@ -132,6 +219,7 @@ export function CajaClient({
     setTurno(body as TurnoCaja);
     setConteoApertura(emptyConteo());
     setMsg(`Turno abierto · fondo ${formatCOP(fondo)}`);
+    void cargarHistorial();
   }
 
   async function cerrarTurno() {
@@ -156,7 +244,18 @@ export function CajaClient({
     }
     setTurno(null);
     setConteoCierre(emptyConteo());
-    setMsg(`Turno cerrado · efectivo ${formatCOP(efectivo)}`);
+    const difEf =
+      body.diferencia_efectivo ??
+      body._diferencia_efectivo ??
+      totalConteo(conteoCierre) - esperadoEfectivoPreview;
+    const difEl =
+      body.diferencia_electronico ??
+      body._diferencia_electronico ??
+      (Number(electronicoContado) || 0) - esperadoElectronicoPreview;
+    setMsg(
+      `Turno cerrado · dif. efectivo ${formatCOP(difEf)} · dif. electrónico ${formatCOP(difEl)}`,
+    );
+    void cargarHistorial();
   }
 
   async function emitirFactura() {
@@ -254,13 +353,18 @@ export function CajaClient({
               <p className="text-xs text-stone-400">{turno.notas_apertura}</p>
             )}
             <CashCounter
-              title="Arqueo — cuenta billetes y monedas"
+              idPrefix="cierre"
+              title="Arqueo — billetes y monedas"
               value={conteoCierre}
               onChange={setConteoCierre}
             />
             <div>
-              <label className="text-xs font-medium">Electrónico contado (datáfono / transfer)</label>
+              <label htmlFor="caja-electronico" className="text-xs font-medium">
+                Electrónico contado (datáfono / transfer)
+              </label>
               <Input
+                id="caja-electronico"
+                name="caja-electronico"
                 type="number"
                 className="mt-1"
                 value={electronicoContado}
@@ -268,9 +372,18 @@ export function CajaClient({
               />
             </div>
             <p className="text-xs text-stone-400">
+              Esperado turno: efectivo {formatCOP(esperadoEfectivoPreview)} · electrónico{" "}
+              {formatCOP(esperadoElectronicoPreview)} (fondo + ventas del turno / hoy)
+            </p>
+            <p className="text-xs text-stone-400">
               App hoy: efectivo {formatCOP(porMedio.efectivo ?? 0)} · electrónico{" "}
               {formatCOP(porMedio.electronico ?? 0)} · mixto {formatCOP(porMedio.mixto ?? 0)} ·
               mesas {formatCOP(totalMesasHoy)}
+            </p>
+            <p className="text-xs font-medium text-stone-600">
+              Diferencia preview: efectivo{" "}
+              {formatCOP(totalConteo(conteoCierre) - esperadoEfectivoPreview)} · electrónico{" "}
+              {formatCOP((Number(electronicoContado) || 0) - esperadoElectronicoPreview)}
             </p>
             <Button variant="danger" disabled={busy} onClick={cerrarTurno}>
               Cerrar turno / arqueo
@@ -279,7 +392,8 @@ export function CajaClient({
         ) : (
           <>
             <CashCounter
-              title="Fondo inicial — cuenta lo que hay en caja"
+              idPrefix="apertura"
+              title="Fondo inicial — billetes y monedas"
               value={conteoApertura}
               onChange={setConteoApertura}
             />
@@ -287,6 +401,93 @@ export function CajaClient({
               Abrir turno · {formatCOP(totalConteo(conteoApertura))}
             </Button>
           </>
+        )}
+      </Card>
+
+      <Card className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle>Historial de aperturas / cierres</CardTitle>
+          <Link href="/reportes" className="text-xs text-orange-700 underline">
+            Ver en reportes
+          </Link>
+        </div>
+        <form
+          className="flex flex-wrap items-end gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void cargarHistorial();
+          }}
+        >
+          <div>
+            <label htmlFor="caja-hist-desde" className="text-xs font-medium">
+              Desde
+            </label>
+            <Input
+              id="caja-hist-desde"
+              name="caja-hist-desde"
+              type="date"
+              className="mt-1"
+              value={histDesde}
+              onChange={(e) => setHistDesde(e.target.value)}
+            />
+          </div>
+          <div>
+            <label htmlFor="caja-hist-hasta" className="text-xs font-medium">
+              Hasta
+            </label>
+            <Input
+              id="caja-hist-hasta"
+              name="caja-hist-hasta"
+              type="date"
+              className="mt-1"
+              value={histHasta}
+              onChange={(e) => setHistHasta(e.target.value)}
+            />
+          </div>
+          <Button type="submit" variant="secondary" disabled={histLoading}>
+            {histLoading ? "Cargando..." : "Filtrar"}
+          </Button>
+        </form>
+        {histMsg && <p className="text-xs text-orange-700">{histMsg}</p>}
+        {!historial.length ? (
+          <p className="text-sm text-stone-500">Sin turnos en el rango</p>
+        ) : (
+          <ul className="max-h-80 divide-y overflow-y-auto text-sm">
+            {historial.map((t) => (
+              <li key={t.id} className="space-y-1 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Badge color={t.estado === "abierto" ? "success" : "default"}>
+                      {t.estado}
+                    </Badge>
+                    <span>{formatDateTime(t.apertura_at)}</span>
+                  </div>
+                  <span className="font-medium tabular-nums">
+                    Fondo {formatCOP(t.fondo_inicial)}
+                  </span>
+                </div>
+                {t.detalle_apertura && (
+                  <p className="text-xs text-stone-400">
+                    Apertura: {resumenConteo(t.detalle_apertura)}
+                  </p>
+                )}
+                {t.estado === "cerrado" && (
+                  <p className="text-xs text-stone-500">
+                    Cierre {t.cierre_at ? formatDateTime(t.cierre_at) : "—"} · Ef.{" "}
+                    {formatCOP(t.efectivo_contado ?? 0)} · El.{" "}
+                    {formatCOP(t.electronico_contado ?? 0)}
+                    {t.diferencia_efectivo != null
+                      ? ` · Dif.ef ${formatCOP(t.diferencia_efectivo)}`
+                      : ""}
+                    {t.diferencia_electronico != null
+                      ? ` · Dif.el ${formatCOP(t.diferencia_electronico)}`
+                      : ""}
+                    {t.detalle_cierre ? ` · ${resumenConteo(t.detalle_cierre)}` : ""}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
         )}
       </Card>
 
@@ -319,22 +520,27 @@ export function CajaClient({
 
         <Card>
           <CardTitle>Mostrador hoy · {formatCOP(totalMostrador)}</CardTitle>
-          {!ventasHoy.length ? (
+          {!ventas.length ? (
             <p className="mt-4 text-sm text-stone-500">Sin ventas registradas</p>
           ) : (
             <ul className="mt-4 max-h-80 divide-y overflow-y-auto">
-              {ventasHoy.map((v) => (
+              {ventas.map((v) => (
                 <li key={v.id} className="flex items-center justify-between gap-2 py-3 text-sm">
                   <div>
                     <p>{formatDateTime(v.fecha_hora)}</p>
                     <p className="capitalize text-stone-500">{v.medio_pago}</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-1">
                     <span className="font-semibold">{formatCOP(v.total)}</span>
+                    <Link href={`/ventas/${v.id}/ticket`} target="_blank">
+                      <Button size="sm" variant="secondary">
+                        Ticket
+                      </Button>
+                    </Link>
                     {v.factura_id ? (
                       <Link href={`/facturas/${v.factura_id}`} target="_blank">
                         <Button size="sm" variant="secondary">
-                          Ver
+                          Factura
                         </Button>
                       </Link>
                     ) : (
@@ -346,6 +552,14 @@ export function CajaClient({
                         Factura
                       </Button>
                     )}
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      disabled={busy}
+                      onClick={() => void anularVenta(v.id)}
+                    >
+                      Anular
+                    </Button>
                   </div>
                 </li>
               ))}
@@ -425,34 +639,53 @@ export function CajaClient({
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
             <Input
+              id="factura-nombre"
+              name="factura-nombre"
               placeholder="Razón social / nombre *"
               value={cliente.nombre}
               onChange={(e) => setCliente({ ...cliente, nombre: e.target.value })}
             />
             <Input
+              id="factura-documento"
+              name="factura-documento"
               placeholder="NIT / CC"
               value={cliente.documento}
               onChange={(e) => setCliente({ ...cliente, documento: e.target.value })}
             />
             <Input
+              id="factura-email"
+              name="factura-email"
+              type="email"
               placeholder="Email"
               value={cliente.email}
               onChange={(e) => setCliente({ ...cliente, email: e.target.value })}
             />
             <Input
+              id="factura-telefono"
+              name="factura-telefono"
               placeholder="Teléfono"
               value={cliente.telefono}
               onChange={(e) => setCliente({ ...cliente, telefono: e.target.value })}
             />
             <Input
+              id="factura-direccion"
+              name="factura-direccion"
               className="sm:col-span-2"
               placeholder="Dirección"
               value={cliente.direccion}
               onChange={(e) => setCliente({ ...cliente, direccion: e.target.value })}
             />
             <div>
-              <label className="text-xs">IVA % (0 si no aplica)</label>
-              <Input value={ivaPct} onChange={(e) => setIvaPct(e.target.value)} />
+              <label htmlFor="factura-iva" className="text-xs">
+                IVA % (0 si no aplica)
+              </label>
+              <Input
+                id="factura-iva"
+                name="factura-iva"
+                type="number"
+                value={ivaPct}
+                onChange={(e) => setIvaPct(e.target.value)}
+              />
             </div>
           </div>
           <div className="flex gap-2">

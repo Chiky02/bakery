@@ -42,6 +42,8 @@ export type Panaderia = {
   prefijo_factura?: string | null;
   consecutivo_factura?: number;
   texto_legal_factura?: string | null;
+  imprimir_ticket_venta?: boolean;
+  unidades_medida?: string[] | null;
 };
 
 export type RolePermiso = {
@@ -124,7 +126,7 @@ export type CuentaMesa = {
   panaderia_id: string;
   mesa_id: string;
   mesero_id: string | null;
-  estado: "abierta" | "cerrada";
+  estado: "abierta" | "cerrada" | "cancelada";
   hora_apertura: string;
   hora_cierre: string | null;
   total_final: number | null;
@@ -168,6 +170,10 @@ export type VentaMostrador = {
   total: number;
   medio_pago: MedioPago;
   detalle: VentaDetalleItem[];
+  anulado?: boolean;
+  turno_id?: string | null;
+  factura_id?: string | null;
+  registrado_por?: string | null;
 };
 
 export type VentaDetalleItem = {
@@ -279,6 +285,10 @@ export type TurnoCaja = {
   notas_cierre?: string | null;
   detalle_apertura?: Record<string, number> | null;
   detalle_cierre?: Record<string, number> | null;
+  esperado_efectivo?: number | null;
+  esperado_electronico?: number | null;
+  diferencia_efectivo?: number | null;
+  diferencia_electronico?: number | null;
 };
 
 export type FacturaDetalleItem = {

@@ -27,7 +27,12 @@ export function resumenConteo(conteo: ConteoDenominaciones): string {
   const parts: string[] = [];
   for (const d of [...BILLETES_COP, ...MONEDAS_COP]) {
     const q = Math.max(0, Math.floor(Number(conteo[String(d)]) || 0));
-    if (q > 0) parts.push(`${q}×$${d.toLocaleString("es-CO")}`);
+    if (q > 0) parts.push(`${q}×${formatDenom(d)}`);
   }
   return parts.join(" · ") || "Sin efectivo";
+}
+
+function formatDenom(d: number): string {
+  const withDots = d.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `$${withDots}`;
 }

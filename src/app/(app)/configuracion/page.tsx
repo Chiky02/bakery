@@ -9,6 +9,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Building2, KeyRound, Store, UserRound } from "lucide-react";
 import { getPublicOrigin } from "@/lib/public-url";
+import { resolveUnidades } from "@/lib/unidades-medida";
 import Link from "next/link";
 
 type Tab = "negocio" | "cuenta" | "alta";
@@ -60,25 +61,37 @@ export default function ConfiguracionPage() {
   async function guardarNegocio() {
     if (!config || !panaderiaId) return;
     const supabase = createClient();
-    await supabase
-      .from("panaderias")
-      .update({
-        nombre: config.nombre,
-        nombre_publico: config.nombre,
-        telefono: config.telefono?.trim() || null,
-        direccion: config.direccion?.trim() || null,
-        maps_url: config.maps_url?.trim() || null,
-        whatsapp: config.whatsapp?.trim() || null,
-        nit: config.nit?.trim() || null,
-        razon_social: config.razon_social?.trim() || null,
-        prefijo_factura: config.prefijo_factura?.trim() || "FV",
-        texto_legal_factura: config.texto_legal_factura?.trim() || null,
-        pedido_directo_habilitado: config.pedido_directo_habilitado,
-        requiere_aprobacion_mesero: config.requiere_aprobacion_mesero,
-        tiempo_minimo_encargo_horas: config.tiempo_minimo_encargo_horas ?? 48,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", panaderiaId);
+    const payload = {
+      nombre: config.nombre,
+      nombre_publico: config.nombre,
+      telefono: config.telefono?.trim() || null,
+      direccion: config.direccion?.trim() || null,
+      maps_url: config.maps_url?.trim() || null,
+      whatsapp: config.whatsapp?.trim() || null,
+      nit: config.nit?.trim() || null,
+      razon_social: config.razon_social?.trim() || null,
+      prefijo_factura: config.prefijo_factura?.trim() || "FV",
+      texto_legal_factura: config.texto_legal_factura?.trim() || null,
+      imprimir_ticket_venta: config.imprimir_ticket_venta !== false,
+      unidades_medida: resolveUnidades(config.unidades_medida),
+      pedido_directo_habilitado: config.pedido_directo_habilitado,
+      requiere_aprobacion_mesero: config.requiere_aprobacion_mesero,
+      tiempo_minimo_encargo_horas: config.tiempo_minimo_encargo_horas ?? 48,
+      updated_at: new Date().toISOString(),
+    };
+    let { error } = await supabase.from("panaderias").update(payload).eq("id", panaderiaId);
+    if (error && /imprimir_ticket|unidades_medida/i.test(error.message)) {
+      const {
+        imprimir_ticket_venta: _t,
+        unidades_medida: _u,
+        ...without
+      } = payload;
+      ({ error } = await supabase.from("panaderias").update(without).eq("id", panaderiaId));
+    }
+    if (error) {
+      console.error(error.message);
+      return;
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
@@ -286,6 +299,50 @@ export default function ConfiguracionPage() {
                 />
                 <p className="mt-1 text-xs text-stone-500">
                   En el sitio público se muestra “Cómo llegar” para abrir la ruta.
+                </p>
+              </div>
+
+              <label className="flex items-start gap-3 rounded-lg border border-stone-200 p-3">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={config.imprimir_ticket_venta !== false}
+                  onChange={(e) =>
+                    setConfig({ ...config, imprimir_ticket_venta: e.target.checked })
+                  }
+                />
+                <div>
+                  <p className="font-medium">Imprimir ticket de venta</p>
+                  <p className="text-xs text-stone-500">
+                    Tras registrar en mostrador, abre el comprobante tradicional (productos,
+                    cantidades, total y medio de pago) para imprimir o guardar PDF. No es factura
+                    con datos del comprador.
+                  </p>
+                </div>
+              </label>
+
+              <div className="sm:col-span-2">
+                <label htmlFor="unidades-medida" className="text-sm font-medium">
+                  Unidades de medida (recepciones)
+                </label>
+                <Input
+                  id="unidades-medida"
+                  name="unidades_medida"
+                  className="mt-1"
+                  placeholder="unidad, kg, litro, libra…"
+                  value={(config.unidades_medida ?? []).join(", ")}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      unidades_medida: e.target.value
+                        .split(",")
+                        .map((u) => u.trim())
+                        .filter(Boolean),
+                    })
+                  }
+                />
+                <p className="mt-1 text-xs text-stone-500">
+                  Separadas por coma. Se usarán al crear ítems de recepción.
                 </p>
               </div>
 

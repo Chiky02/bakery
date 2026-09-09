@@ -30,7 +30,7 @@ export async function POST(
   if (cErr || !cuenta) {
     return NextResponse.json({ error: "Cuenta no encontrada" }, { status: 404 });
   }
-  if (cuenta.estado === "cerrada") {
+  if (cuenta.estado === "cerrada" || cuenta.estado === "cancelada") {
     return NextResponse.json({ ok: true, already: true });
   }
 
@@ -39,6 +39,79 @@ export async function POST(
     .select("producto_id, cantidad")
     .eq("cuenta_mesa_id", cuentaId)
     .neq("estado", "cancelado");
+
+  const total = Math.max(0, Math.round(Number(total_final) || 0));
+  const tieneItems = (items?.length ?? 0) > 0;
+  /** Sin cobro: liberar mesa sin registrar venta (ni stock ni turno). */
+  const sinVenta = total <= 0 || !tieneItems;
+
+  const mesaId = cuenta.mesa_id;
+
+  async function liberarMesa() {
+    if (!mesaId) return null;
+    const { error: mErr } = await supabase
+      .from("mesas")
+      .update({ estado: "libre" })
+      .eq("id", mesaId)
+      .eq("panaderia_id", ctx.panaderia.id);
+    return mErr;
+  }
+
+  if (sinVenta) {
+    const payloadCancelada = {
+      estado: "cancelada" as const,
+      hora_cierre: new Date().toISOString(),
+      total_final: 0,
+      medio_pago: null,
+      turno_id: null,
+    };
+
+    let { error } = await supabase
+      .from("cuentas_mesa")
+      .update(payloadCancelada)
+      .eq("id", cuentaId)
+      .eq("panaderia_id", ctx.panaderia.id);
+
+    // Fallback si el enum 'cancelada' aún no está aplicado
+    if (error && /cancelada|invalid input value/i.test(error.message)) {
+      ({ error } = await supabase
+        .from("cuentas_mesa")
+        .update({
+          estado: "cerrada",
+          hora_cierre: payloadCancelada.hora_cierre,
+          total_final: 0,
+          medio_pago: null,
+          turno_id: null,
+          notas: "sin_venta",
+        })
+        .eq("id", cuentaId)
+        .eq("panaderia_id", ctx.panaderia.id));
+    }
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+    await supabase
+      .from("sub_cuentas")
+      .update({ estado: "cerrada", total: 0, medio_pago: null })
+      .eq("cuenta_mesa_id", cuentaId)
+      .eq("estado", "abierta");
+
+    await supabase
+      .from("items_cuenta")
+      .update({ estado: "cancelado", updated_at: new Date().toISOString() })
+      .eq("cuenta_mesa_id", cuentaId)
+      .neq("estado", "cancelado");
+
+    const mErr = await liberarMesa();
+    if (mErr) {
+      return NextResponse.json(
+        { error: `Cuenta anulada pero mesa no liberada: ${mErr.message}` },
+        { status: 400 },
+      );
+    }
+
+    return NextResponse.json({ ok: true, sin_venta: true });
+  }
 
   const productIds = [...new Set((items ?? []).map((i) => i.producto_id).filter(Boolean))];
   const controlById = new Map<string, boolean>();
@@ -64,7 +137,7 @@ export async function POST(
     .update({
       estado: "cerrada",
       hora_cierre: new Date().toISOString(),
-      total_final: total_final ?? null,
+      total_final: total,
       medio_pago: medio_pago ?? null,
       turno_id: turno?.id ?? null,
     })
@@ -75,7 +148,7 @@ export async function POST(
 
   await supabase
     .from("sub_cuentas")
-    .update({ estado: "cerrada", total: total_final ?? null, medio_pago: medio_pago ?? null })
+    .update({ estado: "cerrada", total, medio_pago: medio_pago ?? null })
     .eq("cuenta_mesa_id", cuentaId)
     .eq("estado", "abierta");
 
@@ -85,7 +158,6 @@ export async function POST(
     .eq("cuenta_mesa_id", cuentaId)
     .neq("estado", "cancelado");
 
-  // Descontar stock de productos con control (best-effort)
   for (const it of items ?? []) {
     if (!it.producto_id || !controlById.get(it.producto_id)) continue;
     await supabase.rpc("ajustar_stock", {
@@ -97,19 +169,13 @@ export async function POST(
     });
   }
 
-  if (cuenta.mesa_id) {
-    const { error: mErr } = await supabase
-      .from("mesas")
-      .update({ estado: "libre" })
-      .eq("id", cuenta.mesa_id)
-      .eq("panaderia_id", ctx.panaderia.id);
-    if (mErr) {
-      return NextResponse.json(
-        { error: `Cuenta cerrada pero mesa no liberada: ${mErr.message}` },
-        { status: 400 },
-      );
-    }
+  const mErr = await liberarMesa();
+  if (mErr) {
+    return NextResponse.json(
+      { error: `Cuenta cerrada pero mesa no liberada: ${mErr.message}` },
+      { status: 400 },
+    );
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, sin_venta: false });
 }

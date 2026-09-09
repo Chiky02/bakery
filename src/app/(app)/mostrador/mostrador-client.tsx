@@ -3,12 +3,17 @@
 import { useState } from "react";
 import { ProductGrid } from "@/components/app/product-grid";
 import { CartPanel } from "@/components/app/cart-panel";
-import type { CartItem, Factura, Producto } from "@/types";
+import type { CartItem, Factura, Panaderia, Producto } from "@/types";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Card, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
 
-export function MostradorClient({ productos }: { productos: Producto[] }) {
+export function MostradorClient({
+  productos,
+  panaderia,
+}: {
+  productos: Producto[];
+  panaderia: Pick<Panaderia, "id" | "imprimir_ticket_venta">;
+}) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
   const [medioPago, setMedioPago] = useState<"efectivo" | "electronico" | "mixto">("efectivo");
@@ -23,6 +28,7 @@ export function MostradorClient({ productos }: { productos: Producto[] }) {
     direccion: "",
   });
   const [ivaPct, setIvaPct] = useState("0");
+  const printTicket = panaderia.imprimir_ticket_venta !== false;
 
   const q = search.trim().toLowerCase();
   const filtered = productos.filter(
@@ -80,7 +86,7 @@ export function MostradorClient({ productos }: { productos: Producto[] }) {
 
     const venta = await res.json();
     setCart([]);
-    setMessage("✓ Venta registrada. Digita el total en la caja fiscal.");
+    let msg = "✓ Venta registrada. Digita el total en la caja fiscal.";
 
     if (emitirFactura) {
       const fRes = await fetch("/api/facturas", {
@@ -110,15 +116,90 @@ export function MostradorClient({ productos }: { productos: Producto[] }) {
         setEmitirFactura(false);
         setCliente({ nombre: "", documento: "", email: "", telefono: "", direccion: "" });
         window.open(`/facturas/${f.id}`, "_blank");
-        setMessage("✓ Venta y factura emitida. Imprime o guarda el PDF del navegador.");
+        msg = "✓ Venta y factura emitida. Imprime o guarda el PDF del navegador.";
       } else {
         const body = await fRes.json().catch(() => ({}));
-        setMessage(`Venta OK, pero factura falló: ${body.error ?? "error"}`);
+        msg = `Venta OK, pero factura falló: ${body.error ?? "error"}`;
       }
+    } else if (printTicket) {
+      window.open(`/ventas/${venta.id}/ticket`, "_blank");
+      msg = "✓ Venta registrada. Ticket listo para imprimir / PDF.";
     }
 
+    setMessage(msg);
     setLoading(false);
   }
+
+  const facturaExtra = (
+    <div className="space-y-2 rounded-lg border border-stone-200 bg-stone-50/80 p-3">
+      <label className="flex items-center gap-2 text-sm font-medium">
+        <input
+          type="checkbox"
+          checked={emitirFactura}
+          onChange={(e) => setEmitirFactura(e.target.checked)}
+        />
+        Emitir factura de venta (impresa)
+      </label>
+      {emitirFactura && (
+        <div className="space-y-2">
+          <p className="text-xs text-stone-500">
+            Completa los datos del comprador aquí (quedan encima del total). No es FE DIAN.
+          </p>
+          <Input
+            id="mostrador-cliente-nombre"
+            name="cliente_nombre"
+            placeholder="Razón social / nombre *"
+            value={cliente.nombre}
+            onChange={(e) => setCliente({ ...cliente, nombre: e.target.value })}
+          />
+          <Input
+            id="mostrador-cliente-doc"
+            name="cliente_documento"
+            placeholder="NIT / CC"
+            value={cliente.documento}
+            onChange={(e) => setCliente({ ...cliente, documento: e.target.value })}
+          />
+          <Input
+            id="mostrador-cliente-email"
+            name="cliente_email"
+            placeholder="Email"
+            value={cliente.email}
+            onChange={(e) => setCliente({ ...cliente, email: e.target.value })}
+          />
+          <Input
+            id="mostrador-cliente-tel"
+            name="cliente_telefono"
+            placeholder="Teléfono"
+            value={cliente.telefono}
+            onChange={(e) => setCliente({ ...cliente, telefono: e.target.value })}
+          />
+          <Input
+            id="mostrador-cliente-dir"
+            name="cliente_direccion"
+            placeholder="Dirección"
+            value={cliente.direccion}
+            onChange={(e) => setCliente({ ...cliente, direccion: e.target.value })}
+          />
+          <Input
+            id="mostrador-iva"
+            name="iva"
+            type="number"
+            placeholder="% IVA (0 si no aplica)"
+            value={ivaPct}
+            onChange={(e) => setIvaPct(e.target.value)}
+          />
+        </div>
+      )}
+      {!emitirFactura && printTicket && (
+        <p className="text-xs text-stone-400">
+          Al registrar se abrirá el ticket de venta (lista + total) para imprimir o PDF.
+        </p>
+      )}
+      <Link href="/caja" className="block text-xs text-orange-700 underline">
+        Ir a caja / anular ventas
+      </Link>
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -149,78 +230,18 @@ export function MostradorClient({ productos }: { productos: Producto[] }) {
             <ProductGrid productos={filtered} onSelect={addToCart} />
           )}
         </div>
-        <div className="space-y-3">
-          <CartPanel
-            items={cart}
-            medioPago={medioPago}
-            onMedioPago={setMedioPago}
-            onUpdateQty={updateQty}
-            onRemove={(id) => updateQty(id, -999)}
-            onClear={() => setCart([])}
-            onCheckout={checkout}
-            disabled={loading}
-            message={message}
-          />
-          <Card className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <input
-                type="checkbox"
-                checked={emitirFactura}
-                onChange={(e) => setEmitirFactura(e.target.checked)}
-              />
-              Emitir factura de venta (impresa)
-            </label>
-            {emitirFactura && (
-              <>
-                <p className="text-xs text-stone-500">
-                  Documento comercial para empresas. No es factura electrónica DIAN.
-                </p>
-                <Input
-                  placeholder="Razón social / nombre *"
-                  value={cliente.nombre}
-                  onChange={(e) => setCliente({ ...cliente, nombre: e.target.value })}
-                />
-                <Input
-                  placeholder="NIT / CC"
-                  value={cliente.documento}
-                  onChange={(e) => setCliente({ ...cliente, documento: e.target.value })}
-                />
-                <Input
-                  placeholder="Email"
-                  value={cliente.email}
-                  onChange={(e) => setCliente({ ...cliente, email: e.target.value })}
-                />
-                <Input
-                  placeholder="Teléfono"
-                  value={cliente.telefono}
-                  onChange={(e) => setCliente({ ...cliente, telefono: e.target.value })}
-                />
-                <Input
-                  placeholder="Dirección"
-                  value={cliente.direccion}
-                  onChange={(e) => setCliente({ ...cliente, direccion: e.target.value })}
-                />
-                <Input
-                  type="number"
-                  placeholder="% IVA (0 si no aplica)"
-                  value={ivaPct}
-                  onChange={(e) => setIvaPct(e.target.value)}
-                />
-              </>
-            )}
-            <CardTitle className="!text-xs font-normal text-stone-400">
-              También puedes emitir desde Caja sobre ventas del día.
-            </CardTitle>
-            <Button
-              type="button"
-              variant="secondary"
-              className="w-full"
-              onClick={() => (window.location.href = "/caja")}
-            >
-              Ir a caja
-            </Button>
-          </Card>
-        </div>
+        <CartPanel
+          items={cart}
+          medioPago={medioPago}
+          onMedioPago={setMedioPago}
+          onUpdateQty={updateQty}
+          onRemove={(id) => updateQty(id, -999)}
+          onClear={() => setCart([])}
+          onCheckout={checkout}
+          disabled={loading}
+          message={message}
+          extra={facturaExtra}
+        />
       </div>
     </div>
   );
