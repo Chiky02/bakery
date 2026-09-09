@@ -199,98 +199,113 @@ export default function MesaDetailPage() {
   }
 
   const itemCount = items.reduce((s, i) => s + i.cantidad, 0);
-  const cuentaPanel = (
-    <div className="space-y-4">
-      <Card>
-        <CardTitle>Ítems de la cuenta</CardTitle>
-        <ul className="mt-3 max-h-72 space-y-2 overflow-y-auto">
-          {items.map((item) => (
-            <li key={item.id} className="rounded-lg bg-stone-50 p-2 text-sm">
-              <div className="flex items-start justify-between gap-2">
-                <span className="font-medium">{item.productos?.nombre}</span>
-                <button type="button" onClick={() => quitar(item.id)} aria-label="Quitar">
-                  <Trash2 className="h-4 w-4 text-red-600" />
+
+  const itemsList = (
+    <ul className="space-y-2">
+      {items.length === 0 ? (
+        <li className="text-sm text-stone-500">Sin ítems aún</li>
+      ) : (
+        items.map((item) => (
+          <li key={item.id} className="rounded-lg bg-stone-50 p-2 text-sm">
+            <div className="flex items-start justify-between gap-2">
+              <span className="font-medium">{item.productos?.nombre}</span>
+              <button type="button" onClick={() => quitar(item.id)} aria-label="Quitar">
+                <Trash2 className="h-4 w-4 text-red-600" />
+              </button>
+            </div>
+            <div className="mt-2 flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  className="rounded border p-1"
+                  onClick={() => setCantidad(item.id, item.cantidad - 1)}
+                >
+                  <Minus className="h-3.5 w-3.5" />
+                </button>
+                <span className="min-w-6 text-center font-medium">{item.cantidad}</span>
+                <button
+                  type="button"
+                  className="rounded border p-1"
+                  onClick={() => setCantidad(item.id, item.cantidad + 1)}
+                >
+                  <Plus className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <div className="mt-2 flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    className="rounded border p-1"
-                    onClick={() => setCantidad(item.id, item.cantidad - 1)}
-                  >
-                    <Minus className="h-3.5 w-3.5" />
-                  </button>
-                  <span className="min-w-6 text-center font-medium">{item.cantidad}</span>
-                  <button
-                    type="button"
-                    className="rounded border p-1"
-                    onClick={() => setCantidad(item.id, item.cantidad + 1)}
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                <span>{formatCOP(item.precio_al_momento * item.cantidad)}</span>
-              </div>
-              {subCuentas.length > 0 && (
-                <select
-                  className="mt-1 w-full rounded border px-1 py-0.5 text-xs"
-                  value={item.sub_cuenta_id ?? ""}
-                  onChange={(e) => asignarItem(item.id, e.target.value || null)}
-                >
-                  <option value="">General</option>
-                  {subCuentas.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.etiqueta}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </li>
-          ))}
-        </ul>
-      </Card>
-
-      <Card>
-        <CardTitle>División de cuenta</CardTitle>
-        <div className="mt-2 flex gap-2">
-          <Input
-            placeholder="Ej: Persona 1"
-            value={nuevaSub}
-            onChange={(e) => setNuevaSub(e.target.value)}
-          />
-          <Button onClick={crearSubCuenta}>+</Button>
-        </div>
-        {subCuentas.map((s) => {
-          const subTotal = items
-            .filter((i) => i.sub_cuenta_id === s.id)
-            .reduce((sum, i) => sum + i.precio_al_momento * i.cantidad, 0);
-          return (
-            <div key={s.id} className="mt-2 flex justify-between text-sm">
-              <span>{s.etiqueta}</span>
-              <span className="font-medium">{formatCOP(subTotal)}</span>
+              <span>{formatCOP(item.precio_al_momento * item.cantidad)}</span>
             </div>
-          );
-        })}
-      </Card>
+            {subCuentas.length > 0 && (
+              <select
+                className="mt-1 w-full rounded border px-1 py-0.5 text-xs"
+                value={item.sub_cuenta_id ?? ""}
+                onChange={(e) => asignarItem(item.id, e.target.value || null)}
+              >
+                <option value="">General</option>
+                {subCuentas.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.etiqueta}
+                  </option>
+                ))}
+              </select>
+            )}
+          </li>
+        ))
+      )}
+    </ul>
+  );
 
-      <Card>
-        <CardTitle>Cerrar mesa</CardTitle>
-        <select
-          className="mt-2 w-full rounded-lg border px-3 py-2 text-sm"
-          value={medioPago}
-          onChange={(e) => setMedioPago(e.target.value as typeof medioPago)}
-        >
-          <option value="efectivo">Efectivo</option>
-          <option value="electronico">Electrónico</option>
-          <option value="mixto">Mixto</option>
-        </select>
-        <p className="mt-2 text-xl font-bold text-orange-700">{formatCOP(total)}</p>
-        {cerrarMsg && <p className="mt-2 text-sm text-red-600">{cerrarMsg}</p>}
-        <Button className="mt-3 w-full" onClick={cerrarMesa} disabled={cerrando}>
-          {cerrando ? "Cerrando..." : "Cerrar y liberar mesa"}
-        </Button>
-      </Card>
+  const divisionBlock = (
+    <div>
+      <p className="text-sm font-semibold">División de cuenta</p>
+      <div className="mt-2 flex gap-2">
+        <Input
+          placeholder="Ej: Persona 1"
+          value={nuevaSub}
+          onChange={(e) => setNuevaSub(e.target.value)}
+        />
+        <Button onClick={crearSubCuenta}>+</Button>
+      </div>
+      {subCuentas.map((s) => {
+        const subTotal = items
+          .filter((i) => i.sub_cuenta_id === s.id)
+          .reduce((sum, i) => sum + i.precio_al_momento * i.cantidad, 0);
+        return (
+          <div key={s.id} className="mt-2 flex justify-between text-sm">
+            <span>{s.etiqueta}</span>
+            <span className="font-medium">{formatCOP(subTotal)}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const cerrarBlock = (
+    <div className="shrink-0 border-t border-stone-200 pt-3">
+      <p className="text-sm font-semibold">Cerrar mesa</p>
+      <select
+        className="mt-2 w-full rounded-lg border px-3 py-2 text-sm"
+        value={medioPago}
+        onChange={(e) => setMedioPago(e.target.value as typeof medioPago)}
+      >
+        <option value="efectivo">Efectivo</option>
+        <option value="electronico">Electrónico</option>
+        <option value="mixto">Mixto</option>
+      </select>
+      <p className="mt-2 text-xl font-bold text-orange-700">{formatCOP(total)}</p>
+      {cerrarMsg && <p className="mt-2 text-sm text-red-600">{cerrarMsg}</p>}
+      <Button className="mt-3 w-full" onClick={cerrarMesa} disabled={cerrando}>
+        {cerrando ? "Cerrando..." : "Cerrar y liberar mesa"}
+      </Button>
+    </div>
+  );
+
+  const mobileCuenta = (
+    <div className="space-y-4">
+      <div>
+        <p className="mb-2 text-sm font-semibold">Ítems de la cuenta</p>
+        {itemsList}
+      </div>
+      {divisionBlock}
+      {cerrarBlock}
     </div>
   );
 
@@ -308,7 +323,7 @@ export default function MesaDetailPage() {
         </button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid items-start gap-6 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           <Input
             placeholder="Buscar producto o código de barras..."
@@ -318,7 +333,19 @@ export default function MesaDetailPage() {
           <ProductGrid productos={filtered} onSelect={addProducto} compact />
         </div>
 
-        <div className="hidden lg:block">{cuentaPanel}</div>
+        {/* Desktop: columna sticky con scroll interno y cerrar siempre visible */}
+        <Card className="sticky top-4 hidden max-h-[calc(100dvh-6.5rem)] flex-col overflow-hidden lg:flex">
+          <CardTitle className="shrink-0">Cuenta</CardTitle>
+          <div className="mt-3 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-1">
+            <div>
+              <p className="mb-2 text-sm font-semibold">Ítems</p>
+              {itemsList}
+            </div>
+            {divisionBlock}
+          </div>
+          <div className="mt-3 shrink-0">{cerrarBlock}</div>
+        </Card>
+
         <MobileAccountSheet
           title={mesa.nombre}
           total={total}
@@ -327,7 +354,7 @@ export default function MesaDetailPage() {
           open={cuentaOpen}
           onOpenChange={setCuentaOpen}
         >
-          {cuentaPanel}
+          {mobileCuenta}
         </MobileAccountSheet>
       </div>
     </div>

@@ -30,13 +30,59 @@ function PagoSelect({
   );
 }
 
-function CartBody({
+function CartItemsList({
   items,
-  total,
-  medioPago,
-  onMedioPago,
   onUpdateQty,
   onRemove,
+}: {
+  items: CartItem[];
+  onUpdateQty: (productoId: string, delta: number) => void;
+  onRemove: (productoId: string) => void;
+}) {
+  if (items.length === 0) {
+    return <p className="text-sm text-stone-500">Agrega productos del catálogo</p>;
+  }
+
+  return (
+    <ul className="space-y-2">
+      {items.map((item) => (
+        <li
+          key={item.producto.id}
+          className="flex items-center justify-between gap-2 rounded-lg bg-stone-50 p-2"
+        >
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">{item.producto.nombre}</p>
+            <p className="text-xs text-stone-500">{formatCOP(item.producto.precio)} c/u</p>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => onUpdateQty(item.producto.id, -1)}
+            >
+              −
+            </Button>
+            <span className="w-6 text-center text-sm font-semibold">{item.cantidad}</span>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => onUpdateQty(item.producto.id, 1)}
+            >
+              +
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => onRemove(item.producto.id)}>
+              ✕
+            </Button>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function CartFooter({
+  total,
+  itemsLength,
   onClear,
   onCheckout,
   checkoutLabel,
@@ -44,12 +90,8 @@ function CartBody({
   hint,
   message,
 }: {
-  items: CartItem[];
   total: number;
-  medioPago: MedioPago;
-  onMedioPago: (v: MedioPago) => void;
-  onUpdateQty: (productoId: string, delta: number) => void;
-  onRemove: (productoId: string) => void;
+  itemsLength: number;
   onClear: () => void;
   onCheckout: () => void;
   checkoutLabel: string;
@@ -58,66 +100,22 @@ function CartBody({
   message?: string;
 }) {
   return (
-    <>
-      <PagoSelect value={medioPago} onChange={onMedioPago} />
-      {items.length === 0 ? (
-        <p className="mt-4 text-sm text-stone-500">Agrega productos del catálogo</p>
-      ) : (
-        <ul className="mt-4 max-h-80 space-y-2 overflow-y-auto">
-          {items.map((item) => (
-            <li
-              key={item.producto.id}
-              className="flex items-center justify-between gap-2 rounded-lg bg-stone-50 p-2"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{item.producto.nombre}</p>
-                <p className="text-xs text-stone-500">{formatCOP(item.producto.precio)} c/u</p>
-              </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => onUpdateQty(item.producto.id, -1)}
-                >
-                  −
-                </Button>
-                <span className="w-6 text-center text-sm font-semibold">{item.cantidad}</span>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => onUpdateQty(item.producto.id, 1)}
-                >
-                  +
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => onRemove(item.producto.id)}>
-                  ✕
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="mt-4 border-t border-stone-200 pt-4">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-stone-500">Total referencia</span>
-          <span className="text-2xl font-bold text-amber-700">{formatCOP(total)}</span>
-        </div>
-        <p className="mt-1 text-xs text-stone-400">{hint}</p>
-        {message && <p className="mt-2 text-sm text-emerald-600">{message}</p>}
-        <div className="mt-4 flex gap-2">
-          <Button variant="secondary" className="flex-1" onClick={onClear} disabled={!items.length}>
-            Limpiar
-          </Button>
-          <Button
-            className="flex-1"
-            onClick={onCheckout}
-            disabled={!items.length || disabled}
-          >
-            {checkoutLabel}
-          </Button>
-        </div>
+    <div className="shrink-0 border-t border-stone-200 pt-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-stone-500">Total referencia</span>
+        <span className="text-2xl font-bold text-amber-700">{formatCOP(total)}</span>
       </div>
-    </>
+      <p className="mt-1 text-xs text-stone-400">{hint}</p>
+      {message && <p className="mt-2 text-sm text-emerald-600">{message}</p>}
+      <div className="mt-3 flex gap-2">
+        <Button variant="secondary" className="flex-1" onClick={onClear} disabled={!itemsLength}>
+          Limpiar
+        </Button>
+        <Button className="flex-1" onClick={onCheckout} disabled={!itemsLength || disabled}>
+          {checkoutLabel}
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -155,29 +153,49 @@ export function CartPanel({
     if (prevCount.current > 0 && count === 0) setSheetOpen(false);
     prevCount.current = count;
   }, [count]);
-  const body = (
-    <CartBody
-      items={items}
-      total={total}
-      medioPago={medioPago}
-      onMedioPago={onMedioPago}
-      onUpdateQty={onUpdateQty}
-      onRemove={onRemove}
-      onClear={onClear}
-      onCheckout={onCheckout}
-      checkoutLabel={checkoutLabel}
-      disabled={disabled}
-      hint={hint}
-      message={message}
-    />
+
+  const mobileBody = (
+    <div className="space-y-4">
+      <PagoSelect value={medioPago} onChange={onMedioPago} />
+      <CartItemsList items={items} onUpdateQty={onUpdateQty} onRemove={onRemove} />
+      <CartFooter
+        total={total}
+        itemsLength={items.length}
+        onClear={onClear}
+        onCheckout={onCheckout}
+        checkoutLabel={checkoutLabel}
+        disabled={disabled}
+        hint={hint}
+        message={message}
+      />
+    </div>
   );
 
   return (
     <>
-      <Card className="sticky top-4 hidden h-fit flex-col lg:flex">
-        <CardTitle>Cuenta actual</CardTitle>
-        <div className="mt-3">{body}</div>
+      {/* Desktop: panel fijo en viewport; ítems scrollean; total/acción siempre visibles */}
+      <Card className="sticky top-4 hidden max-h-[calc(100dvh-6.5rem)] flex-col overflow-hidden lg:flex">
+        <CardTitle className="shrink-0">Cuenta actual</CardTitle>
+        <div className="mt-3 shrink-0">
+          <PagoSelect value={medioPago} onChange={onMedioPago} />
+        </div>
+        <div className="mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+          <CartItemsList items={items} onUpdateQty={onUpdateQty} onRemove={onRemove} />
+        </div>
+        <div className="mt-3 shrink-0">
+          <CartFooter
+            total={total}
+            itemsLength={items.length}
+            onClear={onClear}
+            onCheckout={onCheckout}
+            checkoutLabel={checkoutLabel}
+            disabled={disabled}
+            hint={hint}
+            message={message}
+          />
+        </div>
       </Card>
+
       <MobileAccountSheet
         title="Cuenta actual"
         total={total}
@@ -186,7 +204,7 @@ export function CartPanel({
         open={sheetOpen}
         onOpenChange={setSheetOpen}
       >
-        {body}
+        {mobileBody}
       </MobileAccountSheet>
     </>
   );
