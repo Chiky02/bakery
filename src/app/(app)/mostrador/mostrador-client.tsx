@@ -72,6 +72,11 @@ export function MostradorClient({ productos }: { productos: Producto[] }) {
         <h1 className="text-2xl font-bold">Calculadora de venta</h1>
         <p className="text-sm text-stone-500">Mostrador — referencia para caja fiscal</p>
       </div>
+      {message && (
+        <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
+          {message}
+        </p>
+      )}
 
       <div className="grid items-start gap-6 lg:grid-cols-3">
         <div className="min-h-[28rem] space-y-4 lg:col-span-2">
@@ -90,29 +95,17 @@ export function MostradorClient({ productos }: { productos: Producto[] }) {
             <ProductGrid productos={filtered} onSelect={addToCart} />
           )}
         </div>
-        <div className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium">Medio de pago</label>
-            <select
-              className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm"
-              value={medioPago}
-              onChange={(e) => setMedioPago(e.target.value as typeof medioPago)}
-            >
-              <option value="efectivo">Efectivo</option>
-              <option value="electronico">Electrónico</option>
-              <option value="mixto">Mixto</option>
-            </select>
-          </div>
-          <CartPanel
-            items={cart}
-            onUpdateQty={updateQty}
-            onRemove={(id) => updateQty(id, -999)}
-            onClear={() => setCart([])}
-            onCheckout={checkout}
-            disabled={loading}
-          />
-          {message && <p className="text-sm text-emerald-600">{message}</p>}
-        </div>
+        <CartPanel
+          items={cart}
+          medioPago={medioPago}
+          onMedioPago={setMedioPago}
+          onUpdateQty={updateQty}
+          onRemove={(id) => updateQty(id, -999)}
+          onClear={() => setCart([])}
+          onCheckout={checkout}
+          disabled={loading}
+          message={message}
+        />
       </div>
     </div>
   );

@@ -27,14 +27,14 @@ export function ProductGrid({
   }, {});
 
   function getQty(id: string) {
-    return qty[id] ?? 0;
+    return qty[id] ?? 1;
   }
 
   function add(p: Producto) {
     const n = getQty(p.id);
     if (n <= 0) return;
     onSelect(p, n);
-    setQty((q) => ({ ...q, [p.id]: 0 }));
+    setQty((q) => ({ ...q, [p.id]: 1 }));
   }
 
   return (

@@ -12,7 +12,7 @@ export default function MostradorLoading() {
           <div className="h-10 animate-pulse rounded-lg bg-stone-200" />
           <ProductGridSkeleton />
         </div>
-        <div className="h-64 animate-pulse rounded-xl bg-stone-200" />
+        <div className="hidden h-64 animate-pulse rounded-xl bg-stone-200 lg:block" />
       </div>
     </div>
   );
