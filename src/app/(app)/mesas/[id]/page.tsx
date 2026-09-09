@@ -7,18 +7,22 @@ import { createClient } from "@/lib/supabase/client";
 import { ProductGrid } from "@/components/app/product-grid";
 import { formatCOP } from "@/lib/format";
 import { loadVentaProductos } from "@/lib/productos";
+import { SIN_TURNO_CAJA_MSG } from "@/lib/turno-caja-messages";
+import { useBakeryId } from "@/lib/use-bakery-id";
 import type { Cliente, ItemCuenta, Mesa, Producto, SubCuenta } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ClientePicker } from "@/components/app/cliente-picker";
+import { TurnoCajaRequiredBanner } from "@/components/app/turno-caja-banner";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { MobileAccountSheet } from "@/components/app/mobile-account-sheet";
 
 export default function MesaDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { panaderiaId } = useBakeryId();
   const closingRef = useRef(false);
   /** Evita que el realtime dispare reload mientras nosotros mutamos. */
   const mutatingRef = useRef(0);
@@ -36,6 +40,7 @@ export default function MesaDetailPage() {
   const [cuentaOpen, setCuentaOpen] = useState(false);
   const [emitirFactura, setEmitirFactura] = useState(false);
   const [ivaPct, setIvaPct] = useState("0");
+  const [turnoAbierto, setTurnoAbierto] = useState(true);
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [cliente, setCliente] = useState({
     nombre: "",
@@ -126,6 +131,20 @@ export default function MesaDetailPage() {
       supabase.removeChannel(channel);
     };
   }, [id, bootstrap, refreshCuenta]);
+
+  useEffect(() => {
+    if (!panaderiaId) return;
+    const supabase = createClient();
+    void (async () => {
+      const { data } = await supabase
+        .from("turnos_caja")
+        .select("id")
+        .eq("panaderia_id", panaderiaId)
+        .eq("estado", "abierto")
+        .maybeSingle();
+      setTurnoAbierto(!!data);
+    })();
+  }, [panaderiaId]);
 
   const total = items.reduce((s, i) => s + i.precio_al_momento * i.cantidad, 0);
   const filtered = productos.filter(
@@ -286,6 +305,10 @@ export default function MesaDetailPage() {
 
   async function cerrarMesa() {
     if (!cuentaId) return;
+    if (total > 0 && !turnoAbierto) {
+      setCerrarMsg(SIN_TURNO_CAJA_MSG);
+      return;
+    }
     if (emitirFactura && !cliente.nombre.trim()) {
       setCerrarMsg("Indica razón social / nombre del cliente para la factura");
       return;
@@ -459,11 +482,17 @@ export default function MesaDetailPage() {
   const cerrarBlock = (
     <div className="shrink-0 border-t border-stone-200 pt-3">
       <p className="text-sm font-semibold">{total > 0 ? "Cerrar mesa" : "Liberar mesa"}</p>
+      {total > 0 && !turnoAbierto && (
+        <div className="mt-2">
+          <TurnoCajaRequiredBanner abierto={false} />
+        </div>
+      )}
       {total > 0 ? (
         <select
           className="mt-2 w-full rounded-lg border px-3 py-2 text-sm"
           value={medioPago}
           onChange={(e) => setMedioPago(e.target.value as typeof medioPago)}
+          disabled={!turnoAbierto}
         >
           <option value="efectivo">Efectivo</option>
           <option value="electronico">Electrónico</option>
@@ -475,7 +504,7 @@ export default function MesaDetailPage() {
         </p>
       )}
       <p className="mt-2 text-xl font-bold text-orange-700">{formatCOP(total)}</p>
-      {total > 0 && (
+      {total > 0 && turnoAbierto && (
         <>
           <label className="mt-3 flex items-center gap-2 text-sm">
             <input
@@ -520,11 +549,17 @@ export default function MesaDetailPage() {
         </>
       )}
       {cerrarMsg && <p className="mt-2 text-sm text-red-600">{cerrarMsg}</p>}
-      <Button className="mt-3 w-full" onClick={cerrarMesa} disabled={cerrando}>
+      <Button
+        className="mt-3 w-full"
+        onClick={cerrarMesa}
+        disabled={cerrando || (total > 0 && !turnoAbierto)}
+      >
         {cerrando
           ? "Procesando..."
           : total > 0
-            ? "Cerrar y registrar venta"
+            ? turnoAbierto
+              ? "Cerrar y registrar venta"
+              : "Abre turno de caja para cobrar"
             : "Liberar sin venta"}
       </Button>
     </div>
@@ -554,6 +589,8 @@ export default function MesaDetailPage() {
           <Badge color="info">{formatCOP(total)}</Badge>
         </button>
       </div>
+
+      {!turnoAbierto && <TurnoCajaRequiredBanner abierto={false} />}
 
       <div className="grid items-start gap-6 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">

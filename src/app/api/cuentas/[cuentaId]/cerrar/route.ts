@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiContext } from "@/lib/api-context";
+import { getTurnoAbiertoId, sinTurnoCajaResponse } from "@/lib/turno-caja";
 
 export async function POST(
   request: Request,
@@ -125,12 +126,8 @@ export async function POST(
     }
   }
 
-  const { data: turno } = await supabase
-    .from("turnos_caja")
-    .select("id")
-    .eq("panaderia_id", ctx.panaderia.id)
-    .eq("estado", "abierto")
-    .maybeSingle();
+  const turnoId = await getTurnoAbiertoId(supabase, ctx.panaderia.id);
+  if (!turnoId) return sinTurnoCajaResponse();
 
   const { error } = await supabase
     .from("cuentas_mesa")
@@ -139,7 +136,7 @@ export async function POST(
       hora_cierre: new Date().toISOString(),
       total_final: total,
       medio_pago: medio_pago ?? null,
-      turno_id: turno?.id ?? null,
+      turno_id: turnoId,
     })
     .eq("id", cuentaId)
     .eq("panaderia_id", ctx.panaderia.id);

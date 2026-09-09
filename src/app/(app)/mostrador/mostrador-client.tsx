@@ -4,22 +4,27 @@ import { useState } from "react";
 import { ProductGrid } from "@/components/app/product-grid";
 import { CartPanel } from "@/components/app/cart-panel";
 import { ClientePicker } from "@/components/app/cliente-picker";
+import { TurnoCajaRequiredBanner } from "@/components/app/turno-caja-banner";
 import type { CartItem, Cliente, Factura, Panaderia, Producto } from "@/types";
+import { SIN_TURNO_CAJA_MSG } from "@/lib/turno-caja-messages";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 
 export function MostradorClient({
   productos,
   panaderia,
+  turnoAbierto,
 }: {
   productos: Producto[];
   panaderia: Pick<Panaderia, "id" | "imprimir_ticket_venta">;
+  turnoAbierto: boolean;
 }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
   const [medioPago, setMedioPago] = useState<"efectivo" | "electronico" | "mixto">("efectivo");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [messageError, setMessageError] = useState(false);
   const [emitirFactura, setEmitirFactura] = useState(false);
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [cliente, setCliente] = useState({
@@ -71,12 +76,19 @@ export function MostradorClient({
   }
 
   async function checkout() {
+    if (!turnoAbierto) {
+      setMessageError(true);
+      setMessage(SIN_TURNO_CAJA_MSG);
+      return;
+    }
     if (emitirFactura && !cliente.nombre.trim()) {
+      setMessageError(true);
       setMessage("Indica razón social / nombre del cliente para la factura");
       return;
     }
     setLoading(true);
     setMessage("");
+    setMessageError(false);
     const detalleCart = cart.map((i) => ({
       producto_id: i.producto.id,
       nombre: i.producto.nombre,
@@ -93,6 +105,7 @@ export function MostradorClient({
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
+      setMessageError(true);
       setMessage(body.error ?? "Error al registrar la venta");
       setLoading(false);
       return;
@@ -142,6 +155,7 @@ export function MostradorClient({
       msg = "✓ Venta registrada. Ticket listo para imprimir / PDF.";
     }
 
+    setMessageError(false);
     setMessage(msg);
     setLoading(false);
   }
@@ -153,6 +167,7 @@ export function MostradorClient({
           type="checkbox"
           checked={emitirFactura}
           onChange={(e) => setEmitirFactura(e.target.checked)}
+          disabled={!turnoAbierto}
         />
         Emitir factura de venta (impresa)
       </label>
@@ -210,7 +225,7 @@ export function MostradorClient({
           />
         </div>
       )}
-      {!emitirFactura && printTicket && (
+      {!emitirFactura && printTicket && turnoAbierto && (
         <p className="text-xs text-stone-400">
           Al registrar se abrirá el ticket de venta (lista + total) para imprimir o PDF.
         </p>
@@ -227,8 +242,15 @@ export function MostradorClient({
         <h1 className="text-2xl font-bold">Calculadora de venta</h1>
         <p className="text-sm text-stone-500">Mostrador — referencia para caja fiscal</p>
       </div>
+      <TurnoCajaRequiredBanner abierto={turnoAbierto} />
       {message && (
-        <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
+        <p
+          className={`rounded-lg px-3 py-2 text-sm font-medium ${
+            messageError
+              ? "bg-amber-50 text-amber-950"
+              : "bg-emerald-50 text-emerald-800"
+          }`}
+        >
           {message}
         </p>
       )}
@@ -258,7 +280,7 @@ export function MostradorClient({
           onRemove={(id) => updateQty(id, -999)}
           onClear={() => setCart([])}
           onCheckout={checkout}
-          disabled={loading}
+          disabled={loading || !turnoAbierto}
           message={message}
           extra={facturaExtra}
         />

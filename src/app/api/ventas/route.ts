@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiFeature } from "@/lib/api-context";
+import { getTurnoAbiertoId, sinTurnoCajaResponse } from "@/lib/turno-caja";
 import { z } from "zod";
 
 const itemSchema = z.object({
@@ -57,12 +58,8 @@ export async function POST(request: Request) {
 
     const total = detalle.reduce((s, d) => s + d.subtotal, 0);
 
-    const { data: turno } = await supabase
-      .from("turnos_caja")
-      .select("id")
-      .eq("panaderia_id", ctx.panaderia.id)
-      .eq("estado", "abierto")
-      .maybeSingle();
+    const turnoId = await getTurnoAbiertoId(supabase, ctx.panaderia.id);
+    if (!turnoId) return sinTurnoCajaResponse();
 
     const { data, error } = await supabase
       .from("ventas_mostrador")
@@ -72,7 +69,7 @@ export async function POST(request: Request) {
         medio_pago: body.medio_pago,
         detalle,
         registrado_por: ctx.profile.id,
-        turno_id: turno?.id ?? null,
+        turno_id: turnoId,
       })
       .select()
       .single();

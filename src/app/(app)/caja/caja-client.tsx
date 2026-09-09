@@ -385,6 +385,18 @@ export function CajaClient({
             <Badge color="warning">Sin turno</Badge>
           )}
         </div>
+        {!turno && (
+          <div
+            role="alert"
+            className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+          >
+            <p className="font-semibold">Apertura requerida</p>
+            <p className="mt-0.5 text-amber-900/90">
+              Sin turno abierto no se pueden registrar ventas en mostrador ni cobrar mesas.
+              Abre el turno abajo para empezar el día.
+            </p>
+          </div>
+        )}
         {turno ? (
           <>
             <p className="text-sm text-stone-500">
