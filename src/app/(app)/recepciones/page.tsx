@@ -16,17 +16,17 @@ import { resolveUnidades } from "@/lib/unidades-medida";
 type DraftItem = {
   descripcion: string;
   producto_id: string;
-  cantidad_pedida: number;
+  cantidad_pedida: string;
   unidad: string;
-  costo_unitario: number;
+  costo_unitario: string;
 };
 
 const emptyItem = (): DraftItem => ({
   descripcion: "",
   producto_id: "",
-  cantidad_pedida: 1,
+  cantidad_pedida: "1",
   unidad: "unidad",
-  costo_unitario: 0,
+  costo_unitario: "",
 });
 
 type ProvForm = {
@@ -92,7 +92,11 @@ export default function RecepcionesPage() {
   }, [panaderiaId]);
 
   const totalEstimado = useMemo(
-    () => items.reduce((s, i) => s + i.cantidad_pedida * i.costo_unitario, 0),
+    () =>
+      items.reduce(
+        (s, i) => s + (Number(i.cantidad_pedida) || 0) * (Number(i.costo_unitario) || 0),
+        0,
+      ),
     [items],
   );
 
@@ -157,9 +161,15 @@ export default function RecepcionesPage() {
   async function crearRecepcion(e: React.FormEvent) {
     e.preventDefault();
     if (!panaderiaId || !userId) return;
-    const valid = items.filter((i) => i.descripcion.trim() && i.cantidad_pedida > 0);
+    const valid = items
+      .map((i) => ({
+        ...i,
+        cantidad_pedida: Number(i.cantidad_pedida),
+        costo_unitario: Number(i.costo_unitario) || 0,
+      }))
+      .filter((i) => (i.descripcion.trim() || i.producto_id) && i.cantidad_pedida > 0);
     if (valid.length === 0) {
-      setMsg("Agrega al menos un ítem");
+      setMsg("Agrega al menos un ítem con cantidad");
       return;
     }
     const supabase = createClient();
@@ -186,7 +196,7 @@ export default function RecepcionesPage() {
       valid.map((i) => ({
         recepcion_id: rec.id,
         producto_id: i.producto_id || null,
-        descripcion: i.descripcion.trim(),
+        descripcion: i.descripcion.trim() || "Ítem",
         cantidad_pedida: i.cantidad_pedida,
         cantidad_recibida: 0,
         unidad: i.unidad || "unidad",
@@ -314,7 +324,7 @@ export default function RecepcionesPage() {
             <div>
               <label className="text-sm font-medium">Proveedor</label>
               <select
-                className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm  "
+                className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm"
                 value={proveedorId}
                 onChange={(e) => setProveedorId(e.target.value)}
               >
@@ -325,10 +335,6 @@ export default function RecepcionesPage() {
                   </option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Notas</label>
-              <Input value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Opcional" />
             </div>
             <div className="space-y-3">
               <p className="text-sm font-medium">Ítems</p>
@@ -378,14 +384,14 @@ export default function RecepcionesPage() {
                   <div>
                     <label className="mb-1 block text-xs font-medium text-stone-500">Cantidad</label>
                     <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      placeholder="Cantidad"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0"
                       value={item.cantidad_pedida}
                       onChange={(e) => {
+                        const raw = e.target.value.replace(/[^\d.,]/g, "").replace(",", ".");
                         const next = [...items];
-                        next[idx] = { ...item, cantidad_pedida: Number(e.target.value) };
+                        next[idx] = { ...item, cantidad_pedida: raw };
                         setItems(next);
                       }}
                     />
@@ -416,13 +422,14 @@ export default function RecepcionesPage() {
                       Costo unitario
                     </label>
                     <Input
-                      type="number"
-                      min={0}
-                      placeholder="Costo"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0"
                       value={item.costo_unitario}
                       onChange={(e) => {
+                        const raw = e.target.value.replace(/[^\d.,]/g, "").replace(",", ".");
                         const next = [...items];
-                        next[idx] = { ...item, costo_unitario: Number(e.target.value) };
+                        next[idx] = { ...item, costo_unitario: raw };
                         setItems(next);
                       }}
                     />
@@ -439,6 +446,19 @@ export default function RecepcionesPage() {
               </Button>
             </div>
             <p className="text-sm font-medium">Total estimado: {formatCOP(totalEstimado)}</p>
+            <div>
+              <label htmlFor="rec-notas" className="text-sm font-medium">
+                Notas
+              </label>
+              <Input
+                id="rec-notas"
+                name="notas"
+                className="mt-1"
+                value={notas}
+                onChange={(e) => setNotas(e.target.value)}
+                placeholder="Opcional — al final de la orden"
+              />
+            </div>
             <Button type="submit">Guardar orden</Button>
           </form>
         </Card>

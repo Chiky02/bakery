@@ -88,10 +88,7 @@ export default async function TicketVentaPage({
         </div>
 
         <p className="mt-4 text-center text-[10px] text-stone-400">
-          Documento interno de venta. No es factura electrónica DIAN.
-          {panaderia.imprimir_ticket_venta === false
-            ? ""
-            : " Guarde o imprima desde el navegador (PDF)."}
+          Gracias por su compra
         </p>
       </article>
     </div>

@@ -107,8 +107,23 @@ export type Producto = {
   tipo?: ProductoTipo;
   encargable?: boolean;
   stock?: number;
+  stock_minimo?: number;
   control_stock?: boolean;
   categorias?: Categoria;
+};
+
+export type Cliente = {
+  id: string;
+  panaderia_id: string;
+  nombre: string;
+  documento?: string | null;
+  telefono?: string | null;
+  email?: string | null;
+  direccion?: string | null;
+  notas?: string | null;
+  activo?: boolean;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type Mesa = {
@@ -188,6 +203,7 @@ export type Encargo = {
   id: string;
   panaderia_id: string;
   descripcion: string;
+  cliente_id?: string | null;
   cliente_nombre: string | null;
   cliente_telefono: string | null;
   fecha_entrega: string;
@@ -308,6 +324,7 @@ export type Factura = {
   venta_id?: string | null;
   cuenta_mesa_id?: string | null;
   encargo_id?: string | null;
+  cliente_id?: string | null;
   cliente_nombre: string;
   cliente_documento?: string | null;
   cliente_email?: string | null;

@@ -18,6 +18,7 @@ export async function POST(request: Request) {
     creado_por: ctx.profile.id,
     estado: "pendiente",
     descripcion: body.descripcion,
+    cliente_id: body.cliente_id || null,
     cliente_nombre: body.cliente_nombre ?? null,
     cliente_telefono: body.cliente_telefono ?? null,
     fecha_entrega: body.fecha_entrega,
@@ -36,21 +37,30 @@ export async function POST(request: Request) {
       error.message.includes("estado_pago") ||
       error.message.includes("abono") ||
       error.message.includes("producto_id") ||
-      error.message.includes("encargable")
+      error.message.includes("encargable") ||
+      error.message.includes("cliente_id")
     ) {
+      const { cliente_id: _cid, ...withoutCliente } = payload;
+      const retryPayload =
+        error.message.includes("cliente_id") &&
+        !error.message.includes("estado_pago") &&
+        !error.message.includes("abono") &&
+        !error.message.includes("producto_id")
+          ? withoutCliente
+          : {
+              panaderia_id: ctx.panaderia.id,
+              creado_por: ctx.profile.id,
+              estado: "pendiente",
+              descripcion: body.descripcion,
+              cliente_nombre: body.cliente_nombre ?? null,
+              cliente_telefono: body.cliente_telefono ?? null,
+              fecha_entrega: body.fecha_entrega,
+              valor,
+              notas: body.notas ?? null,
+            };
       const { data: fallback, error: err2 } = await supabase
         .from("encargos")
-        .insert({
-          panaderia_id: ctx.panaderia.id,
-          creado_por: ctx.profile.id,
-          estado: "pendiente",
-          descripcion: body.descripcion,
-          cliente_nombre: body.cliente_nombre ?? null,
-          cliente_telefono: body.cliente_telefono ?? null,
-          fecha_entrega: body.fecha_entrega,
-          valor,
-          notas: body.notas ?? null,
-        })
+        .insert(retryPayload)
         .select()
         .single();
       if (err2) return NextResponse.json({ error: err2.message }, { status: 400 });

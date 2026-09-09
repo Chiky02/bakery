@@ -68,7 +68,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   useEffect(() => {
-    if (pathname.startsWith("/facturas")) return;
+    // Detalle de factura (impresión) y tickets: no exigir menú Facturas
+    if (/^\/facturas\/[^/]+$/.test(pathname)) return;
     if (pathname.startsWith("/ventas")) return;
     if (pathname.startsWith("/panaderias")) return;
     if (!canAccess(rol, pathname, permisos)) {

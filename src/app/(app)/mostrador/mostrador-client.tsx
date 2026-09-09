@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { ProductGrid } from "@/components/app/product-grid";
 import { CartPanel } from "@/components/app/cart-panel";
-import type { CartItem, Factura, Panaderia, Producto } from "@/types";
+import { ClientePicker } from "@/components/app/cliente-picker";
+import type { CartItem, Cliente, Factura, Panaderia, Producto } from "@/types";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 
@@ -20,6 +21,7 @@ export function MostradorClient({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [emitirFactura, setEmitirFactura] = useState(false);
+  const [clienteId, setClienteId] = useState<string | null>(null);
   const [cliente, setCliente] = useState({
     nombre: "",
     documento: "",
@@ -29,6 +31,18 @@ export function MostradorClient({
   });
   const [ivaPct, setIvaPct] = useState("0");
   const printTicket = panaderia.imprimir_ticket_venta !== false;
+
+  function applyCliente(c: Cliente | null) {
+    setClienteId(c?.id ?? null);
+    if (!c) return;
+    setCliente({
+      nombre: c.nombre,
+      documento: c.documento ?? "",
+      email: c.email ?? "",
+      telefono: c.telefono ?? "",
+      direccion: c.direccion ?? "",
+    });
+  }
 
   const q = search.trim().toLowerCase();
   const filtered = productos.filter(
@@ -95,6 +109,7 @@ export function MostradorClient({
         body: JSON.stringify({
           origen: "mostrador",
           venta_id: venta.id,
+          cliente_id: clienteId,
           cliente_nombre: cliente.nombre.trim(),
           cliente_documento: cliente.documento.trim() || null,
           cliente_email: cliente.email.trim() || null,
@@ -114,6 +129,7 @@ export function MostradorClient({
       if (fRes.ok) {
         const f = (await fRes.json()) as Factura;
         setEmitirFactura(false);
+        setClienteId(null);
         setCliente({ nombre: "", documento: "", email: "", telefono: "", direccion: "" });
         window.open(`/facturas/${f.id}`, "_blank");
         msg = "✓ Venta y factura emitida. Imprime o guarda el PDF del navegador.";
@@ -145,12 +161,16 @@ export function MostradorClient({
           <p className="text-xs text-stone-500">
             Completa los datos del comprador aquí (quedan encima del total). No es FE DIAN.
           </p>
+          <ClientePicker selectedId={clienteId} onSelect={applyCliente} />
           <Input
             id="mostrador-cliente-nombre"
             name="cliente_nombre"
             placeholder="Razón social / nombre *"
             value={cliente.nombre}
-            onChange={(e) => setCliente({ ...cliente, nombre: e.target.value })}
+            onChange={(e) => {
+              setClienteId(null);
+              setCliente({ ...cliente, nombre: e.target.value });
+            }}
           />
           <Input
             id="mostrador-cliente-doc"

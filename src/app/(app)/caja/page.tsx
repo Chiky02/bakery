@@ -10,14 +10,21 @@ export default async function CajaPage() {
   const pid = panaderia.id;
   const desde = startOfBogotaDay();
 
-  const [{ data: cuentas }, { data: ventasHoy }, { data: mesasCerradas }, { data: turno }, { data: facturas }] =
-    await Promise.all([
+  // Carga liviana inicial: sin ítems de mesas cerradas
+  const [
+    { data: cuentas },
+    { data: ventasHoy },
+    { data: mesasCerradas },
+    { data: turno },
+    { data: facturasRecientes },
+  ] = await Promise.all([
       supabase
         .from("cuentas_mesa")
         .select("id, hora_apertura, mesas(id, nombre)")
         .eq("panaderia_id", pid)
         .eq("estado", "abierta")
-        .order("hora_apertura"),
+        .order("hora_apertura")
+        .limit(40),
       supabase
         .from("ventas_mostrador")
         .select("id, fecha_hora, total, medio_pago, detalle, factura_id, anulado")
@@ -25,7 +32,7 @@ export default async function CajaPage() {
         .eq("anulado", false)
         .gte("fecha_hora", desde)
         .order("fecha_hora", { ascending: false })
-        .limit(50),
+        .limit(30),
       supabase
         .from("cuentas_mesa")
         .select("id, hora_cierre, total_final, medio_pago, mesas(nombre)")
@@ -34,10 +41,12 @@ export default async function CajaPage() {
         .gt("total_final", 0)
         .gte("hora_cierre", desde)
         .order("hora_cierre", { ascending: false })
-        .limit(40),
+        .limit(20),
       supabase
         .from("turnos_caja")
-        .select("*")
+        .select(
+          "id, panaderia_id, abierto_por, cerrado_por, estado, apertura_at, cierre_at, fondo_inicial, efectivo_contado, electronico_contado, notas_apertura, notas_cierre, detalle_apertura, detalle_cierre, esperado_efectivo, esperado_electronico, diferencia_efectivo, diferencia_electronico",
+        )
         .eq("panaderia_id", pid)
         .eq("estado", "abierto")
         .maybeSingle(),
@@ -46,34 +55,8 @@ export default async function CajaPage() {
         .select("id, numero, cliente_nombre, total, created_at, origen")
         .eq("panaderia_id", pid)
         .order("created_at", { ascending: false })
-        .limit(15),
+        .limit(12),
     ]);
-
-  const cuentaIds = (mesasCerradas ?? []).map((c) => c.id as string);
-  const itemsByCuenta = new Map<
-    string,
-    { producto_id?: string; nombre: string; cantidad: number; precio: number }[]
-  >();
-  if (cuentaIds.length > 0) {
-    const { data: items } = await supabase
-      .from("items_cuenta")
-      .select("cuenta_mesa_id, producto_id, cantidad, precio_al_momento, productos(nombre)")
-      .in("cuenta_mesa_id", cuentaIds)
-      .neq("estado", "cancelado");
-    for (const it of items ?? []) {
-      const cid = it.cuenta_mesa_id as string;
-      const list = itemsByCuenta.get(cid) ?? [];
-      const prod = it.productos as { nombre?: string } | { nombre?: string }[] | null;
-      const nombre = Array.isArray(prod) ? prod[0]?.nombre : prod?.nombre;
-      list.push({
-        producto_id: (it.producto_id as string) ?? undefined,
-        nombre: nombre ?? "Ítem",
-        cantidad: Number(it.cantidad),
-        precio: Number(it.precio_al_momento),
-      });
-      itemsByCuenta.set(cid, list);
-    }
-  }
 
   const ventas = (ventasHoy ?? []).map((v) => ({
     id: v.id as string,
@@ -97,7 +80,12 @@ export default async function CajaPage() {
     total: (c.total_final as number) ?? 0,
     medio_pago: (c.medio_pago as MedioPago | null) ?? null,
     mesa_nombre: (c.mesas as { nombre?: string } | null)?.nombre ?? "Mesa",
-    detalle: itemsByCuenta.get(c.id as string) ?? [],
+    detalle: [] as {
+      producto_id?: string;
+      nombre: string;
+      cantidad: number;
+      precio: number;
+    }[],
   }));
 
   return (
@@ -112,7 +100,7 @@ export default async function CajaPage() {
       ventasHoy={ventas}
       mesasCerradasHoy={mesasHoy}
       facturasRecientes={
-        (facturas as {
+        (facturasRecientes as {
           id: string;
           numero: string;
           cliente_nombre: string;

@@ -9,12 +9,14 @@ function canInvoice(ctx: { rol: Parameters<typeof canAccess>[0]; permisos: strin
     canAccess(ctx.rol, "/mostrador", ctx.permisos) ||
     canAccess(ctx.rol, "/mesas", ctx.permisos) ||
     canAccess(ctx.rol, "/reportes", ctx.permisos) ||
-    canAccess(ctx.rol, "/encargos", ctx.permisos)
+    canAccess(ctx.rol, "/encargos", ctx.permisos) ||
+    canAccess(ctx.rol, "/facturas", ctx.permisos)
   );
 }
 
 const schema = z.object({
   origen: z.enum(["mostrador", "mesa", "encargo", "manual"]),
+  cliente_id: z.string().uuid().optional().nullable(),
   cliente_nombre: z.string().min(2).max(160),
   cliente_documento: z.string().max(40).optional().nullable(),
   cliente_email: z.string().email().optional().nullable().or(z.literal("")),
@@ -48,14 +50,28 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const limit = Math.min(100, Number(url.searchParams.get("limit") ?? 40));
+  const q = (url.searchParams.get("q") ?? "").trim();
+  const origen = (url.searchParams.get("origen") ?? "").trim();
+  const desde = url.searchParams.get("desde");
+  const hasta = url.searchParams.get("hasta");
 
-  const { data } = await supabase
+  let query = supabase
     .from("facturas")
     .select("*")
     .eq("panaderia_id", ctx.panaderia.id)
     .order("created_at", { ascending: false })
     .limit(limit);
 
+  if (origen) query = query.eq("origen", origen);
+  if (desde) query = query.gte("created_at", desde);
+  if (hasta) query = query.lte("created_at", hasta);
+  if (q) {
+    query = query.or(
+      `numero.ilike.%${q}%,cliente_nombre.ilike.%${q}%,cliente_documento.ilike.%${q}%`,
+    );
+  }
+
+  const { data } = await query;
   return NextResponse.json({ facturas: data ?? [] });
 }
 
@@ -80,7 +96,7 @@ export async function POST(request: Request) {
     const iva = Math.round(subtotal * ((body.iva_porcentaje ?? 0) / 100));
     const total = subtotal + iva;
 
-    const { data: facturaId, error } = await supabase.rpc("emitir_factura", {
+    const rpcArgs: Record<string, unknown> = {
       p_panaderia: ctx.panaderia.id,
       p_origen: body.origen,
       p_cliente_nombre: body.cliente_nombre,
@@ -97,7 +113,29 @@ export async function POST(request: Request) {
       p_venta_id: body.venta_id ?? null,
       p_cuenta_id: body.cuenta_mesa_id ?? null,
       p_encargo_id: body.encargo_id ?? null,
-    });
+    };
+    if (body.cliente_id) rpcArgs.p_cliente_id = body.cliente_id;
+
+    let { data: facturaId, error } = await supabase.rpc("emitir_factura", rpcArgs);
+
+    // Si la migración aún no tiene p_cliente_id, reintentar sin él y actualizar luego
+    if (error && body.cliente_id && /p_cliente_id|cliente_id/i.test(error.message)) {
+      delete rpcArgs.p_cliente_id;
+      const retry = await supabase.rpc("emitir_factura", rpcArgs);
+      facturaId = retry.data;
+      error = retry.error;
+      if (!error && facturaId) {
+        await supabase
+          .from("facturas")
+          .update({ cliente_id: body.cliente_id })
+          .eq("id", facturaId);
+      }
+    } else if (!error && body.cliente_id && facturaId && !rpcArgs.p_cliente_id) {
+      await supabase
+        .from("facturas")
+        .update({ cliente_id: body.cliente_id })
+        .eq("id", facturaId);
+    }
 
     if (error) {
       if (error.message.includes("emitir_factura") || error.message.includes("function")) {

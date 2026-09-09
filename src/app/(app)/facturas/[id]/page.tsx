@@ -28,9 +28,7 @@ export default async function FacturaPage({
   const detalle = (f.detalle ?? []) as FacturaDetalleItem[];
   const p = panaderia as Panaderia;
   const emisor = p.razon_social?.trim() || bakeryDisplayName(p);
-  const legal =
-    p.texto_legal_factura?.trim() ||
-    "Documento comercial de venta. No constituye factura electrónica autorizada por la DIAN. Consérvelo para su control interno.";
+  const legal = p.texto_legal_factura?.trim() || "";
 
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-4 md:p-8">
@@ -126,7 +124,9 @@ export default async function FacturaPage({
         </div>
 
         {f.notas && <p className="mt-4 text-sm text-stone-600">{f.notas}</p>}
-        <p className="mt-6 text-xs leading-relaxed text-stone-400">{legal}</p>
+        {legal ? (
+          <p className="mt-6 text-xs leading-relaxed text-stone-400">{legal}</p>
+        ) : null}
       </article>
     </div>
   );

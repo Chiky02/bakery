@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { formatCOP, formatDateTime } from "@/lib/format";
 import {
@@ -9,8 +9,9 @@ import {
   totalConteo,
   type ConteoDenominaciones,
 } from "@/lib/caja-denominaciones";
-import type { Factura, MedioPago, TurnoCaja } from "@/types";
+import type { Cliente, Factura, MedioPago, TurnoCaja } from "@/types";
 import { CashCounter } from "@/components/app/cash-counter";
+import { ClientePicker } from "@/components/app/cliente-picker";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -99,6 +100,7 @@ export function CajaClient({
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [target, setTarget] = useState<FacturaTarget | null>(null);
+  const [clienteId, setClienteId] = useState<string | null>(null);
   const [cliente, setCliente] = useState({
     nombre: "",
     documento: "",
@@ -106,12 +108,25 @@ export function CajaClient({
     telefono: "",
     direccion: "",
   });
+
+  function applyCliente(c: Cliente | null) {
+    setClienteId(c?.id ?? null);
+    if (!c) return;
+    setCliente({
+      nombre: c.nombre,
+      documento: c.documento ?? "",
+      email: c.email ?? "",
+      telefono: c.telefono ?? "",
+      direccion: c.direccion ?? "",
+    });
+  }
   const [ivaPct, setIvaPct] = useState("0");
   const [histDesde, setHistDesde] = useState(monthStartInputLocal);
   const [histHasta, setHistHasta] = useState(todayInputLocal);
   const [historial, setHistorial] = useState<TurnoCaja[]>([]);
   const [histLoading, setHistLoading] = useState(false);
   const [histMsg, setHistMsg] = useState("");
+  const [histLoaded, setHistLoaded] = useState(false);
 
   async function cargarHistorial(desde = histDesde, hasta = histHasta) {
     setHistLoading(true);
@@ -121,6 +136,7 @@ export function CajaClient({
     );
     const body = await res.json().catch(() => ({}));
     setHistLoading(false);
+    setHistLoaded(true);
     if (!res.ok) {
       setHistMsg(body.error ?? "No se pudo cargar el historial");
       setHistorial([]);
@@ -129,11 +145,6 @@ export function CajaClient({
     setHistorial((body.turnos as TurnoCaja[]) ?? []);
     if (body.error) setHistMsg(body.error);
   }
-
-  useEffect(() => {
-    void cargarHistorial();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- carga inicial
-  }, []);
 
   const totalMostrador = useMemo(
     () => ventas.reduce((s, v) => s + v.total, 0),
@@ -258,6 +269,39 @@ export function CajaClient({
     void cargarHistorial();
   }
 
+  async function emitirFacturaMesa(mesa: MesaCerradaRow) {
+    setBusy(true);
+    setMsg("");
+    let detalle = mesa.detalle;
+    if (!detalle.length) {
+      const res = await fetch(`/api/cuentas/${mesa.id}/items`);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setBusy(false);
+        setMsg(body.error ?? "No se pudieron cargar ítems de la mesa");
+        return;
+      }
+      const raw = Array.isArray(body) ? body : (body.items ?? []);
+      detalle = (raw as {
+        producto_id?: string;
+        productos?: { nombre?: string };
+        cantidad: number;
+        precio_al_momento: number;
+      }[]).map((it) => ({
+        producto_id: it.producto_id,
+        nombre: it.productos?.nombre ?? "Ítem",
+        cantidad: Number(it.cantidad),
+        precio: Number(it.precio_al_momento),
+      }));
+    }
+    setBusy(false);
+    if (!detalle.length) {
+      setMsg("La mesa no tiene ítems para facturar");
+      return;
+    }
+    setTarget({ kind: "mesa", mesa: { ...mesa, detalle } });
+  }
+
   async function emitirFactura() {
     if (!target) return;
     if (!cliente.nombre.trim()) {
@@ -295,6 +339,7 @@ export function CajaClient({
         origen: target.kind === "mostrador" ? "mostrador" : "mesa",
         venta_id: target.kind === "mostrador" ? target.venta.id : null,
         cuenta_mesa_id: target.kind === "mesa" ? target.mesa.id : null,
+        cliente_id: clienteId,
         cliente_nombre: cliente.nombre.trim(),
         cliente_documento: cliente.documento.trim() || null,
         cliente_email: cliente.email.trim() || null,
@@ -317,6 +362,7 @@ export function CajaClient({
     }
     const f = body as Factura;
     setTarget(null);
+    setClienteId(null);
     setCliente({ nombre: "", documento: "", email: "", telefono: "", direccion: "" });
     window.open(`/facturas/${f.id}`, "_blank");
   }
@@ -325,9 +371,7 @@ export function CajaClient({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Caja</h1>
-        <p className="text-sm text-stone-500">
-          Turno del día, mesas y facturas de venta imprimibles (sin FE DIAN)
-        </p>
+        <p className="text-sm text-stone-500">Turno del día, mesas y comprobantes de venta</p>
       </div>
 
       {msg && <p className="text-sm text-orange-700">{msg}</p>}
@@ -445,11 +489,15 @@ export function CajaClient({
             />
           </div>
           <Button type="submit" variant="secondary" disabled={histLoading}>
-            {histLoading ? "Cargando..." : "Filtrar"}
+            {histLoading ? "Cargando..." : histLoaded ? "Filtrar" : "Cargar historial"}
           </Button>
         </form>
         {histMsg && <p className="text-xs text-orange-700">{histMsg}</p>}
-        {!historial.length ? (
+        {!histLoaded ? (
+          <p className="text-sm text-stone-500">
+            Elige un rango y pulsa cargar para ver aperturas/cierres.
+          </p>
+        ) : !historial.length ? (
           <p className="text-sm text-stone-500">Sin turnos en el rango</p>
         ) : (
           <ul className="max-h-80 divide-y overflow-y-auto text-sm">
@@ -534,24 +582,9 @@ export function CajaClient({
                     <span className="font-semibold">{formatCOP(v.total)}</span>
                     <Link href={`/ventas/${v.id}/ticket`} target="_blank">
                       <Button size="sm" variant="secondary">
-                        Ticket
-                      </Button>
-                    </Link>
-                    {v.factura_id ? (
-                      <Link href={`/facturas/${v.factura_id}`} target="_blank">
-                        <Button size="sm" variant="secondary">
-                          Factura
-                        </Button>
-                      </Link>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => setTarget({ kind: "mostrador", venta: v })}
-                      >
                         Factura
                       </Button>
-                    )}
+                    </Link>
                     <Button
                       size="sm"
                       variant="danger"
@@ -588,8 +621,8 @@ export function CajaClient({
                   <Button
                     size="sm"
                     variant="secondary"
-                    disabled={!m.detalle.length}
-                    onClick={() => setTarget({ kind: "mesa", mesa: m })}
+                    disabled={busy}
+                    onClick={() => void emitirFacturaMesa(m)}
                   >
                     Factura
                   </Button>
@@ -602,7 +635,12 @@ export function CajaClient({
 
       {facturasRecientes.length > 0 && (
         <Card>
-          <CardTitle>Facturas recientes</CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle>Facturas recientes</CardTitle>
+            <Link href="/facturas" className="text-xs text-orange-700 underline">
+              Ver todas
+            </Link>
+          </div>
           <ul className="mt-4 divide-y">
             {facturasRecientes.map((f) => (
               <li key={f.id} className="flex items-center justify-between gap-2 py-2 text-sm">
@@ -638,12 +676,18 @@ export function CajaClient({
               : ` Venta mostrador ${formatCOP(target.venta.total)}`}
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <ClientePicker selectedId={clienteId} onSelect={applyCliente} />
+            </div>
             <Input
               id="factura-nombre"
               name="factura-nombre"
               placeholder="Razón social / nombre *"
               value={cliente.nombre}
-              onChange={(e) => setCliente({ ...cliente, nombre: e.target.value })}
+              onChange={(e) => {
+                setClienteId(null);
+                setCliente({ ...cliente, nombre: e.target.value });
+              }}
             />
             <Input
               id="factura-documento"

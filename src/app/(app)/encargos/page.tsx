@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { ClientePicker } from "@/components/app/cliente-picker";
 import { CheckCircle2, PackageCheck, Wallet } from "lucide-react";
 
 const ESTADO_COLOR: Record<string, "warning" | "success" | "info" | "danger"> = {
@@ -27,6 +28,7 @@ const PAGO_COLOR: Record<string, "warning" | "success" | "info"> = {
 type FormState = {
   producto_id: string;
   descripcion: string;
+  cliente_id: string | null;
   cliente_nombre: string;
   cliente_telefono: string;
   fecha_entrega: string;
@@ -39,6 +41,7 @@ type FormState = {
 const emptyForm = (): FormState => ({
   producto_id: "",
   descripcion: "",
+  cliente_id: null,
   cliente_nombre: "",
   cliente_telefono: "",
   fecha_entrega: "",
@@ -111,6 +114,7 @@ export default function EncargosPage() {
       body: JSON.stringify({
         producto_id: form.producto_id || null,
         descripcion: form.descripcion,
+        cliente_id: form.cliente_id,
         cliente_nombre: form.cliente_nombre || null,
         cliente_telefono: form.cliente_telefono || null,
         fecha_entrega: form.fecha_entrega,
@@ -189,10 +193,25 @@ export default function EncargosPage() {
               required
               className="sm:col-span-2"
             />
+            <div className="sm:col-span-2">
+              <ClientePicker
+                selectedId={form.cliente_id}
+                onSelect={(c) =>
+                  setForm({
+                    ...form,
+                    cliente_id: c?.id ?? null,
+                    cliente_nombre: c?.nombre ?? form.cliente_nombre,
+                    cliente_telefono: c?.telefono ?? form.cliente_telefono,
+                  })
+                }
+              />
+            </div>
             <Input
               placeholder="Cliente"
               value={form.cliente_nombre}
-              onChange={(e) => setForm({ ...form, cliente_nombre: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, cliente_id: null, cliente_nombre: e.target.value })
+              }
             />
             <Input
               placeholder="Teléfono"

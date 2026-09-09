@@ -16,6 +16,9 @@ import {
   Store,
   Building2,
   TableProperties,
+  FileText,
+  Contact,
+  Boxes,
 } from "lucide-react";
 
 export const ROLE_LABELS: Record<UserRole, string> = {
@@ -78,11 +81,25 @@ export const FEATURE_PERMISOS: {
     defaultRoles: ["dueno", "admin", "caja"],
   },
   {
+    key: "facturas",
+    label: "Facturas",
+    href: "/facturas",
+    icon: FileText,
+    defaultRoles: ["dueno", "admin", "caja", "mostrador"],
+  },
+  {
     key: "encargos",
     label: "Encargos",
     href: "/encargos",
     icon: Package,
     defaultRoles: ["dueno", "admin", "mostrador", "mesero"],
+  },
+  {
+    key: "clientes",
+    label: "Clientes",
+    href: "/clientes",
+    icon: Contact,
+    defaultRoles: ["dueno", "admin", "mostrador", "mesero", "caja"],
   },
   {
     key: "recepciones",
@@ -104,6 +121,13 @@ export const FEATURE_PERMISOS: {
     href: "/insumos",
     icon: Wheat,
     defaultRoles: ["dueno", "admin", "mostrador", "caja"],
+  },
+  {
+    key: "inventario",
+    label: "Inventario",
+    href: "/inventario",
+    icon: Boxes,
+    defaultRoles: ["dueno", "admin", "caja"],
   },
   {
     key: "reportes",

@@ -7,11 +7,12 @@ import { createClient } from "@/lib/supabase/client";
 import { ProductGrid } from "@/components/app/product-grid";
 import { formatCOP } from "@/lib/format";
 import { loadVentaProductos } from "@/lib/productos";
-import type { ItemCuenta, Mesa, Producto, SubCuenta } from "@/types";
+import type { Cliente, ItemCuenta, Mesa, Producto, SubCuenta } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { ClientePicker } from "@/components/app/cliente-picker";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { MobileAccountSheet } from "@/components/app/mobile-account-sheet";
 
@@ -35,6 +36,7 @@ export default function MesaDetailPage() {
   const [cuentaOpen, setCuentaOpen] = useState(false);
   const [emitirFactura, setEmitirFactura] = useState(false);
   const [ivaPct, setIvaPct] = useState("0");
+  const [clienteId, setClienteId] = useState<string | null>(null);
   const [cliente, setCliente] = useState({
     nombre: "",
     documento: "",
@@ -42,6 +44,18 @@ export default function MesaDetailPage() {
     telefono: "",
     direccion: "",
   });
+
+  function applyCliente(c: Cliente | null) {
+    setClienteId(c?.id ?? null);
+    if (!c) return;
+    setCliente({
+      nombre: c.nombre,
+      documento: c.documento ?? "",
+      email: c.email ?? "",
+      telefono: c.telefono ?? "",
+      direccion: c.direccion ?? "",
+    });
+  }
 
   /** Solo ítems + subcuentas (rápido). No recarga catálogo. */
   const refreshCuenta = useCallback(async (cid: string) => {
@@ -305,6 +319,7 @@ export default function MesaDetailPage() {
         body: JSON.stringify({
           origen: "mesa",
           cuenta_mesa_id: cuentaId,
+          cliente_id: clienteId,
           cliente_nombre: cliente.nombre.trim(),
           cliente_documento: cliente.documento.trim() || null,
           cliente_email: cliente.email.trim() || null,
@@ -475,10 +490,14 @@ export default function MesaDetailPage() {
               <p className="text-xs text-stone-500">
                 Documento comercial para empresas. No es factura electrónica DIAN.
               </p>
+              <ClientePicker selectedId={clienteId} onSelect={applyCliente} />
               <Input
                 placeholder="Razón social / nombre *"
                 value={cliente.nombre}
-                onChange={(e) => setCliente({ ...cliente, nombre: e.target.value })}
+                onChange={(e) => {
+                  setClienteId(null);
+                  setCliente({ ...cliente, nombre: e.target.value });
+                }}
               />
               <Input
                 placeholder="NIT / CC"

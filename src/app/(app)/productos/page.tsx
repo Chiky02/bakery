@@ -20,6 +20,7 @@ type ProductForm = {
   encargable: boolean;
   control_stock: boolean;
   stock: string;
+  stock_minimo: string;
   orden: string;
   codigo_barras: string;
 };
@@ -32,6 +33,7 @@ const emptyProduct = (categoriaId = ""): ProductForm => ({
   encargable: false,
   control_stock: false,
   stock: "0",
+  stock_minimo: "0",
   orden: "0",
   codigo_barras: "",
 });
@@ -90,6 +92,7 @@ export default function ProductosPage() {
       encargable: form.encargable,
       control_stock: form.control_stock,
       stock: Number(form.stock) || 0,
+      stock_minimo: Number(form.stock_minimo) || 0,
       orden: Number(form.orden) || 0,
       codigo_barras: form.codigo_barras.trim() || null,
       tipo: "venta" as const,
@@ -108,12 +111,14 @@ export default function ProductosPage() {
       if (
         res.error.message.includes("encargable") ||
         res.error.message.includes("control_stock") ||
+        res.error.message.includes("stock_minimo") ||
         res.error.message.includes("stock")
       ) {
         const {
           encargable: _e,
           control_stock: _c,
           stock: _s,
+          stock_minimo: _m,
           ...without
         } = data;
         const res2 =
@@ -154,6 +159,7 @@ export default function ProductosPage() {
       encargable: !!p.encargable,
       control_stock: !!p.control_stock,
       stock: String(p.stock ?? 0),
+      stock_minimo: String(p.stock_minimo ?? 0),
       orden: String(p.orden),
       codigo_barras: p.codigo_barras ?? "",
     });
@@ -425,13 +431,22 @@ export default function ProductosPage() {
                 Controlar stock
               </label>
               {form.control_stock && (
-                <Input
-                  type="number"
-                  step="0.001"
-                  placeholder="Stock actual"
-                  value={form.stock}
-                  onChange={(e) => setForm({ ...form, stock: e.target.value })}
-                />
+                <>
+                  <Input
+                    type="number"
+                    step="0.001"
+                    placeholder="Stock actual"
+                    value={form.stock}
+                    onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                  />
+                  <Input
+                    type="number"
+                    step="0.001"
+                    placeholder="Stock mínimo (alerta)"
+                    value={form.stock_minimo}
+                    onChange={(e) => setForm({ ...form, stock_minimo: e.target.value })}
+                  />
+                </>
               )}
               <div className="flex gap-2">
                 <Button type="submit">{form.id ? "Actualizar" : "Crear"}</Button>
