@@ -5,8 +5,9 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { navForRole } from "@/lib/permissions";
+import { useBakery } from "@/lib/use-bakery-id";
 import { cn } from "@/lib/utils";
-import type { Miembro, Notificacion, Panaderia, Profile, UserRole } from "@/types";
+import type { Notificacion, Panaderia } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Bell, Menu, X } from "lucide-react";
 import { notificationHref } from "@/lib/notifications";
@@ -35,6 +36,7 @@ function NavLinks({
           <Link
             key={item.href}
             href={item.href}
+            prefetch={false}
             onClick={onNavigate}
             className={cn(
               "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
@@ -52,23 +54,8 @@ function NavLinks({
   );
 }
 
-export function AppShell({
-  profile,
-  panaderia,
-  rol,
-  roleLabel,
-  permisos,
-  memberships,
-  children,
-}: {
-  profile: Profile;
-  panaderia: Panaderia;
-  rol: UserRole;
-  roleLabel: string;
-  permisos: string[];
-  memberships: Miembro[];
-  children: React.ReactNode;
-}) {
+export function AppShell({ children }: { children: React.ReactNode }) {
+  const { profile, panaderia, rol, roleLabel, permisos, memberships } = useBakery();
   const pathname = usePathname();
   const router = useRouter();
   const nav = navForRole(rol, permisos);
@@ -82,15 +69,26 @@ export function AppShell({
 
   useEffect(() => {
     const supabase = createClient();
-    supabase
-      .from("notificaciones")
-      .select("*")
-      .eq("user_id", profile.id)
-      .eq("panaderia_id", panaderia.id)
-      .order("created_at", { ascending: false })
-      .limit(30)
-      .then(({ data }) => setNotifs((data as Notificacion[]) ?? []));
-  }, [profile.id, panaderia.id, pathname]);
+    let cancelled = false;
+
+    async function loadNotifs() {
+      const { data } = await supabase
+        .from("notificaciones")
+        .select("*")
+        .eq("user_id", profile.id)
+        .eq("panaderia_id", panaderia.id)
+        .order("created_at", { ascending: false })
+        .limit(30);
+      if (!cancelled) setNotifs((data as Notificacion[]) ?? []);
+    }
+
+    loadNotifs();
+    const interval = window.setInterval(loadNotifs, 60_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [profile.id, panaderia.id]);
 
   const unread = notifs.filter((n) => !n.leida).length;
 

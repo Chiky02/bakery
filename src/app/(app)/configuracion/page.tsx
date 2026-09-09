@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Panaderia, UserRole } from "@/types";
-import { useBakeryId } from "@/lib/use-bakery-id";
+import type { Panaderia } from "@/types";
+import { useBakery } from "@/lib/use-bakery-id";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,14 +12,15 @@ import { Building2, KeyRound, Store, UserRound } from "lucide-react";
 type Tab = "negocio" | "cuenta" | "alta";
 
 export default function ConfiguracionPage() {
-  const { panaderiaId, ready } = useBakeryId();
-  const [tab, setTab] = useState<Tab>("cuenta");
-  const [rol, setRol] = useState<UserRole | null>(null);
-  const [config, setConfig] = useState<Panaderia | null>(null);
+  const { panaderia, profile, rol } = useBakery();
+  const panaderiaId = panaderia.id;
+  const canManageNegocio = rol === "dueno" || rol === "admin";
+  const [tab, setTab] = useState<Tab>(canManageNegocio ? "negocio" : "cuenta");
+  const [config, setConfig] = useState<Panaderia>(panaderia);
   const [saved, setSaved] = useState(false);
   const [origin, setOrigin] = useState("");
 
-  const [nombre, setNombre] = useState("");
+  const [nombre, setNombre] = useState(profile.nombre);
   const [email, setEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -38,7 +39,10 @@ export default function ConfiguracionPage() {
   const [altaErr, setAltaErr] = useState("");
   const [altaLoading, setAltaLoading] = useState(false);
 
-  const canManageNegocio = rol === "dueno" || rol === "admin";
+  if (config.id !== panaderia.id) {
+    setConfig(panaderia);
+    setTab(canManageNegocio ? "negocio" : "cuenta");
+  }
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -46,37 +50,14 @@ export default function ConfiguracionPage() {
 
   useEffect(() => {
     (async () => {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
       const res = await fetch("/api/perfil");
       if (res.ok) {
         const body = await res.json();
-        setNombre(body.nombre ?? "");
+        setNombre(body.nombre ?? profile.nombre);
         setEmail(body.email ?? "");
       }
-
-      if (!panaderiaId) return;
-      const [{ data: pan }, { data: mem }] = await Promise.all([
-        supabase.from("panaderias").select("*").eq("id", panaderiaId).single(),
-        supabase
-          .from("miembros")
-          .select("rol")
-          .eq("panaderia_id", panaderiaId)
-          .eq("user_id", user.id)
-          .eq("activo", true)
-          .maybeSingle(),
-      ]);
-      setConfig(pan as Panaderia);
-      const r = (mem?.rol as UserRole) ?? null;
-      setRol(r);
-      if (r === "dueno" || r === "admin") setTab("negocio");
-      else setTab("cuenta");
     })();
-  }, [panaderiaId]);
+  }, [profile.nombre]);
 
   async function guardarNegocio() {
     if (!config || !panaderiaId) return;
@@ -170,8 +151,6 @@ export default function ConfiguracionPage() {
     );
     setAlta({ nombre: "", email: "", password: "", panaderia_nombre: "" });
   }
-
-  if (!ready || !config) return <p>Cargando...</p>;
 
   const tabs: { id: Tab; label: string; icon: typeof Store; show: boolean }[] = [
     { id: "negocio", label: "Negocio", icon: Store, show: canManageNegocio },

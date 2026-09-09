@@ -9,6 +9,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Eye, Pencil, Trash2, Plus, Check } from "lucide-react";
+import { useBakery } from "@/lib/use-bakery-id";
 
 type DraftItem = {
   descripcion: string;
@@ -52,11 +53,12 @@ const emptyProv = (): ProvForm => ({
 });
 
 export default function RecepcionesPage() {
+  const { profile, panaderia } = useBakery();
+  const panaderiaId = panaderia.id;
+  const userId = profile.id;
   const [recepciones, setRecepciones] = useState<Recepcion[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [panaderiaId, setPanaderiaId] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
   const [tab, setTab] = useState<"lista" | "nueva" | "proveedores" | "nuevo-proveedor">("lista");
   const [proveedorId, setProveedorId] = useState("");
   const [notas, setNotas] = useState("");
@@ -65,24 +67,6 @@ export default function RecepcionesPage() {
   const [viewProv, setViewProv] = useState<Proveedor | null>(null);
   const [selected, setSelected] = useState<Recepcion | null>(null);
   const [msg, setMsg] = useState("");
-
-  async function bootstrap() {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    setUserId(user.id);
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("panaderia_activa_id")
-      .eq("id", user.id)
-      .single();
-    const pid = profile?.panaderia_activa_id as string | null;
-    if (!pid) return;
-    setPanaderiaId(pid);
-    await loadAll(pid);
-  }
 
   async function loadAll(pid: string) {
     const supabase = createClient();
@@ -101,8 +85,8 @@ export default function RecepcionesPage() {
   }
 
   useEffect(() => {
-    bootstrap();
-  }, []);
+    if (panaderiaId) loadAll(panaderiaId);
+  }, [panaderiaId]);
 
   const totalEstimado = useMemo(
     () => items.reduce((s, i) => s + i.cantidad_pedida * i.costo_unitario, 0),

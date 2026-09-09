@@ -1,29 +1,8 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { Miembro, Panaderia, Profile, RolCustom, SessionContext, UserRole } from "@/types";
 import { ROLE_LABELS, defaultPermisosForRole } from "@/lib/permissions";
 import { redirect } from "next/navigation";
-
-export async function getSessionProfile(): Promise<Profile | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  const { data } = await supabase
-    .from("profiles")
-    .select("id, nombre, activo, panaderia_activa_id")
-    .eq("id", user.id)
-    .single();
-
-  return data as Profile | null;
-}
-
-export async function requireProfile(): Promise<Profile> {
-  const profile = await getSessionProfile();
-  if (!profile || !profile.activo) redirect("/login");
-  return profile;
-}
 
 function resolvePermisos(rol: UserRole, custom?: RolCustom | null): string[] {
   const fromDb = custom?.role_permisos?.map((p) => p.permiso) ?? [];
@@ -31,31 +10,55 @@ function resolvePermisos(rol: UserRole, custom?: RolCustom | null): string[] {
   return defaultPermisosForRole(rol);
 }
 
-export async function getSessionContext(): Promise<SessionContext | null> {
+/** Deduped per request: layout + page share the same Auth roundtrip. */
+export const getAuthUser = cache(async () => {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  return user;
+});
+
+export const getSessionProfile = cache(async (): Promise<Profile | null> => {
+  const user = await getAuthUser();
   if (!user) return null;
 
-  const { data: profile } = await supabase
+  const supabase = await createClient();
+  const { data } = await supabase
     .from("profiles")
     .select("id, nombre, activo, panaderia_activa_id")
     .eq("id", user.id)
     .single();
 
+  return data as Profile | null;
+});
+
+export async function requireProfile(): Promise<Profile> {
+  const profile = await getSessionProfile();
+  if (!profile || !profile.activo) redirect("/login");
+  return profile;
+}
+
+export const getSessionContext = cache(async (): Promise<SessionContext | null> => {
+  const user = await getAuthUser();
+  if (!user) return null;
+
+  const supabase = await createClient();
+  const [profile, membershipsRes] = await Promise.all([
+    getSessionProfile(),
+    supabase
+      .from("miembros")
+      .select("*, panaderias(*), roles(*, role_permisos(permiso))")
+      .eq("user_id", user.id)
+      .eq("activo", true),
+  ]);
+
   if (!profile || !profile.activo) return null;
 
-  const { data: memberships } = await supabase
-    .from("miembros")
-    .select("*, panaderias(*), roles(*, role_permisos(permiso))")
-    .eq("user_id", user.id)
-    .eq("activo", true);
-
-  const list = (memberships as Miembro[]) ?? [];
+  const list = (membershipsRes.data as Miembro[]) ?? [];
   if (list.length === 0) return null;
 
-  let active =
+  const active =
     list.find((m) => m.panaderia_id === profile.panaderia_activa_id) ?? list[0];
 
   if (profile.panaderia_activa_id !== active.panaderia_id) {
@@ -63,6 +66,7 @@ export async function getSessionContext(): Promise<SessionContext | null> {
       .from("profiles")
       .update({ panaderia_activa_id: active.panaderia_id })
       .eq("id", profile.id);
+    profile.panaderia_activa_id = active.panaderia_id;
   }
 
   const panaderia = active.panaderias as Panaderia;
@@ -74,14 +78,14 @@ export async function getSessionContext(): Promise<SessionContext | null> {
   const permisos = resolvePermisos(rol, custom);
 
   return {
-    profile: profile as Profile,
+    profile,
     panaderia,
     rol,
     roleLabel,
     permisos,
     memberships: list,
   };
-}
+});
 
 export async function requireBakeryContext(): Promise<SessionContext> {
   const ctx = await getSessionContext();

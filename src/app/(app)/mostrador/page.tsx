@@ -7,8 +7,10 @@ import { CartPanel } from "@/components/app/cart-panel";
 import type { CartItem, Producto } from "@/types";
 import { Input } from "@/components/ui/input";
 import { loadVentaProductos } from "@/lib/productos";
+import { useBakeryId } from "@/lib/use-bakery-id";
 
 export default function MostradorPage() {
+  const { panaderiaId } = useBakeryId();
   const [productos, setProductos] = useState<Producto[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
@@ -17,24 +19,15 @@ export default function MostradorPage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    if (!panaderiaId) return;
     (async () => {
       const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("panaderia_activa_id")
-        .eq("id", user.id)
-        .single();
-      if (!profile?.panaderia_activa_id) return;
-      const list = await loadVentaProductos(supabase, profile.panaderia_activa_id, {
+      const list = await loadVentaProductos(supabase, panaderiaId, {
         onlyDisponible: true,
       });
       setProductos(list);
     })();
-  }, []);
+  }, [panaderiaId]);
 
   const filtered = productos.filter(
     (p) =>
