@@ -1,41 +1,29 @@
 "use client";
 
-import { useState } from "react";
 import { formatCOP } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Producto } from "@/types";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Minus, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
+/**
+ * Catálogo POS: un toque = +1 (estándar en mostrador/mesero).
+ * La cantidad se ajusta en la cuenta, no en la tarjeta.
+ */
 export function ProductGrid({
   productos,
   onSelect,
   compact = false,
-  showQty = true,
 }: {
   productos: Producto[];
   onSelect: (p: Producto, cantidad: number) => void;
   compact?: boolean;
-  showQty?: boolean;
 }) {
-  const [qty, setQty] = useState<Record<string, number>>({});
   const byCategory = productos.reduce<Record<string, Producto[]>>((acc, p) => {
     const cat = p.categorias?.nombre ?? "Sin categoría";
     (acc[cat] ??= []).push(p);
     return acc;
   }, {});
-
-  function getQty(id: string) {
-    return qty[id] ?? 1;
-  }
-
-  function add(p: Producto) {
-    const n = getQty(p.id);
-    if (n <= 0) return;
-    onSelect(p, n);
-    setQty((q) => ({ ...q, [p.id]: 1 }));
-  }
 
   return (
     <div className="space-y-6">
@@ -51,52 +39,30 @@ export function ProductGrid({
             )}
           >
             {items.map((p) => (
-              <div
+              <button
                 key={p.id}
+                type="button"
+                disabled={!p.disponible}
+                onClick={() => onSelect(p, 1)}
                 className={cn(
-                  "rounded-xl border p-3 text-left",
+                  "rounded-xl border p-3 text-left transition active:scale-[0.98]",
                   p.disponible
-                    ? "border-stone-200 bg-white  "
-                    : "border-stone-100 bg-stone-50 opacity-50 ",
+                    ? "border-stone-200 bg-white hover:border-orange-300 hover:bg-orange-50/60"
+                    : "cursor-not-allowed border-stone-100 bg-stone-50 opacity-50",
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
                   <span className="text-sm font-medium leading-tight">{p.nombre}</span>
-                  {!p.disponible && <Badge color="danger">Agotado</Badge>}
+                  {!p.disponible ? (
+                    <Badge color="danger">Agotado</Badge>
+                  ) : (
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-800">
+                      <Plus className="h-3.5 w-3.5" aria-hidden />
+                    </span>
+                  )}
                 </div>
-                <p className="mt-2 text-sm font-semibold text-orange-700 ">
-                  {formatCOP(p.precio)}
-                </p>
-                {showQty && p.disponible && (
-                  <div className="mt-2 flex items-center gap-1">
-                    <button
-                      type="button"
-                      className="rounded border p-1 "
-                      onClick={() =>
-                        setQty((q) => ({ ...q, [p.id]: Math.max(0, getQty(p.id) - 1) }))
-                      }
-                    >
-                      <Minus className="h-3.5 w-3.5" />
-                    </button>
-                    <span className="min-w-6 text-center text-sm font-medium">{getQty(p.id)}</span>
-                    <button
-                      type="button"
-                      className="rounded border p-1 "
-                      onClick={() => setQty((q) => ({ ...q, [p.id]: getQty(p.id) + 1 }))}
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                )}
-                <Button
-                  size="sm"
-                  className="mt-2 w-full"
-                  disabled={!p.disponible || (showQty && getQty(p.id) <= 0)}
-                  onClick={() => (showQty ? add(p) : onSelect(p, 1))}
-                >
-                  Agregar
-                </Button>
-              </div>
+                <p className="mt-2 text-sm font-semibold text-orange-700">{formatCOP(p.precio)}</p>
+              </button>
             ))}
           </div>
         </section>

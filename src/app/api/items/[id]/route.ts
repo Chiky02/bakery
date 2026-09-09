@@ -28,7 +28,7 @@ export async function PATCH(
     .from("items_cuenta")
     .update(updates)
     .eq("id", id)
-    .select()
+    .select("*, productos(*)")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
@@ -50,7 +50,7 @@ export async function DELETE(
     .from("items_cuenta")
     .update({ estado: "cancelado", updated_at: new Date().toISOString() })
     .eq("id", id)
-    .select()
+    .select("*, productos(*)")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });

@@ -19,6 +19,8 @@ export default function MesaDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const closingRef = useRef(false);
+  /** Evita que el realtime dispare reload mientras nosotros mutamos. */
+  const mutatingRef = useRef(0);
   const [mesa, setMesa] = useState<Mesa | null>(null);
   const [cuentaId, setCuentaId] = useState<string | null>(null);
   const [items, setItems] = useState<ItemCuenta[]>([]);
@@ -32,26 +34,43 @@ export default function MesaDetailPage() {
   const [abriendo, setAbriendo] = useState(false);
   const [cuentaOpen, setCuentaOpen] = useState(false);
 
-  const load = useCallback(async () => {
+  /** Solo ítems + subcuentas (rápido). No recarga catálogo. */
+  const refreshCuenta = useCallback(async (cid: string) => {
+    if (closingRef.current) return;
+    const supabase = createClient();
+    const [{ data: its }, { data: subs }] = await Promise.all([
+      supabase
+        .from("items_cuenta")
+        .select("*, productos(*)")
+        .eq("cuenta_mesa_id", cid)
+        .neq("estado", "cancelado")
+        .order("created_at"),
+      supabase.from("sub_cuentas").select("*").eq("cuenta_mesa_id", cid),
+    ]);
+    setItems((its as ItemCuenta[]) ?? []);
+    setSubCuentas((subs as SubCuenta[]) ?? []);
+  }, []);
+
+  /** Carga inicial: mesa + catálogo + cuenta. */
+  const bootstrap = useCallback(async () => {
     if (closingRef.current) return;
     const supabase = createClient();
     const { data: mesaData } = await supabase.from("mesas").select("*").eq("id", id).single();
     setMesa(mesaData as Mesa);
     if (!mesaData) return;
 
-    const list = await loadVentaProductos(supabase, mesaData.panaderia_id, {
-      onlyDisponible: true,
-    });
+    const [list, cuentaRes] = await Promise.all([
+      loadVentaProductos(supabase, mesaData.panaderia_id, { onlyDisponible: true }),
+      supabase
+        .from("cuentas_mesa")
+        .select("*")
+        .eq("mesa_id", id)
+        .eq("estado", "abierta")
+        .maybeSingle(),
+    ]);
     setProductos(list);
 
-    // Nunca reabre sola: solo carga si hay cuenta abierta
-    const { data: cuenta } = await supabase
-      .from("cuentas_mesa")
-      .select("*")
-      .eq("mesa_id", id)
-      .eq("estado", "abierta")
-      .maybeSingle();
-
+    const cuenta = cuentaRes.data;
     if (!cuenta) {
       setCuentaId(null);
       setItems([]);
@@ -60,31 +79,30 @@ export default function MesaDetailPage() {
     }
 
     setCuentaId(cuenta.id);
-    const [{ data: its }, { data: subs }] = await Promise.all([
-      supabase
-        .from("items_cuenta")
-        .select("*, productos(*)")
-        .eq("cuenta_mesa_id", cuenta.id)
-        .neq("estado", "cancelado")
-        .order("created_at"),
-      supabase.from("sub_cuentas").select("*").eq("cuenta_mesa_id", cuenta.id),
-    ]);
-    setItems((its as ItemCuenta[]) ?? []);
-    setSubCuentas((subs as SubCuenta[]) ?? []);
-  }, [id]);
+    await refreshCuenta(cuenta.id);
+  }, [id, refreshCuenta]);
 
   useEffect(() => {
-    load();
+    bootstrap();
     const supabase = createClient();
     const channel = supabase
       .channel(`mesa-${id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "items_cuenta" }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "cuentas_mesa" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "items_cuenta" }, () => {
+        if (mutatingRef.current > 0 || closingRef.current) return;
+        setCuentaId((cid) => {
+          if (cid) void refreshCuenta(cid);
+          return cid;
+        });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "cuentas_mesa" }, () => {
+        if (mutatingRef.current > 0 || closingRef.current) return;
+        void bootstrap();
+      })
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [id, load]);
+  }, [id, bootstrap, refreshCuenta]);
 
   const total = items.reduce((s, i) => s + i.precio_al_momento * i.cantidad, 0);
   const filtered = productos.filter(
@@ -103,51 +121,144 @@ export default function MesaDetailPage() {
       setCerrarMsg(body.error ?? "No se pudo abrir la mesa");
       return;
     }
-    await load();
+    await bootstrap();
   }
 
   async function addProducto(producto: Producto, cantidad: number) {
     if (!cuentaId) return;
-    await fetch(`/api/cuentas/${cuentaId}/items`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ producto_id: producto.id, origen: "mesero", cantidad }),
-    });
-    load();
+    const qty = Math.max(1, cantidad);
+    const existing = items.find(
+      (i) =>
+        i.producto_id === producto.id &&
+        ["pendiente", "pendiente_confirmacion", "en_preparacion", "listo"].includes(i.estado),
+    );
+
+    const prev = items;
+    if (existing) {
+      setItems((list) =>
+        list.map((i) =>
+          i.id === existing.id ? { ...i, cantidad: i.cantidad + qty } : i,
+        ),
+      );
+    } else {
+      const tempId = `temp-${producto.id}-${Date.now()}`;
+      setItems((list) => [
+        ...list,
+        {
+          id: tempId,
+          cuenta_mesa_id: cuentaId,
+          sub_cuenta_id: null,
+          producto_id: producto.id,
+          cantidad: qty,
+          precio_al_momento: producto.precio,
+          origen: "mesero",
+          estado: "pendiente",
+          notas: null,
+          productos: producto,
+        },
+      ]);
+    }
+
+    mutatingRef.current += 1;
+    try {
+      const res = await fetch(`/api/cuentas/${cuentaId}/items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ producto_id: producto.id, origen: "mesero", cantidad: qty }),
+      });
+      if (!res.ok) {
+        setItems(prev);
+        return;
+      }
+      const saved = (await res.json()) as ItemCuenta;
+      setItems((list) => {
+        const rest = list.filter(
+          (i) =>
+            i.id !== saved.id &&
+            i.id !== existing?.id &&
+            !i.id.startsWith(`temp-${producto.id}-`),
+        );
+        return [...rest, saved];
+      });
+    } finally {
+      mutatingRef.current -= 1;
+    }
   }
 
   async function setCantidad(itemId: string, cantidad: number) {
-    await fetch(`/api/items/${itemId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cantidad }),
-    });
-    load();
+    const prev = items;
+    if (cantidad <= 0) {
+      setItems((list) => list.filter((i) => i.id !== itemId));
+    } else {
+      setItems((list) =>
+        list.map((i) => (i.id === itemId ? { ...i, cantidad } : i)),
+      );
+    }
+
+    mutatingRef.current += 1;
+    try {
+      const res = await fetch(`/api/items/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cantidad }),
+      });
+      if (!res.ok) {
+        setItems(prev);
+        return;
+      }
+      if (cantidad <= 0) return;
+      const saved = (await res.json()) as ItemCuenta;
+      setItems((list) => list.map((i) => (i.id === itemId ? saved : i)));
+    } finally {
+      mutatingRef.current -= 1;
+    }
   }
 
   async function quitar(itemId: string) {
-    await fetch(`/api/items/${itemId}`, { method: "DELETE" });
-    load();
+    const prev = items;
+    setItems((list) => list.filter((i) => i.id !== itemId));
+
+    mutatingRef.current += 1;
+    try {
+      const res = await fetch(`/api/items/${itemId}`, { method: "DELETE" });
+      if (!res.ok) setItems(prev);
+    } finally {
+      mutatingRef.current -= 1;
+    }
   }
 
   async function crearSubCuenta() {
     if (!cuentaId || !nuevaSub.trim()) return;
-    await fetch(`/api/cuentas/${cuentaId}/sub-cuentas`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ etiqueta: nuevaSub.trim() }),
-    });
-    setNuevaSub("");
-    load();
+    mutatingRef.current += 1;
+    try {
+      await fetch(`/api/cuentas/${cuentaId}/sub-cuentas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ etiqueta: nuevaSub.trim() }),
+      });
+      setNuevaSub("");
+      await refreshCuenta(cuentaId);
+    } finally {
+      mutatingRef.current -= 1;
+    }
   }
 
   async function asignarItem(itemId: string, subCuentaId: string | null) {
-    await fetch(`/api/items/${itemId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sub_cuenta_id: subCuentaId }),
-    });
-    load();
+    const prev = items;
+    setItems((list) =>
+      list.map((i) => (i.id === itemId ? { ...i, sub_cuenta_id: subCuentaId } : i)),
+    );
+    mutatingRef.current += 1;
+    try {
+      const res = await fetch(`/api/items/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sub_cuenta_id: subCuentaId }),
+      });
+      if (!res.ok) setItems(prev);
+    } finally {
+      mutatingRef.current -= 1;
+    }
   }
 
   async function cerrarMesa() {
@@ -178,7 +289,7 @@ export default function MesaDetailPage() {
     return (
       <div className="space-y-4">
         <div>
-          <Link href="/mesas" className="text-sm text-orange-700 hover:underline ">
+          <Link href="/mesas" className="text-sm text-orange-700 hover:underline">
             ← Mesas
           </Link>
           <h1 className="text-2xl font-bold">{mesa.nombre}</h1>
@@ -209,7 +320,12 @@ export default function MesaDetailPage() {
           <li key={item.id} className="rounded-lg bg-stone-50 p-2 text-sm">
             <div className="flex items-start justify-between gap-2">
               <span className="font-medium">{item.productos?.nombre}</span>
-              <button type="button" onClick={() => quitar(item.id)} aria-label="Quitar">
+              <button
+                type="button"
+                onClick={() => quitar(item.id)}
+                aria-label="Quitar"
+                disabled={item.id.startsWith("temp-")}
+              >
                 <Trash2 className="h-4 w-4 text-red-600" />
               </button>
             </div>
@@ -218,6 +334,7 @@ export default function MesaDetailPage() {
                 <button
                   type="button"
                   className="rounded border p-1"
+                  disabled={item.id.startsWith("temp-")}
                   onClick={() => setCantidad(item.id, item.cantidad - 1)}
                 >
                   <Minus className="h-3.5 w-3.5" />
@@ -226,6 +343,7 @@ export default function MesaDetailPage() {
                 <button
                   type="button"
                   className="rounded border p-1"
+                  disabled={item.id.startsWith("temp-")}
                   onClick={() => setCantidad(item.id, item.cantidad + 1)}
                 >
                   <Plus className="h-3.5 w-3.5" />
@@ -237,6 +355,7 @@ export default function MesaDetailPage() {
               <select
                 className="mt-1 w-full rounded border px-1 py-0.5 text-xs"
                 value={item.sub_cuenta_id ?? ""}
+                disabled={item.id.startsWith("temp-")}
                 onChange={(e) => asignarItem(item.id, e.target.value || null)}
               >
                 <option value="">General</option>
@@ -333,7 +452,6 @@ export default function MesaDetailPage() {
           <ProductGrid productos={filtered} onSelect={addProducto} compact />
         </div>
 
-        {/* Desktop: columna sticky con scroll interno y cerrar siempre visible */}
         <Card className="sticky top-4 hidden max-h-[calc(100dvh-6.5rem)] flex-col overflow-hidden lg:flex">
           <CardTitle className="shrink-0">Cuenta</CardTitle>
           <div className="mt-3 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-1">
