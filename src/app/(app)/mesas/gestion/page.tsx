@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MesaQrLink } from "@/components/app/mesa-qr-link";
+import { MesasGridSkeleton } from "@/components/app/loading-skeletons";
 import { Power, PowerOff, Trash2 } from "lucide-react";
 
 type MesaRow = Mesa & {
@@ -23,6 +24,7 @@ export default function MesasGestionPage() {
   const [zona, setZona] = useState("Salón");
   const [showInactive, setShowInactive] = useState(false);
   const [msg, setMsg] = useState("");
+  const [loaded, setLoaded] = useState(false);
 
   async function load() {
     if (!panaderiaId) return;
@@ -33,6 +35,7 @@ export default function MesasGestionPage() {
       .eq("panaderia_id", panaderiaId)
       .order("nombre");
     setMesas((data as MesaRow[]) ?? []);
+    setLoaded(true);
   }
 
   useEffect(() => {
@@ -132,6 +135,9 @@ export default function MesasGestionPage() {
         </label>
       </Card>
 
+      {!loaded ? (
+        <MesasGridSkeleton cards={6} />
+      ) : (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {visible.map((mesa) => {
           const activa = mesa.activa ?? true;
@@ -179,6 +185,7 @@ export default function MesasGestionPage() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }

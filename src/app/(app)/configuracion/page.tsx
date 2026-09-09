@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Building2, KeyRound, Store, UserRound } from "lucide-react";
+import { getPublicOrigin } from "@/lib/public-url";
+import Link from "next/link";
 
 type Tab = "negocio" | "cuenta" | "alta";
 
@@ -18,7 +20,7 @@ export default function ConfiguracionPage() {
   const [tab, setTab] = useState<Tab>(canManageNegocio ? "negocio" : "cuenta");
   const [config, setConfig] = useState<Panaderia>(panaderia);
   const [saved, setSaved] = useState(false);
-  const [origin, setOrigin] = useState("");
+  const origin = getPublicOrigin();
 
   const [nombre, setNombre] = useState(profile.nombre);
   const [email, setEmail] = useState("");
@@ -43,10 +45,6 @@ export default function ConfiguracionPage() {
     setConfig(panaderia);
     setTab(canManageNegocio ? "negocio" : "cuenta");
   }
-
-  useEffect(() => {
-    setOrigin(window.location.origin);
-  }, []);
 
   useEffect(() => {
     (async () => {
@@ -315,13 +313,16 @@ export default function ConfiguracionPage() {
               <CardTitle>Links de pedido QR</CardTitle>
               <p className="text-sm text-stone-500">
                 Copia el link de cada mesa en{" "}
-                <a href="/mesas" className="text-orange-700 underline ">
+                <Link href="/mesas" className="text-orange-700 underline">
                   Mesas
-                </a>
-                .
+                </Link>
+                . Usa el dominio de producción, no una URL de deploy.
               </p>
-              <code className="block break-all rounded-lg bg-stone-100 p-3 text-xs ">
-                {origin}/qr/[id-de-mesa]
+              <code
+                suppressHydrationWarning
+                className="block break-all rounded-lg bg-stone-100 p-3 text-xs"
+              >
+                {origin ? `${origin}/qr/[id-de-mesa]` : "/qr/[id-de-mesa]"}
               </code>
             </Card>
           )}

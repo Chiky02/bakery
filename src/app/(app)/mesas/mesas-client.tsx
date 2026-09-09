@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { useBakeryId } from "@/lib/use-bakery-id";
 import type { Mesa } from "@/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,40 +10,13 @@ import { Button } from "@/components/ui/button";
 import { MesaQrLink } from "@/components/app/mesa-qr-link";
 import { Armchair } from "lucide-react";
 
-type MesaRow = Mesa & {
+export type MesaRow = Mesa & {
   cuentas_mesa?: { id: string; estado: string; hora_apertura: string }[];
 };
 
-export default function MesasPage() {
+export function MesasClient({ mesas, qrOn }: { mesas: MesaRow[]; qrOn: boolean }) {
   const router = useRouter();
-  const { panaderiaId, ready } = useBakeryId();
-  const [mesas, setMesas] = useState<MesaRow[]>([]);
-  const [qrOn, setQrOn] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
-
-  async function load() {
-    if (!panaderiaId) return;
-    const supabase = createClient();
-    const [{ data }, { data: pan }] = await Promise.all([
-      supabase
-        .from("mesas")
-        .select("*, cuentas_mesa(id, estado, hora_apertura)")
-        .eq("panaderia_id", panaderiaId)
-        .order("nombre"),
-      supabase
-        .from("panaderias")
-        .select("pedido_directo_habilitado")
-        .eq("id", panaderiaId)
-        .single(),
-    ]);
-    const rows = ((data as MesaRow[]) ?? []).filter((m) => m.activa ?? true);
-    setMesas(rows);
-    setQrOn(!!pan?.pedido_directo_habilitado);
-  }
-
-  useEffect(() => {
-    if (ready) load();
-  }, [panaderiaId, ready]);
 
   async function entrar(mesa: MesaRow) {
     const cuentaAbierta = mesa.cuentas_mesa?.find((c) => c.estado === "abierta");
@@ -68,7 +39,7 @@ export default function MesasPage() {
           Abre cuentas y atiende mesas activas. La creación y desactivación está en Gestionar mesas.
         </p>
         {!qrOn && (
-          <p className="mt-2 text-sm text-orange-700 ">
+          <p className="mt-2 text-sm text-orange-700">
             Pedido QR desactivado.{" "}
             <Link href="/configuracion" className="underline">
               Configuración
@@ -78,7 +49,7 @@ export default function MesasPage() {
       </div>
 
       {mesas.length === 0 ? (
-        <Card className="flex flex-col items-center gap-3 p-8 text-center">
+        <Card className="flex min-h-[12rem] flex-col items-center justify-center gap-3 p-8 text-center">
           <Armchair className="h-8 w-8 text-stone-400" />
           <p className="text-sm text-stone-500">No hay mesas activas.</p>
           <Link href="/mesas/gestion">
@@ -90,7 +61,7 @@ export default function MesasPage() {
           {mesas.map((mesa) => {
             const cuentaAbierta = mesa.cuentas_mesa?.find((c) => c.estado === "abierta");
             return (
-              <Card key={mesa.id} className="flex flex-col justify-between">
+              <Card key={mesa.id} className="flex min-h-[11rem] flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="text-lg font-semibold">{mesa.nombre}</h3>
@@ -100,11 +71,9 @@ export default function MesasPage() {
                   </div>
                   <p className="text-sm text-stone-500">{mesa.zona}</p>
                   {cuentaAbierta && (
-                    <p className="mt-2 text-xs text-orange-700 ">
-                      Cuenta abierta
-                    </p>
+                    <p className="mt-2 text-xs text-orange-700">Cuenta abierta</p>
                   )}
-                  {mesa.qr_habilitado && (
+                  {qrOn && mesa.qr_habilitado && (
                     <MesaQrLink mesaId={mesa.id} mesaNombre={mesa.nombre} />
                   )}
                 </div>
