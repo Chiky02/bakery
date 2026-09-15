@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import {
+  assertPublicRateLimit,
+  clientIp,
+  getPublicServiceClient,
+  tooLargeBody,
+} from "@/lib/rate-limit-public";
 
 const schema = z.object({
   panaderia_id: z.string().uuid(),
@@ -8,23 +13,35 @@ const schema = z.object({
   descripcion: z.string().min(3).max(500),
   cliente_nombre: z.string().min(2).max(120),
   cliente_telefono: z.string().min(7).max(40),
-  fecha_entrega: z.string().min(8),
-  valor: z.number().int().min(0).optional(),
+  fecha_entrega: z.string().min(8).max(12),
+  valor: z.number().int().min(0).max(50_000_000).optional(),
   notas: z.string().max(500).nullable().optional(),
 });
 
-function getServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  );
-}
-
 export async function POST(request: Request) {
   try {
+    if (tooLargeBody(request, 12_288)) {
+      return NextResponse.json({ error: "Solicitud demasiado grande" }, { status: 413 });
+    }
+
+    const ip = clientIp(request);
+    const supabase = getPublicServiceClient();
+
+    // Rate limit temprano (antes de parsear body completo costoso / DB de negocio)
+    const limitedIp = await assertPublicRateLimit(supabase, [
+      { key: `encargo:ip:${ip}`, max: 5, windowSec: 60 },
+      { key: `encargo:ip:${ip}:hora`, max: 20, windowSec: 3600 },
+      { key: `encargo:global`, max: 80, windowSec: 60 },
+    ]);
+    if (limitedIp) return limitedIp;
+
     const body = schema.parse(await request.json());
-    const supabase = getServiceClient();
+
+    const limitedPan = await assertPublicRateLimit(supabase, [
+      { key: `encargo:pan:${body.panaderia_id}:ip:${ip}`, max: 4, windowSec: 60 },
+      { key: `encargo:pan:${body.panaderia_id}`, max: 30, windowSec: 60 },
+    ]);
+    if (limitedPan) return limitedPan;
 
     const { data: panaderia } = await supabase
       .from("panaderias")
@@ -38,6 +55,9 @@ export async function POST(request: Request) {
 
     const minHours = panaderia.tiempo_minimo_encargo_horas ?? 48;
     const entrega = new Date(`${body.fecha_entrega}T12:00:00`);
+    if (Number.isNaN(entrega.getTime())) {
+      return NextResponse.json({ error: "Fecha inválida" }, { status: 400 });
+    }
     const minDate = new Date(Date.now() + minHours * 60 * 60 * 1000);
     if (entrega < minDate) {
       return NextResponse.json(
@@ -76,7 +96,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // fecha_envio = hoy (solicitud); fecha_acordada/entrega = pedida por cliente
     const hoy = new Date().toISOString().slice(0, 10);
 
     const insertBase = {
@@ -120,4 +139,8 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
   }
+}
+
+export async function GET() {
+  return NextResponse.json({ error: "Método no permitido" }, { status: 405 });
 }

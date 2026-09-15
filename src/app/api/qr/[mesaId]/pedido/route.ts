@@ -1,28 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { isUuid } from "@/lib/public-url";
-
-function getServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  );
-}
-
-/** Rate limit simple en memoria (por instancia serverless). */
-const hits = new Map<string, { n: number; t: number }>();
-function rateLimit(key: string, max = 20, windowMs = 60_000) {
-  const now = Date.now();
-  const cur = hits.get(key);
-  if (!cur || now - cur.t > windowMs) {
-    hits.set(key, { n: 1, t: now });
-    return true;
-  }
-  if (cur.n >= max) return false;
-  cur.n += 1;
-  return true;
-}
+import {
+  assertPublicRateLimit,
+  clientIp,
+  getPublicServiceClient,
+  tooLargeBody,
+} from "@/lib/rate-limit-public";
 
 export async function POST(
   request: Request,
@@ -33,12 +16,20 @@ export async function POST(
     return NextResponse.json({ error: "Mesa inválida" }, { status: 400 });
   }
 
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  if (!rateLimit(`qr:${mesaId}:${ip}`, 15, 60_000)) {
-    return NextResponse.json({ error: "Demasiados pedidos. Espera un momento." }, { status: 429 });
+  if (tooLargeBody(request, 16_384)) {
+    return NextResponse.json({ error: "Solicitud demasiado grande" }, { status: 413 });
   }
 
-  const supabase = getServiceClient();
+  const ip = clientIp(request);
+  const supabase = getPublicServiceClient();
+
+  const limited = await assertPublicRateLimit(supabase, [
+    { key: `qr:ip:${ip}`, max: 20, windowSec: 60 },
+    { key: `qr:mesa:${mesaId}:ip:${ip}`, max: 8, windowSec: 60 },
+    { key: `qr:global`, max: 120, windowSec: 60 },
+  ]);
+  if (limited) return limited;
+
   let body: { items?: { producto_id?: string; cantidad?: number }[] };
   try {
     body = await request.json();
@@ -47,7 +38,7 @@ export async function POST(
   }
 
   const rawItems = Array.isArray(body.items) ? body.items : [];
-  if (rawItems.length === 0 || rawItems.length > 40) {
+  if (rawItems.length === 0 || rawItems.length > 25) {
     return NextResponse.json({ error: "Pedido inválido" }, { status: 400 });
   }
 
@@ -71,6 +62,12 @@ export async function POST(
     return NextResponse.json({ error: "QR deshabilitado" }, { status: 403 });
   }
 
+  // Límite adicional por panadería (evita flood a un local)
+  const limitedPan = await assertPublicRateLimit(supabase, [
+    { key: `qr:pan:${mesa.panaderia_id}`, max: 60, windowSec: 60 },
+  ]);
+  if (limitedPan) return limitedPan;
+
   let { data: cuenta } = await supabase
     .from("cuentas_mesa")
     .select("*")
@@ -89,7 +86,6 @@ export async function POST(
       .select()
       .single();
     if (openErr) {
-      // Carrera: otra petición abrió la cuenta
       const { data: again } = await supabase
         .from("cuentas_mesa")
         .select("*")
@@ -114,7 +110,7 @@ export async function POST(
   const inserts = [];
   for (const item of rawItems) {
     if (!item?.producto_id || !isUuid(item.producto_id)) continue;
-    const qty = Math.min(50, Math.max(1, Math.floor(Number(item.cantidad) || 1)));
+    const qty = Math.min(30, Math.max(1, Math.floor(Number(item.cantidad) || 1)));
 
     const { data: producto } = await supabase
       .from("productos")
@@ -151,4 +147,9 @@ export async function POST(
   });
 
   return NextResponse.json({ ok: true, cuenta_id: cuenta.id });
+}
+
+/** Método no permitido (evita sondeos inútiles). */
+export async function GET() {
+  return NextResponse.json({ error: "Método no permitido" }, { status: 405 });
 }
