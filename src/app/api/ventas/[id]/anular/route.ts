@@ -34,20 +34,44 @@ export async function POST(
     return NextResponse.json({ ok: true, already: true });
   }
 
-  const { error: updErr } = await supabase
+  const { data: updated, error: updErr } = await supabase
     .from("ventas_mostrador")
     .update({ anulado: true })
     .eq("id", id)
-    .eq("panaderia_id", ctx.panaderia.id);
+    .eq("panaderia_id", ctx.panaderia.id)
+    .eq("anulado", false)
+    .select("id, anulado")
+    .maybeSingle();
 
   if (updErr) {
-    if (/anulado/i.test(updErr.message)) {
+    if (/anulado|policy|permission/i.test(updErr.message)) {
       return NextResponse.json(
-        { error: "Aplica la migración de ventas (npm run db:push)" },
+        {
+          error:
+            "No se pudo anular (permisos/migración). Ejecuta npm run db:push e intenta de nuevo.",
+        },
         { status: 503 },
       );
     }
     return NextResponse.json({ error: updErr.message }, { status: 400 });
+  }
+
+  if (!updated?.anulado) {
+    return NextResponse.json(
+      { error: "No se marcó la venta como anulada. Revisa permisos RLS (db:push)." },
+      { status: 403 },
+    );
+  }
+
+  // Nota en factura vinculada (no la borramos: documento ya emitido)
+  if (venta.factura_id) {
+    await supabase
+      .from("facturas")
+      .update({
+        notas: "VENTA ANULADA — documento comercial anulado operativamente.",
+      })
+      .eq("id", venta.factura_id)
+      .eq("panaderia_id", ctx.panaderia.id);
   }
 
   const detalle = (venta.detalle ?? []) as {
@@ -63,13 +87,21 @@ export async function POST(
       .eq("id", line.producto_id)
       .maybeSingle();
     if (!prod?.control_stock) continue;
-    await supabase.rpc("ajustar_stock", {
+    const { error: stockErr } = await supabase.rpc("ajustar_stock", {
       p_producto: line.producto_id,
       p_cantidad: Number(line.cantidad),
       p_tipo: "ajuste",
       p_referencia: id,
       p_notas: "Anulación venta mostrador",
     });
+    if (stockErr) {
+      return NextResponse.json(
+        {
+          error: `Venta anulada pero falló revertir stock: ${stockErr.message}`,
+        },
+        { status: 409 },
+      );
+    }
   }
 
   return NextResponse.json({ ok: true });

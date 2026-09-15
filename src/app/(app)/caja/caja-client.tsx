@@ -9,6 +9,7 @@ import {
   totalConteo,
   type ConteoDenominaciones,
 } from "@/lib/caja-denominaciones";
+import { aporteEfectivo, aporteElectronico } from "@/lib/pago-split";
 import type { Cliente, Factura, MedioPago, TurnoCaja } from "@/types";
 import { CashCounter } from "@/components/app/cash-counter";
 import { ClientePicker } from "@/components/app/cliente-picker";
@@ -44,6 +45,8 @@ type VentaRow = {
   fecha_hora: string;
   total: number;
   medio_pago: MedioPago;
+  monto_efectivo?: number | null;
+  monto_electronico?: number | null;
   detalle: {
     nombre: string;
     cantidad: number;
@@ -60,6 +63,8 @@ type MesaCerradaRow = {
   hora_cierre: string;
   total: number;
   medio_pago: MedioPago | null;
+  monto_efectivo?: number | null;
+  monto_electronico?: number | null;
   mesa_nombre: string;
   detalle: { producto_id?: string; nombre: string; cantidad: number; precio: number }[];
 };
@@ -169,12 +174,10 @@ export function CajaClient({
   const esperadoEfectivoPreview = useMemo(() => {
     let e = turno?.fondo_inicial ?? 0;
     ventas.forEach((v) => {
-      if (v.medio_pago === "efectivo") e += v.total;
-      else if (v.medio_pago === "mixto") e += Math.round(v.total / 2);
+      e += aporteEfectivo(v);
     });
     mesasCerradasHoy.forEach((c) => {
-      if (c.medio_pago === "efectivo") e += c.total;
-      else if (c.medio_pago === "mixto") e += Math.round(c.total / 2);
+      e += aporteEfectivo({ ...c, total: c.total });
     });
     return e;
   }, [turno, ventas, mesasCerradasHoy]);
@@ -182,12 +185,10 @@ export function CajaClient({
   const esperadoElectronicoPreview = useMemo(() => {
     let e = 0;
     ventas.forEach((v) => {
-      if (v.medio_pago === "electronico") e += v.total;
-      else if (v.medio_pago === "mixto") e += v.total - Math.round(v.total / 2);
+      e += aporteElectronico(v);
     });
     mesasCerradasHoy.forEach((c) => {
-      if (c.medio_pago === "electronico") e += c.total;
-      else if (c.medio_pago === "mixto") e += c.total - Math.round(c.total / 2);
+      e += aporteElectronico({ ...c, total: c.total });
     });
     return e;
   }, [ventas, mesasCerradasHoy]);

@@ -184,6 +184,8 @@ export type VentaMostrador = {
   fecha_hora: string;
   total: number;
   medio_pago: MedioPago;
+  monto_efectivo?: number;
+  monto_electronico?: number;
   detalle: VentaDetalleItem[];
   anulado?: boolean;
   turno_id?: string | null;

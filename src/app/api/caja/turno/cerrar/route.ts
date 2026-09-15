@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireApiFeature } from "@/lib/api-context";
 import { totalConteo } from "@/lib/caja-denominaciones";
+import { aporteEfectivo, aporteElectronico } from "@/lib/pago-split";
 import { z } from "zod";
 
 const schema = z.object({
@@ -37,35 +38,81 @@ export async function POST(request: Request) {
     let esperadoEfectivo = Number(turno.fondo_inicial) || 0;
     let esperadoElectronico = 0;
 
-    const [{ data: ventasTurno }, { data: mesasTurno }] = await Promise.all([
+    const [ventasRaw, mesasRaw, movsRes] = await Promise.all([
       supabase
         .from("ventas_mostrador")
-        .select("total, medio_pago")
+        .select("total, medio_pago, monto_efectivo, monto_electronico")
         .eq("panaderia_id", ctx.panaderia.id)
         .eq("turno_id", turno.id)
         .eq("anulado", false),
       supabase
         .from("cuentas_mesa")
-        .select("total_final, medio_pago")
+        .select("total_final, medio_pago, monto_efectivo, monto_electronico")
         .eq("panaderia_id", ctx.panaderia.id)
         .eq("turno_id", turno.id)
         .eq("estado", "cerrada")
         .gt("total_final", 0),
+      supabase
+        .from("movimientos_caja")
+        .select("monto_efectivo, monto_electronico")
+        .eq("panaderia_id", ctx.panaderia.id)
+        .eq("turno_id", turno.id),
     ]);
 
-    function applyMedio(medio: string | null | undefined, total: number) {
-      if (medio === "efectivo") esperadoEfectivo += total;
-      else if (medio === "electronico") esperadoElectronico += total;
-      else if (medio === "mixto") {
-        // Sin desglose: mitad/mitad como aproximación operativa
-        const half = Math.round(total / 2);
-        esperadoEfectivo += half;
-        esperadoElectronico += total - half;
-      }
+    const movsTurno = /movimientos_caja|relation/i.test(movsRes.error?.message ?? "")
+      ? []
+      : (movsRes.data ?? []);
+
+    let ventasTurno: {
+      total?: number;
+      medio_pago?: string | null;
+      monto_efectivo?: number | null;
+      monto_electronico?: number | null;
+    }[] = ventasRaw.data ?? [];
+    let mesasTurno: {
+      total_final?: number;
+      medio_pago?: string | null;
+      monto_efectivo?: number | null;
+      monto_electronico?: number | null;
+    }[] = mesasRaw.data ?? [];
+    if (/monto_/i.test(ventasRaw.error?.message ?? "")) {
+      const { data } = await supabase
+        .from("ventas_mostrador")
+        .select("total, medio_pago")
+        .eq("panaderia_id", ctx.panaderia.id)
+        .eq("turno_id", turno.id)
+        .eq("anulado", false);
+      ventasTurno = data ?? [];
+    }
+    if (/monto_/i.test(mesasRaw.error?.message ?? "")) {
+      const { data } = await supabase
+        .from("cuentas_mesa")
+        .select("total_final, medio_pago")
+        .eq("panaderia_id", ctx.panaderia.id)
+        .eq("turno_id", turno.id)
+        .eq("estado", "cerrada")
+        .gt("total_final", 0);
+      mesasTurno = data ?? [];
     }
 
-    for (const v of ventasTurno ?? []) applyMedio(v.medio_pago, Number(v.total) || 0);
-    for (const c of mesasTurno ?? []) applyMedio(c.medio_pago, Number(c.total_final) || 0);
+    for (const v of ventasTurno) {
+      esperadoEfectivo += aporteEfectivo(v);
+      esperadoElectronico += aporteElectronico(v);
+    }
+    for (const c of mesasTurno) {
+      esperadoEfectivo += aporteEfectivo({
+        ...c,
+        total: c.total_final,
+      });
+      esperadoElectronico += aporteElectronico({
+        ...c,
+        total: c.total_final,
+      });
+    }
+    for (const m of movsTurno) {
+      esperadoEfectivo += Number(m.monto_efectivo) || 0;
+      esperadoElectronico += Number(m.monto_electronico) || 0;
+    }
 
     const payload: Record<string, unknown> = {
       estado: "cerrado",

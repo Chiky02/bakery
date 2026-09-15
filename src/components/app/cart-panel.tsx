@@ -5,6 +5,7 @@ import { formatCOP } from "@/lib/format";
 import type { CartItem, MedioPago } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { MobileAccountSheet } from "@/components/app/mobile-account-sheet";
 
 function PagoSelect({
@@ -106,7 +107,7 @@ function CartFooter({
         <span className="text-2xl font-bold text-amber-700">{formatCOP(total)}</span>
       </div>
       <p className="mt-1 text-xs text-stone-400">{hint}</p>
-      {message && <p className="mt-2 text-sm text-emerald-600">{message}</p>}
+      {message && <p className="mt-2 text-sm text-amber-800">{message}</p>}
       <div className="mt-3 flex gap-2">
         <Button variant="secondary" className="flex-1" onClick={onClear} disabled={!itemsLength}>
           Limpiar
@@ -123,6 +124,10 @@ export function CartPanel({
   items,
   medioPago,
   onMedioPago,
+  montoEfectivo,
+  montoElectronico,
+  onMontoEfectivo,
+  onMontoElectronico,
   onUpdateQty,
   onRemove,
   onClear,
@@ -136,6 +141,10 @@ export function CartPanel({
   items: CartItem[];
   medioPago: MedioPago;
   onMedioPago: (v: MedioPago) => void;
+  montoEfectivo?: string;
+  montoElectronico?: string;
+  onMontoEfectivo?: (v: string) => void;
+  onMontoElectronico?: (v: string) => void;
   onUpdateQty: (productoId: string, delta: number) => void;
   onRemove: (productoId: string) => void;
   onClear: () => void;
@@ -144,12 +153,12 @@ export function CartPanel({
   disabled?: boolean;
   hint?: string;
   message?: string;
-  /** Formulario adicional (ej. datos de factura) dentro del scroll, encima del total. */
   extra?: ReactNode;
 }) {
   const total = items.reduce((s, i) => s + i.producto.precio * i.cantidad, 0);
   const count = items.reduce((s, i) => s + i.cantidad, 0);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [recibido, setRecibido] = useState("");
   const prevCount = useRef(count);
 
   useEffect(() => {
@@ -157,9 +166,66 @@ export function CartPanel({
     prevCount.current = count;
   }, [count]);
 
+  const recibidoNum = Math.round(Number(recibido) || 0);
+  const cambio = medioPago === "efectivo" && recibidoNum > 0 ? recibidoNum - total : null;
+
+  const pagoExtra = (
+    <div className="space-y-2">
+      {medioPago === "mixto" && onMontoEfectivo && onMontoElectronico && (
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-xs text-stone-500">Efectivo</label>
+            <Input
+              type="number"
+              min={0}
+              value={montoEfectivo ?? ""}
+              onChange={(e) => onMontoEfectivo(e.target.value)}
+              placeholder="COP"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-stone-500">Electrónico</label>
+            <Input
+              type="number"
+              min={0}
+              value={montoElectronico ?? ""}
+              onChange={(e) => onMontoElectronico(e.target.value)}
+              placeholder="COP"
+            />
+          </div>
+          <p className="col-span-2 text-xs text-stone-400">
+            Debe sumar {formatCOP(total)}
+          </p>
+        </div>
+      )}
+      {medioPago === "efectivo" && (
+        <div>
+          <label className="text-xs text-stone-500">Recibido (opcional)</label>
+          <Input
+            type="number"
+            min={0}
+            value={recibido}
+            onChange={(e) => setRecibido(e.target.value)}
+            placeholder="Para calcular cambio"
+          />
+          {cambio != null && (
+            <p
+              className={`mt-1 text-sm font-medium ${
+                cambio < 0 ? "text-red-600" : "text-emerald-700"
+              }`}
+            >
+              {cambio < 0 ? `Faltan ${formatCOP(-cambio)}` : `Cambio ${formatCOP(cambio)}`}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   const scrollBody = (
     <div className="space-y-4">
       <PagoSelect value={medioPago} onChange={onMedioPago} />
+      {pagoExtra}
       <CartItemsList items={items} onUpdateQty={onUpdateQty} onRemove={onRemove} />
       {extra}
     </div>

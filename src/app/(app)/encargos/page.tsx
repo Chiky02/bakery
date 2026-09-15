@@ -143,6 +143,44 @@ export default function EncargosPage() {
     load();
   }
 
+  async function cobrarEncargo(
+    e: Encargo,
+    modo: "abono" | "pagado",
+  ) {
+    const pendiente = Math.max(0, (e.valor ?? 0) - (e.abono ?? 0));
+    if (pendiente <= 0) {
+      setMsg("Este encargo ya está pagado");
+      return;
+    }
+    const defaultMonto =
+      modo === "pagado" ? pendiente : Math.min(pendiente, Math.round((e.valor ?? 0) / 2));
+    const raw = window.prompt(
+      `Monto a cobrar en caja (saldo ${formatCOP(pendiente)}). Medio: efectivo.`,
+      String(defaultMonto),
+    );
+    if (raw == null) return;
+    const monto = Math.round(Number(raw) || 0);
+    if (monto <= 0) {
+      setMsg("Monto inválido");
+      return;
+    }
+    const res = await fetch(`/api/encargos/${e.id}/cobrar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        monto,
+        medio_pago: "efectivo",
+      }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setMsg(body.error ?? "No se registró el cobro");
+      return;
+    }
+    setMsg(`Cobro registrado: ${formatCOP(monto)}`);
+    load();
+  }
+
   const proximos = encargos.filter((e) => e.estado === "pendiente");
   const otros = encargos.filter((e) => e.estado !== "pendiente");
 
@@ -303,21 +341,16 @@ export default function EncargosPage() {
                   <Button
                     size="sm"
                     variant="secondary"
-                    title="Abonado"
-                    onClick={() =>
-                      patchEncargo(e.id, {
-                        estado_pago: "abonado",
-                        abono: e.abono && e.abono > 0 ? e.abono : Math.round(e.valor / 2),
-                      })
-                    }
+                    title="Registrar abono en caja (requiere turno)"
+                    onClick={() => void cobrarEncargo(e, "abono")}
                   >
                     Abono
                   </Button>
                   <Button
                     size="sm"
                     variant="secondary"
-                    title="Pagado"
-                    onClick={() => patchEncargo(e.id, { estado_pago: "pagado", abono: e.valor })}
+                    title="Registrar pago en caja (requiere turno)"
+                    onClick={() => void cobrarEncargo(e, "pagado")}
                   >
                     <CheckCircle2 className="h-4 w-4" />
                   </Button>

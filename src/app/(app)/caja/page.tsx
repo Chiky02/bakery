@@ -27,7 +27,7 @@ export default async function CajaPage() {
         .limit(40),
       supabase
         .from("ventas_mostrador")
-        .select("id, fecha_hora, total, medio_pago, detalle, factura_id, anulado")
+        .select("id, fecha_hora, total, medio_pago, detalle, factura_id, anulado, monto_efectivo, monto_electronico")
         .eq("panaderia_id", pid)
         .eq("anulado", false)
         .gte("fecha_hora", desde)
@@ -35,7 +35,7 @@ export default async function CajaPage() {
         .limit(30),
       supabase
         .from("cuentas_mesa")
-        .select("id, hora_cierre, total_final, medio_pago, mesas(nombre)")
+        .select("id, hora_cierre, total_final, medio_pago, monto_efectivo, monto_electronico, mesas(nombre)")
         .eq("panaderia_id", pid)
         .eq("estado", "cerrada")
         .gt("total_final", 0)
@@ -72,6 +72,8 @@ export default async function CajaPage() {
     }[],
     factura_id: (v.factura_id as string | null) ?? null,
     anulado: !!(v as { anulado?: boolean }).anulado,
+    monto_efectivo: (v as { monto_efectivo?: number }).monto_efectivo ?? null,
+    monto_electronico: (v as { monto_electronico?: number }).monto_electronico ?? null,
   }));
 
   const mesasHoy = (mesasCerradas ?? []).map((c) => ({
@@ -79,6 +81,8 @@ export default async function CajaPage() {
     hora_cierre: (c.hora_cierre as string) ?? "",
     total: (c.total_final as number) ?? 0,
     medio_pago: (c.medio_pago as MedioPago | null) ?? null,
+    monto_efectivo: (c as { monto_efectivo?: number }).monto_efectivo ?? null,
+    monto_electronico: (c as { monto_electronico?: number }).monto_electronico ?? null,
     mesa_nombre: (c.mesas as { nombre?: string } | null)?.nombre ?? "Mesa",
     detalle: [] as {
       producto_id?: string;

@@ -37,7 +37,8 @@ const schema = z.object({
         precio: z.number().int().min(0),
       }),
     )
-    .min(1),
+    .optional()
+    .default([]),
 });
 
 export async function GET(request: Request) {
@@ -85,13 +86,72 @@ export async function POST(request: Request) {
 
   try {
     const body = schema.parse(await request.json());
-    const lines = body.detalle.map((d) => ({
-      producto_id: d.producto_id,
-      nombre: d.nombre,
-      cantidad: d.cantidad,
-      precio: d.precio,
-      subtotal: Math.round(d.precio * d.cantidad),
-    }));
+
+    type Line = {
+      producto_id?: string;
+      nombre: string;
+      cantidad: number;
+      precio: number;
+      subtotal: number;
+    };
+    let lines: Line[] = [];
+
+    if (body.venta_id) {
+      const { data: venta } = await supabase
+        .from("ventas_mostrador")
+        .select("id, detalle, anulado")
+        .eq("id", body.venta_id)
+        .eq("panaderia_id", ctx.panaderia.id)
+        .maybeSingle();
+      if (!venta || venta.anulado) {
+        return NextResponse.json({ error: "Venta no válida para facturar" }, { status: 400 });
+      }
+      const det = (venta.detalle ?? []) as {
+        producto_id?: string;
+        nombre: string;
+        cantidad: number;
+        precio: number;
+        subtotal?: number;
+      }[];
+      lines = det.map((d) => ({
+        producto_id: d.producto_id,
+        nombre: d.nombre,
+        cantidad: Number(d.cantidad),
+        precio: Math.round(Number(d.precio)),
+        subtotal: Math.round(Number(d.subtotal ?? Number(d.precio) * Number(d.cantidad))),
+      }));
+    } else if (body.cuenta_mesa_id) {
+      const { data: items } = await supabase
+        .from("items_cuenta")
+        .select("producto_id, cantidad, precio_al_momento, productos(nombre)")
+        .eq("cuenta_mesa_id", body.cuenta_mesa_id)
+        .neq("estado", "cancelado");
+      lines = (items ?? []).map((i) => {
+        const precio = Math.round(Number(i.precio_al_momento));
+        const cantidad = Number(i.cantidad);
+        const nombre = (i.productos as { nombre?: string } | null)?.nombre ?? "Ítem";
+        return {
+          producto_id: i.producto_id ?? undefined,
+          nombre,
+          cantidad,
+          precio,
+          subtotal: Math.round(precio * cantidad),
+        };
+      });
+    } else {
+      lines = (body.detalle ?? []).map((d) => ({
+        producto_id: d.producto_id,
+        nombre: d.nombre,
+        cantidad: d.cantidad,
+        precio: d.precio,
+        subtotal: Math.round(d.precio * d.cantidad),
+      }));
+    }
+
+    if (lines.length === 0) {
+      return NextResponse.json({ error: "Sin ítems para facturar" }, { status: 400 });
+    }
+
     const subtotal = lines.reduce((s, l) => s + l.subtotal, 0);
     const iva = Math.round(subtotal * ((body.iva_porcentaje ?? 0) / 100));
     const total = subtotal + iva;
@@ -118,7 +178,6 @@ export async function POST(request: Request) {
 
     let { data: facturaId, error } = await supabase.rpc("emitir_factura", rpcArgs);
 
-    // Si la migración aún no tiene p_cliente_id, reintentar sin él y actualizar luego
     if (error && body.cliente_id && /p_cliente_id|cliente_id/i.test(error.message)) {
       delete rpcArgs.p_cliente_id;
       const retry = await supabase.rpc("emitir_factura", rpcArgs);

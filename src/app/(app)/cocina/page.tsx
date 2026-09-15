@@ -31,7 +31,7 @@ export default function CocinaPage() {
       .select("*, productos(*), cuentas_mesa!inner(id, estado, panaderia_id, mesas(nombre))")
       .eq("cuentas_mesa.panaderia_id", panaderiaId)
       .eq("cuentas_mesa.estado", "abierta")
-      .in("estado", ["pendiente", "pendiente_confirmacion", "en_preparacion"])
+      .in("estado", ["pendiente", "en_preparacion"])
       .order("created_at");
     setItems((data as ItemConMesa[]) ?? []);
   }

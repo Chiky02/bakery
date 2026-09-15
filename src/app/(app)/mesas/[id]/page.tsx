@@ -41,6 +41,8 @@ export default function MesaDetailPage() {
   const [emitirFactura, setEmitirFactura] = useState(false);
   const [ivaPct, setIvaPct] = useState("0");
   const [turnoAbierto, setTurnoAbierto] = useState(true);
+  const [montoEfectivo, setMontoEfectivo] = useState("");
+  const [montoElectronico, setMontoElectronico] = useState("");
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [cliente, setCliente] = useState({
     nombre: "",
@@ -325,7 +327,11 @@ export default function MesaDetailPage() {
     const res = await fetch(`/api/cuentas/${cuentaId}/cerrar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ total_final: total, medio_pago: medioPago }),
+      body: JSON.stringify({
+        medio_pago: medioPago,
+        monto_efectivo: medioPago === "mixto" ? Number(montoEfectivo) || 0 : undefined,
+        monto_electronico: medioPago === "mixto" ? Number(montoElectronico) || 0 : undefined,
+      }),
     });
     if (!res.ok) {
       closingRef.current = false;
@@ -488,16 +494,34 @@ export default function MesaDetailPage() {
         </div>
       )}
       {total > 0 ? (
-        <select
-          className="mt-2 w-full rounded-lg border px-3 py-2 text-sm"
-          value={medioPago}
-          onChange={(e) => setMedioPago(e.target.value as typeof medioPago)}
-          disabled={!turnoAbierto}
-        >
-          <option value="efectivo">Efectivo</option>
-          <option value="electronico">Electrónico</option>
-          <option value="mixto">Mixto</option>
-        </select>
+        <>
+          <select
+            className="mt-2 w-full rounded-lg border px-3 py-2 text-sm"
+            value={medioPago}
+            onChange={(e) => setMedioPago(e.target.value as typeof medioPago)}
+            disabled={!turnoAbierto}
+          >
+            <option value="efectivo">Efectivo</option>
+            <option value="electronico">Electrónico</option>
+            <option value="mixto">Mixto</option>
+          </select>
+          {medioPago === "mixto" && turnoAbierto && (
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <Input
+                type="number"
+                placeholder="Efectivo"
+                value={montoEfectivo}
+                onChange={(e) => setMontoEfectivo(e.target.value)}
+              />
+              <Input
+                type="number"
+                placeholder="Electrónico"
+                value={montoElectronico}
+                onChange={(e) => setMontoElectronico(e.target.value)}
+              />
+            </div>
+          )}
+        </>
       ) : (
         <p className="mt-2 text-xs text-stone-500">
           Sin ítems cobrables: se libera la mesa y no se registra venta.

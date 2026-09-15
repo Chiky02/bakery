@@ -35,6 +35,8 @@ export function MostradorClient({
     direccion: "",
   });
   const [ivaPct, setIvaPct] = useState("0");
+  const [montoEfectivo, setMontoEfectivo] = useState("");
+  const [montoElectronico, setMontoElectronico] = useState("");
   const printTicket = panaderia.imprimir_ticket_venta !== false;
 
   function applyCliente(c: Cliente | null) {
@@ -100,7 +102,12 @@ export function MostradorClient({
     const res = await fetch("/api/ventas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ medio_pago: medioPago, detalle: detalleCart }),
+      body: JSON.stringify({
+        medio_pago: medioPago,
+        monto_efectivo: medioPago === "mixto" ? Number(montoEfectivo) || 0 : undefined,
+        monto_electronico: medioPago === "mixto" ? Number(montoElectronico) || 0 : undefined,
+        detalle: detalleCart,
+      }),
     });
 
     if (!res.ok) {
@@ -276,12 +283,16 @@ export function MostradorClient({
           items={cart}
           medioPago={medioPago}
           onMedioPago={setMedioPago}
+          montoEfectivo={montoEfectivo}
+          montoElectronico={montoElectronico}
+          onMontoEfectivo={setMontoEfectivo}
+          onMontoElectronico={setMontoElectronico}
           onUpdateQty={updateQty}
           onRemove={(id) => updateQty(id, -999)}
           onClear={() => setCart([])}
           onCheckout={checkout}
           disabled={loading || !turnoAbierto}
-          message={message}
+          message={messageError ? message : undefined}
           extra={facturaExtra}
         />
       </div>
