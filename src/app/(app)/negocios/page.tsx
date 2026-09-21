@@ -1,18 +1,22 @@
-import Link from "next/link";
 import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/admin";
 import { ROLE_LABELS } from "@/lib/permissions";
 import type { UserRole } from "@/types";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { GestionarEquipoButton } from "./gestionar-equipo-button";
+import Link from "next/link";
 
 type MemberRow = {
   id: string;
   rol: UserRole;
   activo: boolean;
   panaderia_id: string;
-  profiles: { nombre?: string } | null;
-  roles: { nombre?: string; codigo?: string; rol_base?: UserRole } | null;
+  user_id: string;
+  role_id: string | null;
+  nombre: string;
+  role_nombre: string | null;
 };
 
 type PanaderiaRow = {
@@ -34,21 +38,55 @@ export default async function NegociosPage() {
 
   const panaderiaIds = managedIds.length > 0 ? managedIds : [activa.id];
 
-  const [{ data: panaderias }, { data: miembros }] = await Promise.all([
-    supabase
-      .from("panaderias")
-      .select("id, nombre, slug, activa, telefono, direccion")
-      .in("id", panaderiaIds)
-      .order("nombre"),
-    supabase
-      .from("miembros")
-      .select("id, rol, activo, panaderia_id, profiles(nombre), roles(nombre, codigo, rol_base)")
-      .in("panaderia_id", panaderiaIds)
-      .order("rol"),
-  ]);
+  const { data: panaderias } = await supabase
+    .from("panaderias")
+    .select("id, nombre, slug, activa, telefono, direccion")
+    .in("id", panaderiaIds)
+    .order("nombre");
 
   const list = (panaderias as PanaderiaRow[] | null) ?? [];
-  const members = (miembros as MemberRow[] | null) ?? [];
+
+  // Service role: evita embeds profiles/roles rotos por RLS
+  const admin = getServiceClient();
+  const { data: miembrosRaw } = await admin
+    .from("miembros")
+    .select("id, rol, activo, panaderia_id, user_id, role_id")
+    .in("panaderia_id", panaderiaIds)
+    .order("rol");
+
+  const raw = miembrosRaw ?? [];
+  const userIds = [...new Set(raw.map((m) => m.user_id))];
+  const roleIds = [...new Set(raw.map((m) => m.role_id).filter(Boolean))] as string[];
+
+  const [{ data: profiles }, { data: roles }] = await Promise.all([
+    userIds.length
+      ? admin.from("profiles").select("id, nombre").in("id", userIds)
+      : Promise.resolve({ data: [] as { id: string; nombre: string }[] }),
+    roleIds.length
+      ? admin.from("roles").select("id, nombre").in("id", roleIds)
+      : Promise.resolve({ data: [] as { id: string; nombre: string }[] }),
+  ]);
+
+  const profileById = new Map(
+    ((profiles as { id: string; nombre: string }[]) ?? []).map((p) => [p.id, p.nombre]),
+  );
+  const roleById = new Map(
+    ((roles as { id: string; nombre: string }[]) ?? []).map((r) => [r.id, r.nombre]),
+  );
+
+  const members: MemberRow[] = raw.map((m) => {
+    const rol = m.rol as UserRole;
+    return {
+      id: m.id,
+      rol,
+      activo: m.activo,
+      panaderia_id: m.panaderia_id,
+      user_id: m.user_id,
+      role_id: m.role_id,
+      nombre: profileById.get(m.user_id)?.trim() || "Sin nombre",
+      role_nombre: (m.role_id && roleById.get(m.role_id)) || ROLE_LABELS[rol] || rol,
+    };
+  });
 
   const byPanaderia = new Map<string, MemberRow[]>();
   for (const m of members) {
@@ -108,14 +146,7 @@ export default async function NegociosPage() {
                     <span className="text-stone-500">
                       {teamActivos}/{team.length} usuario{team.length === 1 ? "" : "s"}
                     </span>
-                    {isActiva && (
-                      <Link
-                        href="/usuarios"
-                        className="rounded-lg border border-stone-200 px-3 py-1.5 font-medium text-stone-700 hover:bg-stone-50"
-                      >
-                        Gestionar equipo
-                      </Link>
-                    )}
+                    <GestionarEquipoButton panaderiaId={p.id} isActiva={isActiva} />
                   </div>
                 </div>
 
@@ -124,30 +155,23 @@ export default async function NegociosPage() {
                 ) : (
                   <ul className="divide-y border-t border-stone-100">
                     {team.map((m) => {
-                      const profile = m.profiles;
-                      const custom = m.roles;
-                      const roleName =
-                        custom?.nombre?.trim() || ROLE_LABELS[m.rol] || m.rol;
                       const baseLabel = ROLE_LABELS[m.rol] ?? m.rol;
-
                       return (
                         <li
                           key={m.id}
                           className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
                         >
                           <div>
-                            <p className="font-medium text-stone-900">
-                              {profile?.nombre?.trim() || "Sin nombre"}
-                            </p>
+                            <p className="font-medium text-stone-900">{m.nombre}</p>
                             <p className="text-xs text-stone-500">
                               Nivel base: {baseLabel}
-                              {custom?.nombre && custom.nombre !== baseLabel
-                                ? ` · rol custom`
+                              {m.role_nombre && m.role_nombre !== baseLabel
+                                ? " · rol custom"
                                 : ""}
                             </p>
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <Badge color="info">{roleName}</Badge>
+                            <Badge color="info">{m.role_nombre ?? baseLabel}</Badge>
                             <Badge color={m.activo ? "success" : "danger"}>
                               {m.activo ? "Activo" : "Inactivo"}
                             </Badge>
@@ -164,9 +188,9 @@ export default async function NegociosPage() {
       )}
 
       <p className="text-xs text-stone-400">
-        Para invitar o cambiar roles del local en el que estás, usa{" "}
+        Para invitar o cambiar roles del local, usa{" "}
         <Link href="/usuarios" className="underline hover:text-stone-600">
-          Usuarios
+          Usuarios → Equipo
         </Link>
         . El alta de un negocio nuevo está en Configuración.
       </p>

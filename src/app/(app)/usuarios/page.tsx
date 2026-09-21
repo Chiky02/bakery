@@ -1,20 +1,31 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import type { Miembro, Profile, RolCustom, UserRole } from "@/types";
+import type { RolCustom, UserRole } from "@/types";
 import {
   FEATURE_PERMISOS,
   ROLE_LABELS,
   defaultPermisosForRole,
   slugify,
 } from "@/lib/permissions";
-import { useBakeryId } from "@/lib/use-bakery-id";
+import { useBakery, useBakeryId } from "@/lib/use-bakery-id";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CuentasAuthPanel } from "./cuentas-auth-panel";
+
+type EquipoMember = {
+  id: string;
+  user_id: string;
+  panaderia_id: string;
+  rol: UserRole;
+  role_id: string | null;
+  activo: boolean;
+  nombre: string;
+  profile_activo: boolean;
+  role_nombre: string | null;
+};
 
 type Tab = "equipo" | "cuentas" | "roles";
 
@@ -36,9 +47,10 @@ const emptyForm = (): RoleForm => ({
 });
 
 export default function UsuariosPage() {
+  const { panaderia } = useBakery();
   const { panaderiaId } = useBakeryId();
   const [tab, setTab] = useState<Tab>("equipo");
-  const [miembros, setMiembros] = useState<Miembro[]>([]);
+  const [miembros, setMiembros] = useState<EquipoMember[]>([]);
   const [roles, setRoles] = useState<RolCustom[]>([]);
   const [email, setEmail] = useState("");
   const [nombre, setNombre] = useState("");
@@ -51,6 +63,7 @@ export default function UsuariosPage() {
   const [roleMsg, setRoleMsg] = useState("");
   const [roleErr, setRoleErr] = useState("");
   const [savingRole, setSavingRole] = useState(false);
+  const [loadingEquipo, setLoadingEquipo] = useState(false);
 
   const loadRoles = useCallback(async () => {
     const res = await fetch("/api/roles");
@@ -67,13 +80,16 @@ export default function UsuariosPage() {
 
   const loadMiembros = useCallback(async () => {
     if (!panaderiaId) return;
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("miembros")
-      .select("*, profiles(id, nombre, activo), roles(id, nombre, codigo, activo)")
-      .eq("panaderia_id", panaderiaId)
-      .order("rol");
-    setMiembros((data as Miembro[]) ?? []);
+    setLoadingEquipo(true);
+    const res = await fetch(`/api/usuarios/equipo?panaderia_id=${encodeURIComponent(panaderiaId)}`);
+    const body = await res.json().catch(() => ({}));
+    setLoadingEquipo(false);
+    if (!res.ok) {
+      setError(body.error ?? "No se pudo cargar el equipo");
+      setMiembros([]);
+      return;
+    }
+    setMiembros((body.members as EquipoMember[]) ?? []);
   }, [panaderiaId]);
 
   useEffect(() => {
@@ -206,7 +222,8 @@ export default function UsuariosPage() {
       <div>
         <h1 className="text-2xl font-bold">Usuarios</h1>
         <p className="text-sm text-stone-500">
-          Equipo del local, cuentas de Auth (todos los negocios) y roles del panel
+          Equipo de <span className="font-medium text-stone-700">{panaderia.nombre}</span>,
+          cuentas de Auth y roles del panel
         </p>
       </div>
 
@@ -282,19 +299,20 @@ export default function UsuariosPage() {
 
           <Card>
             <CardTitle>Equipo ({miembros.length})</CardTitle>
-            <ul className="mt-4 divide-y">
-              {miembros.map((m) => {
-                const p = m.profiles as Profile | undefined;
-                const role = m.roles as RolCustom | undefined;
-                return (
+            {loadingEquipo ? (
+              <p className="mt-4 text-sm text-stone-500">Cargando equipo…</p>
+            ) : (
+              <ul className="mt-4 divide-y">
+                {miembros.map((m) => (
                   <li
                     key={m.id}
                     className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div>
-                      <p className="font-medium">{p?.nombre ?? m.user_id.slice(0, 8)}</p>
+                      <p className="font-medium">{m.nombre}</p>
                       <p className="text-xs text-stone-500">
                         Base RLS: {ROLE_LABELS[m.rol as UserRole]}
+                        {!m.profile_activo ? " · cuenta Auth inactiva" : ""}
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -311,7 +329,7 @@ export default function UsuariosPage() {
                           </option>
                         ))}
                       </select>
-                      <Badge>{role?.nombre ?? ROLE_LABELS[m.rol as UserRole]}</Badge>
+                      <Badge>{m.role_nombre ?? ROLE_LABELS[m.rol as UserRole]}</Badge>
                       <Button
                         type="button"
                         variant="ghost"
@@ -325,9 +343,14 @@ export default function UsuariosPage() {
                       </Badge>
                     </div>
                   </li>
-                );
-              })}
-            </ul>
+                ))}
+                {miembros.length === 0 && (
+                  <li className="py-4 text-sm text-stone-500">
+                    Nadie asignado a este local. Invita alguien arriba o revisa Cuentas Auth.
+                  </li>
+                )}
+              </ul>
+            )}
           </Card>
         </>
       )}
