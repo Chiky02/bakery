@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { User } from "@supabase/supabase-js";
-import { requireApiContext } from "@/lib/api-context";
+import { requireApiContext, assertPlatformAdmin } from "@/lib/api-context";
 import { getServiceClient } from "@/lib/supabase/admin";
 import type { UserRole } from "@/types";
 
@@ -45,9 +45,8 @@ export async function GET() {
   if (result instanceof NextResponse) return result;
   const { ctx } = result;
 
-  if (!["dueno", "admin"].includes(ctx.rol)) {
-    return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
-  }
+  const denied = assertPlatformAdmin(ctx);
+  if (denied) return denied;
 
   try {
     const admin = getServiceClient();

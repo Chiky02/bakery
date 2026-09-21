@@ -3,20 +3,26 @@ import {
   canAccess,
   defaultPermisosForRole,
   navForRole,
+  resolveSessionPermisos,
   slugify,
 } from "./permissions";
 
 describe("defaultPermisosForRole", () => {
-  it("da módulos de dueño/admin", () => {
+  it("dueño opera su local pero no ve Negocios (plataforma)", () => {
     const p = defaultPermisosForRole("dueno");
     expect(p).toContain("dashboard");
     expect(p).toContain("usuarios");
-    expect(p).toContain("negocios");
     expect(p).toContain("reportes");
+    expect(p).not.toContain("negocios");
   });
 
-  it("cocina solo ve cocina + config + panaderías", () => {
+  it("gerente (admin tenant) tampoco tiene negocios", () => {
+    expect(defaultPermisosForRole("admin")).not.toContain("negocios");
+  });
+
+  it("cocina ve cocina + dashboard + config + panaderías", () => {
     const p = defaultPermisosForRole("cocina");
+    expect(p).toContain("dashboard");
     expect(p).toContain("cocina");
     expect(p).toContain("configuracion");
     expect(p).not.toContain("caja");
@@ -29,6 +35,12 @@ describe("canAccess", () => {
     expect(canAccess("mesero", "/mesas")).toBe(true);
     expect(canAccess("mesero", "/caja")).toBe(false);
     expect(canAccess("admin", "/reportes")).toBe(true);
+  });
+
+  it("negocios solo con plataformaAdmin", () => {
+    expect(canAccess("dueno", "/negocios")).toBe(false);
+    expect(canAccess("admin", "/negocios")).toBe(false);
+    expect(canAccess("dueno", "/negocios", null, { plataformaAdmin: true })).toBe(true);
   });
 
   it("prioriza href más específico (gestion vs mesas)", () => {
@@ -47,10 +59,35 @@ describe("canAccess", () => {
   });
 });
 
+describe("resolveSessionPermisos", () => {
+  it("inyecta negocios solo a admin de plataforma", () => {
+    const base = resolveSessionPermisos("dueno", null, false);
+    expect(base).not.toContain("negocios");
+    expect(resolveSessionPermisos("dueno", null, true)).toContain("negocios");
+  });
+
+  it("limpia negocios de permisos custom de tenant", () => {
+    const p = resolveSessionPermisos("dueno", ["dashboard", "negocios"], false);
+    expect(p).toEqual(["dashboard"]);
+  });
+  it("inyecta dashboard si el custom no lo trae", () => {
+    const p = resolveSessionPermisos("mostrador", ["mostrador", "encargos"], false);
+    expect(p[0]).toBe("dashboard");
+    expect(p).toContain("mostrador");
+  });
+});
+
 describe("navForRole", () => {
   it("filtra por permisos custom", () => {
     const nav = navForRole("caja", ["caja", "dashboard"]);
     expect(nav.map((n) => n.key).sort()).toEqual(["caja", "dashboard"]);
+  });
+
+  it("incluye negocios en nav solo con plataformaAdmin", () => {
+    expect(navForRole("dueno").map((n) => n.key)).not.toContain("negocios");
+    expect(navForRole("dueno", null, { plataformaAdmin: true }).map((n) => n.key)).toContain(
+      "negocios",
+    );
   });
 
   it("filtra por rol si no hay custom", () => {

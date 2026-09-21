@@ -168,8 +168,12 @@ async function seed() {
       nombre: u.nombre,
       activo: true,
       panaderia_activa_id: panaderiaId,
+      // Admin de plataforma SaaS (no confundir con gerente del local)
+      plataforma_admin: u.email === "admin@panaderiasissa.com",
     });
 
+    // El admin de plataforma no necesita ser "dueño" del local demo;
+    // entra con membresía gerente solo para poder usar el panel.
     await supabase.from("miembros").upsert(
       {
         panaderia_id: panaderiaId,

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { RolCustom, UserRole } from "@/types";
 import {
-  FEATURE_PERMISOS,
+  TENANT_FEATURE_PERMISOS,
   ROLE_LABELS,
   defaultPermisosForRole,
   slugify,
@@ -47,7 +47,7 @@ const emptyForm = (): RoleForm => ({
 });
 
 export default function UsuariosPage() {
-  const { panaderia } = useBakery();
+  const { panaderia, plataformaAdmin } = useBakery();
   const { panaderiaId } = useBakeryId();
   const [tab, setTab] = useState<Tab>("equipo");
   const [miembros, setMiembros] = useState<EquipoMember[]>([]);
@@ -222,19 +222,22 @@ export default function UsuariosPage() {
       <div>
         <h1 className="text-2xl font-bold">Usuarios</h1>
         <p className="text-sm text-stone-500">
-          Equipo de <span className="font-medium text-stone-700">{panaderia.nombre}</span>,
-          cuentas de Auth y roles del panel
+          Equipo y roles de{" "}
+          <span className="font-medium text-stone-700">{panaderia.nombre}</span>
+          {plataformaAdmin ? " · Cuentas Auth (plataforma)" : ""}
         </p>
       </div>
 
       <div className="flex gap-2 border-b border-stone-200 pb-px">
         {(
           [
-            { id: "equipo" as const, label: "Equipo" },
-            { id: "cuentas" as const, label: "Cuentas Auth" },
-            { id: "roles" as const, label: "Roles" },
+            { id: "equipo" as const, label: "Equipo", show: true },
+            { id: "cuentas" as const, label: "Cuentas Auth", show: plataformaAdmin },
+            { id: "roles" as const, label: "Roles", show: true },
           ] as const
-        ).map((t) => (
+        )
+          .filter((t) => t.show)
+          .map((t) => (
           <button
             key={t.id}
             type="button"
@@ -346,7 +349,7 @@ export default function UsuariosPage() {
                 ))}
                 {miembros.length === 0 && (
                   <li className="py-4 text-sm text-stone-500">
-                    Nadie asignado a este local. Invita alguien arriba o revisa Cuentas Auth.
+                    Nadie asignado a este local. Invita alguien arriba.
                   </li>
                 )}
               </ul>
@@ -355,7 +358,7 @@ export default function UsuariosPage() {
         </>
       )}
 
-      {tab === "cuentas" && <CuentasAuthPanel />}
+      {tab === "cuentas" && plataformaAdmin && <CuentasAuthPanel />}
 
       {tab === "roles" && (
         <div className="space-y-4">
@@ -418,7 +421,7 @@ export default function UsuariosPage() {
                 <div>
                   <p className="text-sm font-medium">Funcionalidades del menú</p>
                   <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {FEATURE_PERMISOS.map((f) => (
+                    {TENANT_FEATURE_PERMISOS.map((f) => (
                       <label
                         key={f.key}
                         className="flex items-center gap-2 rounded-lg border border-stone-200 px-3 py-2 text-sm"
@@ -491,7 +494,7 @@ export default function UsuariosPage() {
                         Base: {ROLE_LABELS[r.rol_base]} · {perms.length} módulos
                       </p>
                       <p className="mt-1 text-xs text-stone-400">
-                        {FEATURE_PERMISOS.filter((f) => perms.includes(f.key))
+                        {TENANT_FEATURE_PERMISOS.filter((f) => perms.includes(f.key))
                           .map((f) => f.label)
                           .join(" · ") || "Sin módulos"}
                       </p>

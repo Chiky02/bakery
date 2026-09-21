@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireApiContext } from "@/lib/api-context";
+import { requireApiContext, assertPlatformAdmin } from "@/lib/api-context";
 import { getServiceClient } from "@/lib/supabase/admin";
 
 const patchSchema = z.object({
@@ -15,9 +15,8 @@ export async function PATCH(
   if (result instanceof NextResponse) return result;
   const { ctx } = result;
 
-  if (!["dueno", "admin"].includes(ctx.rol)) {
-    return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
-  }
+  const denied = assertPlatformAdmin(ctx);
+  if (denied) return denied;
 
   const { userId } = await params;
   if (userId === ctx.profile.id) {
@@ -62,9 +61,8 @@ export async function DELETE(
   if (result instanceof NextResponse) return result;
   const { ctx } = result;
 
-  if (!["dueno", "admin"].includes(ctx.rol)) {
-    return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
-  }
+  const denied = assertPlatformAdmin(ctx);
+  if (denied) return denied;
 
   const { userId } = await params;
   if (userId === ctx.profile.id) {

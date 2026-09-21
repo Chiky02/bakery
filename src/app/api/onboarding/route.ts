@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { requireApiContext } from "@/lib/api-context";
+import { requireApiContext, assertPlatformAdmin } from "@/lib/api-context";
 import { slugify } from "@/lib/permissions";
 import { z } from "zod";
 
@@ -25,9 +25,8 @@ export async function POST(request: Request) {
   if (result instanceof NextResponse) return result;
   const { ctx } = result;
 
-  if (!["dueno", "admin"].includes(ctx.rol)) {
-    return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
-  }
+  const denied = assertPlatformAdmin(ctx);
+  if (denied) return denied;
 
   try {
     const body = schema.parse(await request.json());

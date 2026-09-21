@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireApiFeature } from "@/lib/api-context";
 import { parseBogotaDateInput } from "@/lib/timezone";
 import { buildReportesWorkbook } from "@/lib/reportes-export";
+import { buildCategoriaMap, expandVentasDetalle } from "@/lib/reportes-detalle";
 
 function encargoCobrado(e: {
   valor?: number | null;
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
   ] = await Promise.all([
     supabase
       .from("ventas_mostrador")
-      .select("id, total, fecha_hora, medio_pago, monto_efectivo, monto_electronico")
+      .select("id, total, detalle, fecha_hora, medio_pago, monto_efectivo, monto_electronico")
       .eq("panaderia_id", pid)
       .eq("anulado", false)
       .gte("fecha_hora", desdeIso)
@@ -49,7 +50,7 @@ export async function GET(request: Request) {
     supabase
       .from("cuentas_mesa")
       .select(
-        "id, total_final, medio_pago, hora_cierre, monto_efectivo, monto_electronico, mesas(nombre)",
+        "id, total_final, medio_pago, hora_cierre, monto_efectivo, monto_electronico, mesas(nombre), items_cuenta(cantidad, precio_al_momento, estado, producto_id, productos(nombre, categorias(nombre)))",
       )
       .eq("panaderia_id", pid)
       .eq("estado", "cerrada")
@@ -115,7 +116,7 @@ export async function GET(request: Request) {
   if (ventasRes.error) {
     const { data } = await supabase
       .from("ventas_mostrador")
-      .select("id, total, fecha_hora, medio_pago")
+      .select("id, total, detalle, fecha_hora, medio_pago")
       .eq("panaderia_id", pid)
       .eq("anulado", false)
       .gte("fecha_hora", desdeIso)
@@ -128,7 +129,9 @@ export async function GET(request: Request) {
   if (mesasRes.error) {
     const { data } = await supabase
       .from("cuentas_mesa")
-      .select("id, total_final, medio_pago, hora_cierre, mesas(nombre)")
+      .select(
+        "id, total_final, medio_pago, hora_cierre, mesas(nombre), items_cuenta(cantidad, precio_al_momento, estado, producto_id, productos(nombre, categorias(nombre)))",
+      )
       .eq("panaderia_id", pid)
       .eq("estado", "cerrada")
       .gt("total_final", 0)
@@ -160,6 +163,17 @@ export async function GET(request: Request) {
   const totalEncargos = movsCaja.length > 0 ? totalEncargosCaja : totalEncargosFallback;
   const totalFacturas = facturas.reduce((s, f) => s + (f.total ?? 0), 0);
 
+  const { data: productosCat } = await supabase
+    .from("productos")
+    .select("id, categorias(nombre)")
+    .eq("panaderia_id", pid);
+  const catMap = buildCategoriaMap(productosCat ?? []);
+  const { lineas: lineasDetalle, porProducto } = expandVentasDetalle({
+    ventas,
+    mesas,
+    catMap,
+  });
+
   const buffer = buildReportesWorkbook({
     panaderiaNombre: ctx.panaderia.nombre,
     desde,
@@ -182,6 +196,8 @@ export async function GET(request: Request) {
         : (m.productos as { nombre?: string } | null),
     })),
     stockBajos,
+    lineasDetalle,
+    porProducto,
     totales: {
       mostrador: totalMostrador,
       mesas: totalMesas,

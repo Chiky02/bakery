@@ -5,7 +5,15 @@ import type { SessionContext } from "@/types";
 
 export type BakeryClientContext = Pick<
   SessionContext,
-  "profile" | "panaderia" | "rol" | "roleLabel" | "permisos" | "memberships"
+  | "profile"
+  | "panaderia"
+  | "rol"
+  | "roleLabel"
+  | "permisos"
+  | "memberships"
+  | "plataformaAdmin"
+  | "isPlatformOperator"
+  | "impersonating"
 >;
 
 const BakeryContext = createContext<BakeryClientContext | null>(null);

@@ -20,6 +20,8 @@ export type Profile = {
   nombre: string;
   activo: boolean;
   panaderia_activa_id: string | null;
+  /** Operador SaaS: gestiona negocios y cuentas Auth; no es rol de un local. */
+  plataforma_admin?: boolean;
 };
 
 export type Panaderia = {
@@ -83,6 +85,15 @@ export type SessionContext = {
   roleLabel: string;
   permisos: string[];
   memberships: Miembro[];
+  /**
+   * Acceso efectivo a módulos de plataforma (negocios, cuentas Auth…).
+   * Es false mientras el operador simula otro rol.
+   */
+  plataformaAdmin: boolean;
+  /** profiles.plataforma_admin real; permite controles de impersonación. */
+  isPlatformOperator: boolean;
+  /** Rol simulado activo (solo operadores de plataforma). */
+  impersonating: UserRole | null;
 };
 
 export type Categoria = {

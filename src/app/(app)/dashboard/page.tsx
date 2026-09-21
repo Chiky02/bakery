@@ -4,15 +4,67 @@ import { formatCOP, formatHour } from "@/lib/format";
 import { bogotaTodayInput, startOfBogotaDay, startOfBogotaMonth } from "@/lib/timezone";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { isManagementRole, navForRole } from "@/lib/permissions";
 import Link from "next/link";
 
 export default async function DashboardPage() {
-  const { panaderia } = await requireFeature("dashboard");
+  const ctx = await requireFeature("dashboard");
+  const { panaderia, rol, roleLabel, permisos, plataformaAdmin, impersonating } = ctx;
+  const hoyInput = bogotaTodayInput();
+
+  const showKpis = isManagementRole(rol) || (plataformaAdmin && !impersonating);
+
+  if (!showKpis) {
+    const modules = navForRole(rol, permisos, { plataformaAdmin }).filter(
+      (n) => n.key !== "dashboard" && n.key !== "panaderias",
+    );
+
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Inicio</h1>
+          <p className="text-sm text-stone-500">
+            {panaderia.nombre} · {roleLabel}
+          </p>
+        </div>
+        <p className="text-sm text-stone-600">
+          Módulos a los que tienes acceso. Elige uno para continuar.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {modules.map((m) => {
+            const Icon = m.icon;
+            return (
+              <Link
+                key={m.href}
+                href={m.href}
+                prefetch={false}
+                className="group flex items-start gap-3 rounded-xl border border-stone-200 bg-white p-4 transition-colors hover:border-orange-300 hover:bg-orange-50/40"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-800 group-hover:bg-orange-200">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-semibold text-stone-900">{m.label}</span>
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+        {modules.length === 0 && (
+          <Card>
+            <p className="text-sm text-stone-500">
+              No hay módulos asignados a tu rol. Pide al dueño o gerente que revise tus permisos.
+            </p>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
   const supabase = await createClient();
   const pid = panaderia.id;
   const hoyIso = startOfBogotaDay();
   const mesIso = startOfBogotaMonth();
-  const hoyInput = bogotaTodayInput();
 
   const [
     { data: ventasHoy },
@@ -69,7 +121,11 @@ export default async function DashboardPage() {
       .gte("fecha_hora", hoyIso),
   ]);
 
-  function encargoCobrado(e: { valor: number; abono?: number | null; estado_pago?: string | null }) {
+  function encargoCobrado(e: {
+    valor: number;
+    abono?: number | null;
+    estado_pago?: string | null;
+  }) {
     if (e.estado_pago === "pagado") return e.valor ?? 0;
     if (e.estado_pago === "abonado") return e.abono ?? 0;
     return 0;
@@ -107,18 +163,24 @@ export default async function DashboardPage() {
     .sort((a, b) => b.qty - a.qty)
     .slice(0, 8);
 
+  const quickNav = navForRole(rol, permisos, { plataformaAdmin }).filter(
+    (n) => n.key !== "dashboard",
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <p className="text-sm text-stone-500">
-            {panaderia.nombre} — día Bogotá ({hoyInput})
+            {panaderia.nombre} — día Bogotá ({hoyInput}) · {roleLabel}
           </p>
         </div>
-        <Link href="/reportes" className="text-sm font-medium text-orange-700 hover:underline">
-          Ver reportes →
-        </Link>
+        {permisos.includes("reportes") && (
+          <Link href="/reportes" className="text-sm font-medium text-orange-700 hover:underline">
+            Ver reportes →
+          </Link>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -203,6 +265,26 @@ export default async function DashboardPage() {
           </ul>
         )}
       </Card>
+
+      {quickNav.length > 0 && (
+        <div>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-500">
+            Accesos rápidos
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {quickNav.slice(0, 8).map((m) => (
+              <Link
+                key={m.href}
+                href={m.href}
+                prefetch={false}
+                className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm font-medium text-stone-700 hover:border-orange-300 hover:text-orange-800"
+              >
+                {m.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

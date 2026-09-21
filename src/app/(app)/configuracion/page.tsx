@@ -13,9 +13,10 @@ import { resolveUnidades } from "@/lib/unidades-medida";
 type Tab = "negocio" | "cuenta" | "alta";
 
 export default function ConfiguracionPage() {
-  const { panaderia, profile, rol } = useBakery();
+  const { panaderia, profile, rol, plataformaAdmin } = useBakery();
   const panaderiaId = panaderia.id;
   const canManageNegocio = rol === "dueno" || rol === "admin";
+  const canAltaNegocio = plataformaAdmin;
   const [tab, setTab] = useState<Tab>(canManageNegocio ? "negocio" : "cuenta");
   const [config, setConfig] = useState<Panaderia>(panaderia);
   const [saved, setSaved] = useState(false);
@@ -167,7 +168,7 @@ export default function ConfiguracionPage() {
   const tabs: { id: Tab; label: string; icon: typeof Store; show: boolean }[] = [
     { id: "negocio", label: "Negocio", icon: Store, show: canManageNegocio },
     { id: "cuenta", label: "Mi cuenta", icon: UserRound, show: true },
-    { id: "alta", label: "Alta de negocio", icon: Building2, show: canManageNegocio },
+    { id: "alta", label: "Alta de negocio", icon: Building2, show: canAltaNegocio },
   ];
 
   return (
@@ -175,7 +176,7 @@ export default function ConfiguracionPage() {
       <div>
         <h1 className="text-2xl font-bold">Configuración</h1>
         <p className="text-sm text-stone-500">
-          Negocio, tu cuenta (correo y contraseña) y altas de nuevos dueños
+          Negocio y tu cuenta. El alta de nuevos dueños es solo del admin de plataforma.
         </p>
       </div>
 
@@ -469,7 +470,7 @@ export default function ConfiguracionPage() {
         </Card>
       )}
 
-      {tab === "alta" && canManageNegocio && (
+      {tab === "alta" && canAltaNegocio && (
         <Card className="w-full space-y-4">
           <CardTitle className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />

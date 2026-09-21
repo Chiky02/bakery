@@ -18,6 +18,9 @@ function fakeCtx(rol: SessionContext["rol"]): SessionContext {
     roleLabel: rol,
     permisos: [],
     memberships: [],
+    plataformaAdmin: false,
+    isPlatformOperator: false,
+    impersonating: null,
   };
 }
 

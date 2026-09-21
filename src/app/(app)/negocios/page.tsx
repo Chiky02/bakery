@@ -1,5 +1,4 @@
 import { requireFeature } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/admin";
 import { ROLE_LABELS } from "@/lib/permissions";
 import type { UserRole } from "@/types";
@@ -29,30 +28,25 @@ type PanaderiaRow = {
 };
 
 export default async function NegociosPage() {
-  const { memberships, panaderia: activa } = await requireFeature("negocios");
-  const supabase = await createClient();
+  const { panaderia: activa } = await requireFeature("negocios");
 
-  const managedIds = memberships
-    .filter((m) => m.rol === "dueno" || m.rol === "admin")
-    .map((m) => m.panaderia_id);
-
-  const panaderiaIds = managedIds.length > 0 ? managedIds : [activa.id];
-
-  const { data: panaderias } = await supabase
+  // Solo admin de plataforma llega aquí; lista TODOS los locales
+  const admin = getServiceClient();
+  const { data: panaderias } = await admin
     .from("panaderias")
     .select("id, nombre, slug, activa, telefono, direccion")
-    .in("id", panaderiaIds)
     .order("nombre");
 
   const list = (panaderias as PanaderiaRow[] | null) ?? [];
+  const panaderiaIds = list.map((p) => p.id);
 
-  // Service role: evita embeds profiles/roles rotos por RLS
-  const admin = getServiceClient();
-  const { data: miembrosRaw } = await admin
-    .from("miembros")
-    .select("id, rol, activo, panaderia_id, user_id, role_id")
-    .in("panaderia_id", panaderiaIds)
-    .order("rol");
+  const { data: miembrosRaw } = panaderiaIds.length
+    ? await admin
+        .from("miembros")
+        .select("id, rol, activo, panaderia_id, user_id, role_id")
+        .in("panaderia_id", panaderiaIds)
+        .order("rol")
+    : { data: [] as never[] };
 
   const raw = miembrosRaw ?? [];
   const userIds = [...new Set(raw.map((m) => m.user_id))];
@@ -104,7 +98,7 @@ export default async function NegociosPage() {
         <div>
           <h1 className="text-2xl font-bold">Negocios</h1>
           <p className="text-sm text-stone-500">
-            Locales a tu cargo y el equipo asignado a cada uno, con su rol
+            Vista de plataforma: todos los locales y su equipo
           </p>
         </div>
         <p className="text-sm text-stone-500">
@@ -188,11 +182,11 @@ export default async function NegociosPage() {
       )}
 
       <p className="text-xs text-stone-400">
-        Para invitar o cambiar roles del local, usa{" "}
-        <Link href="/usuarios" className="underline hover:text-stone-600">
-          Usuarios → Equipo
+        Para crear un dueño + negocio nuevo usa{" "}
+        <Link href="/configuracion" className="underline hover:text-stone-600">
+          Configuración → Alta de negocio
         </Link>
-        . El alta de un negocio nuevo está en Configuración.
+        . Las cuentas Auth globales están en Usuarios → Cuentas Auth.
       </p>
     </div>
   );

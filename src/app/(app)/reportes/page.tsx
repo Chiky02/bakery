@@ -9,6 +9,7 @@ import {
 } from "@/lib/timezone";
 import { resumenConteo } from "@/lib/caja-denominaciones";
 import { aporteEfectivo, aporteElectronico } from "@/lib/pago-split";
+import { buildCategoriaMap, expandVentasDetalle } from "@/lib/reportes-detalle";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -89,7 +90,7 @@ export default async function ReportesPage({
     supabase
       .from("cuentas_mesa")
       .select(
-        "id, total_final, medio_pago, hora_cierre, monto_efectivo, monto_electronico, mesas(nombre), items_cuenta(cantidad, precio_al_momento, estado, productos(nombre))",
+        "id, total_final, medio_pago, hora_cierre, monto_efectivo, monto_electronico, mesas(nombre), items_cuenta(cantidad, precio_al_momento, estado, producto_id, productos(nombre, categorias(nombre)))",
       )
       .eq("panaderia_id", pid)
       .eq("estado", "cerrada")
@@ -220,13 +221,15 @@ export default async function ReportesPage({
   if (mesasRes.error) {
     const { data } = await supabase
       .from("cuentas_mesa")
-      .select("id, total_final, medio_pago, hora_cierre, mesas(nombre)")
+      .select(
+        "id, total_final, medio_pago, hora_cierre, mesas(nombre), items_cuenta(cantidad, precio_al_momento, estado, producto_id, productos(nombre, categorias(nombre)))",
+      )
       .eq("panaderia_id", pid)
       .eq("estado", "cerrada")
       .gt("total_final", 0)
       .gte("hora_cierre", desdeIso)
       .lte("hora_cierre", hastaIso);
-    mesasPeriodo = (data ?? []).map((c) => ({ ...c, items_cuenta: [] }));
+    mesasPeriodo = data ?? [];
   }
 
   const encargosEntrega = encargosEntregaRes.data ?? [];
@@ -312,46 +315,20 @@ export default async function ReportesPage({
     (mesasMesAntRes.data?.reduce((s, c) => s + (c.total_final ?? 0), 0) ?? 0);
   const variacion = mesAnterior > 0 ? ((mesActual - mesAnterior) / mesAnterior) * 100 : 0;
 
-  const productCounts: Record<string, { nombre: string; qty: number; total: number }> = {};
-  function addProd(nombre: string, qty: number, subtotal: number) {
-    if (!nombre) return;
-    if (!productCounts[nombre]) productCounts[nombre] = { nombre, qty: 0, total: 0 };
-    productCounts[nombre].qty += qty;
-    productCounts[nombre].total += subtotal;
-  }
-  for (const v of ventasPeriodo) {
-    const items = (v.detalle ?? []) as {
-      nombre: string;
-      cantidad: number;
-      subtotal?: number;
-      precio?: number;
-    }[];
-    for (const i of items) {
-      const qty = Number(i.cantidad) || 0;
-      const sub =
-        Number(i.subtotal) || Math.round((Number(i.precio) || 0) * qty);
-      addProd(i.nombre, qty, sub);
-    }
-  }
-  for (const c of mesasPeriodo) {
-    const items = (c.items_cuenta ?? []) as {
-      cantidad: number;
-      precio_al_momento: number;
-      estado?: string;
-      productos?: { nombre?: string } | null;
-    }[];
-    for (const i of items) {
-      if (i.estado === "cancelado") continue;
-      const qty = Number(i.cantidad) || 0;
-      const precio = Number(i.precio_al_momento) || 0;
-      addProd(i.productos?.nombre ?? "Ítem mesa", qty, Math.round(precio * qty));
-    }
-  }
-  const topProductos = Object.values(productCounts)
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 20);
+  const { data: productosCat } = await supabase
+    .from("productos")
+    .select("id, categorias(nombre)")
+    .eq("panaderia_id", pid);
+
+  const catMap = buildCategoriaMap(productosCat ?? []);
+  const { lineas: lineasVenta, porProducto, porCategoria } = expandVentasDetalle({
+    ventas: ventasPeriodo,
+    mesas: mesasPeriodo,
+    catMap,
+  });
 
   const totalFacturas = facturas.reduce((s, f) => s + (f.total ?? 0), 0);
+  const unidadesVendidas = porProducto.reduce((s, p) => s + p.cantidad, 0);
   const encargosPendientesEntrega = encargosEntrega.filter((e) => e.estado === "pendiente");
   const encargosPorCobrar = encargosEntrega.filter((e) => {
     const pagado = encargoCobrado(e);
@@ -370,7 +347,7 @@ export default async function ReportesPage({
         <div>
           <h1 className="text-2xl font-bold">Reportes</h1>
           <p className="text-sm text-stone-500">
-            Ventas · Caja · Encargos · Facturas · Inventario · horario Bogotá
+            Detalle por producto · cantidades · caja · encargos · Excel
           </p>
         </div>
         <a href={excelHref}>
@@ -424,6 +401,9 @@ export default async function ReportesPage({
           </div>
         </form>
         <nav className="mt-3 flex flex-wrap gap-3 border-t border-stone-100 pt-3 text-sm">
+          <a href="#detalle" className="text-orange-800 underline-offset-2 hover:underline">
+            Detalle productos
+          </a>
           <a href="#ventas" className="text-orange-800 underline-offset-2 hover:underline">
             Ventas
           </a>
@@ -514,17 +494,17 @@ export default async function ReportesPage({
             </p>
           </Card>
           <Card>
-            <CardTitle>Top productos (mostrador + mesas)</CardTitle>
+            <CardTitle>Por categoría</CardTitle>
             <ul className="mt-3 max-h-80 space-y-2 overflow-y-auto text-sm">
-              {topProductos.map((p) => (
-                <li key={p.nombre} className="flex justify-between gap-2">
+              {porCategoria.map((c) => (
+                <li key={c.categoria} className="flex justify-between gap-2">
                   <span className="truncate">
-                    {p.nombre} · {p.qty} u
+                    {c.categoria} · {c.cantidad} u
                   </span>
-                  <span className="shrink-0 font-medium">{formatCOP(p.total)}</span>
+                  <span className="shrink-0 font-medium">{formatCOP(c.subtotal)}</span>
                 </li>
               ))}
-              {topProductos.length === 0 && (
+              {porCategoria.length === 0 && (
                 <li className="text-stone-500">Sin ventas en el rango</li>
               )}
             </ul>
@@ -558,6 +538,106 @@ export default async function ReportesPage({
               <li className="py-2 text-stone-500">Sin anulaciones en el rango</li>
             )}
           </ul>
+        </Card>
+      </section>
+
+      {/* ─── DETALLE PRODUCTOS ─────────────────────────────────── */}
+      <section id="detalle" className="scroll-mt-20 space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-semibold text-stone-800">
+              Qué se vendió (detalle)
+            </h2>
+            <p className="text-sm text-stone-500">
+              {unidadesVendidas} unidades · {porProducto.length} productos ·{" "}
+              {lineasVenta.length} líneas · mostrador + mesas
+            </p>
+          </div>
+        </div>
+
+        <Card>
+          <CardTitle>Resumen por producto</CardTitle>
+          <p className="mt-1 text-xs text-stone-500">
+            Cantidad total vendida en el rango, con categoría e importe
+          </p>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[32rem] text-left text-sm">
+              <thead>
+                <tr className="border-b border-stone-200 text-xs uppercase tracking-wide text-stone-500">
+                  <th className="py-2 pr-3 font-medium">Producto</th>
+                  <th className="py-2 pr-3 font-medium">Categoría</th>
+                  <th className="py-2 pr-3 font-medium text-right">Cantidad</th>
+                  <th className="py-2 font-medium text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {porProducto.map((p) => (
+                  <tr key={p.key}>
+                    <td className="py-2 pr-3 font-medium text-stone-900">{p.producto}</td>
+                    <td className="py-2 pr-3 text-stone-500">{p.categoria}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{p.cantidad}</td>
+                    <td className="py-2 text-right font-medium tabular-nums">
+                      {formatCOP(p.subtotal)}
+                    </td>
+                  </tr>
+                ))}
+                {porProducto.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-4 text-stone-500">
+                      No hay ítems de venta en este rango
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        <Card>
+          <CardTitle>Líneas de venta (fecha / hora)</CardTitle>
+          <p className="mt-1 text-xs text-stone-500">
+            Cada ítem cobrado: cuándo, de qué canal, categoría y cantidad
+          </p>
+          <div className="mt-3 max-h-[32rem] overflow-auto">
+            <table className="w-full min-w-[40rem] text-left text-sm">
+              <thead className="sticky top-0 bg-white">
+                <tr className="border-b border-stone-200 text-xs uppercase tracking-wide text-stone-500">
+                  <th className="py-2 pr-3 font-medium">Fecha / hora</th>
+                  <th className="py-2 pr-3 font-medium">Producto</th>
+                  <th className="py-2 pr-3 font-medium">Categoría</th>
+                  <th className="py-2 pr-3 font-medium text-right">Cant.</th>
+                  <th className="py-2 pr-3 font-medium">Canal</th>
+                  <th className="py-2 font-medium text-right">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {lineasVenta.map((l, idx) => (
+                  <tr key={`${l.fecha_hora}-${l.producto}-${idx}`}>
+                    <td className="whitespace-nowrap py-2 pr-3 text-stone-600">
+                      {l.fecha_hora ? formatDateTime(l.fecha_hora) : "—"}
+                    </td>
+                    <td className="py-2 pr-3 font-medium text-stone-900">{l.producto}</td>
+                    <td className="py-2 pr-3 text-stone-500">{l.categoria}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{l.cantidad}</td>
+                    <td className="py-2 pr-3 text-xs text-stone-500">
+                      {l.canal === "mostrador" ? "Mostrador" : "Mesa"}
+                      <span className="block text-stone-400">{l.referencia}</span>
+                    </td>
+                    <td className="py-2 text-right font-medium tabular-nums">
+                      {formatCOP(l.subtotal)}
+                    </td>
+                  </tr>
+                ))}
+                {lineasVenta.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-4 text-stone-500">
+                      Sin líneas de venta en el rango
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </Card>
       </section>
 

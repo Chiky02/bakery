@@ -107,7 +107,7 @@ export function MesasGestionClient({
         </Link>
         <h1 className="text-2xl font-bold">Gestionar mesas</h1>
         <p className="text-sm text-stone-500">
-          Crear, activar, desactivar o eliminar mesas (admin/dueño).
+          Crear, activar, desactivar o eliminar mesas (dueño/gerente).
         </p>
       </div>
 

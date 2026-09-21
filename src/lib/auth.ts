@@ -1,14 +1,14 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { Miembro, Panaderia, Profile, RolCustom, SessionContext, UserRole } from "@/types";
-import { ROLE_LABELS, defaultPermisosForRole, canAccess, FEATURE_PERMISOS } from "@/lib/permissions";
+import {
+  ROLE_LABELS,
+  canAccess,
+  FEATURE_PERMISOS,
+  resolveSessionPermisos,
+} from "@/lib/permissions";
+import { readImpersonateRol } from "@/lib/impersonate";
 import { redirect } from "next/navigation";
-
-function resolvePermisos(rol: UserRole, custom?: RolCustom | null): string[] {
-  const fromDb = custom?.role_permisos?.map((p) => p.permiso) ?? [];
-  if (fromDb.length > 0) return fromDb;
-  return defaultPermisosForRole(rol);
-}
 
 /** Deduped per request: layout + page share the same Auth roundtrip. */
 export const getAuthUser = cache(async () => {
@@ -24,13 +24,32 @@ export const getSessionProfile = cache(async (): Promise<Profile | null> => {
   if (!user) return null;
 
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("profiles")
-    .select("id, nombre, activo, panaderia_activa_id")
+    .select("id, nombre, activo, panaderia_activa_id, plataforma_admin")
     .eq("id", user.id)
     .single();
 
-  return data as Profile | null;
+  // Columna nueva aún no migrada: reintenta sin ella
+  if (error?.message?.includes("plataforma_admin")) {
+    const { data: fallback } = await supabase
+      .from("profiles")
+      .select("id, nombre, activo, panaderia_activa_id")
+      .eq("id", user.id)
+      .single();
+    if (!fallback) return null;
+    return { ...(fallback as Profile), plataforma_admin: false };
+  }
+
+  if (!data) return null;
+  const row = data as Profile & { plataforma_admin?: boolean };
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    activo: row.activo,
+    panaderia_activa_id: row.panaderia_activa_id,
+    plataforma_admin: !!row.plataforma_admin,
+  };
 });
 
 export async function requireProfile(): Promise<Profile> {
@@ -72,10 +91,26 @@ export const getSessionContext = cache(async (): Promise<SessionContext | null> 
   const panaderia = active.panaderias as Panaderia;
   if (!panaderia) return null;
 
-  const rol = active.rol as UserRole;
+  const isPlatformOperator = !!profile.plataforma_admin;
+  const impersonating = isPlatformOperator ? await readImpersonateRol() : null;
+  /** Efectivo: apagado durante simulación para que APIs/UI reflejen el rol. */
+  const plataformaAdmin = isPlatformOperator && !impersonating;
+
+  const realRol = active.rol as UserRole;
+  const rol = impersonating ?? realRol;
   const custom = (active.roles as RolCustom | null | undefined) ?? null;
-  const roleLabel = custom?.nombre?.trim() || ROLE_LABELS[rol];
-  const permisos = resolvePermisos(rol, custom);
+
+  const roleLabel = impersonating
+    ? `Simulando: ${ROLE_LABELS[impersonating]}`
+    : isPlatformOperator
+      ? "Admin plataforma"
+      : custom?.nombre?.trim() || ROLE_LABELS[rol];
+
+  const fromDb = custom?.role_permisos?.map((p) => p.permiso) ?? [];
+  // Al simular, usamos el set por defecto del rol (no el custom del membership real).
+  const permisos = impersonating
+    ? resolveSessionPermisos(rol, null, false)
+    : resolveSessionPermisos(rol, fromDb.length > 0 ? fromDb : null, plataformaAdmin);
 
   return {
     profile,
@@ -84,6 +119,9 @@ export const getSessionContext = cache(async (): Promise<SessionContext | null> 
     roleLabel,
     permisos,
     memberships: list,
+    plataformaAdmin,
+    isPlatformOperator,
+    impersonating,
   };
 });
 
@@ -102,9 +140,11 @@ export async function requireFeature(featureKey: string): Promise<SessionContext
   const ctx = await requireBakeryContext();
   const feature = FEATURE_PERMISOS.find((f) => f.key === featureKey);
   const href = feature?.href ?? `/${featureKey}`;
-  if (!canAccess(ctx.rol, href, ctx.permisos)) {
+  if (!canAccess(ctx.rol, href, ctx.permisos, { plataformaAdmin: ctx.plataformaAdmin })) {
     const fallback =
-      FEATURE_PERMISOS.find((f) => canAccess(ctx.rol, f.href, ctx.permisos))?.href ?? "/panaderias";
+      FEATURE_PERMISOS.find((f) =>
+        canAccess(ctx.rol, f.href, ctx.permisos, { plataformaAdmin: ctx.plataformaAdmin }),
+      )?.href ?? "/panaderias";
     redirect(fallback);
   }
   return ctx;

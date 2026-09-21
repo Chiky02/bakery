@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import { aporteEfectivo, aporteElectronico } from "@/lib/pago-split";
+import type { ProductoAgregado, VentaLineaDetalle } from "@/lib/reportes-detalle";
 
 type VentaRow = {
   id: string;
@@ -87,6 +88,8 @@ export type ReportesExportInput = {
   encargos: EncargoRow[];
   stockMovs: StockMov[];
   stockBajos: StockBajo[];
+  lineasDetalle: VentaLineaDetalle[];
+  porProducto: ProductoAgregado[];
   totales: {
     mostrador: number;
     mesas: number;
@@ -119,8 +122,51 @@ export function buildReportesWorkbook(input: ReportesExportInput): Buffer {
       ["Encargos / caja", input.totales.encargos],
       ["Facturas (suma)", input.totales.facturas],
       ["Total general", input.totales.general],
+      ["Unidades vendidas", input.porProducto.reduce((s, p) => s + p.cantidad, 0)],
+      ["Productos distintos", input.porProducto.length],
     ]),
     "Resumen",
+  );
+
+  XLSX.utils.book_append_sheet(
+    wb,
+    sheet([
+      ["Producto", "Categoría", "Cantidad", "Total"],
+      ...input.porProducto.map((p) => [
+        p.producto,
+        p.categoria,
+        p.cantidad,
+        p.subtotal,
+      ]),
+    ]),
+    "Por producto",
+  );
+
+  XLSX.utils.book_append_sheet(
+    wb,
+    sheet([
+      [
+        "Fecha/hora",
+        "Producto",
+        "Categoría",
+        "Cantidad",
+        "Precio unit.",
+        "Subtotal",
+        "Canal",
+        "Referencia",
+      ],
+      ...input.lineasDetalle.map((l) => [
+        l.fecha_hora,
+        l.producto,
+        l.categoria,
+        l.cantidad,
+        l.precio_unit,
+        l.subtotal,
+        l.canal,
+        l.referencia,
+      ]),
+    ]),
+    "Detalle items",
   );
 
   XLSX.utils.book_append_sheet(
@@ -154,7 +200,7 @@ export function buildReportesWorkbook(input: ReportesExportInput): Buffer {
         c.total_final ?? 0,
       ]),
     ]),
-    "Ventas",
+    "Tickets",
   );
 
   XLSX.utils.book_append_sheet(

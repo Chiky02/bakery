@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Bell, Menu, X } from "lucide-react";
 import { notificationHref } from "@/lib/notifications";
+import { ImpersonateBanner, ImpersonateControls } from "@/components/app/impersonate-controls";
 
 function NavLinks({
   nav,
@@ -56,10 +57,20 @@ function NavLinks({
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { profile, panaderia, rol, roleLabel, permisos, memberships } = useBakery();
+  const {
+    profile,
+    panaderia,
+    rol,
+    roleLabel,
+    permisos,
+    memberships,
+    plataformaAdmin,
+    isPlatformOperator,
+    impersonating,
+  } = useBakery();
   const pathname = usePathname();
   const router = useRouter();
-  const nav = navForRole(rol, permisos);
+  const nav = navForRole(rol, permisos, { plataformaAdmin });
   const [notifs, setNotifs] = useState<Notificacion[]>([]);
   const [openNotif, setOpenNotif] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -75,11 +86,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (/^\/facturas\/[^/]+$/.test(pathname)) return;
     if (pathname.startsWith("/ventas")) return;
     if (pathname.startsWith("/panaderias")) return;
-    if (!canAccess(rol, pathname, permisos)) {
+    if (!canAccess(rol, pathname, permisos, { plataformaAdmin })) {
       const fallback = nav[0]?.href ?? "/panaderias";
       router.replace(fallback);
     }
-  }, [pathname, rol, permisos, nav, router]);
+  }, [pathname, rol, permisos, nav, router, plataformaAdmin]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -181,6 +192,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               ))}
             </select>
           )}
+          {isPlatformOperator && (
+            <div className="mt-3 border-t border-stone-100 pt-3">
+              <ImpersonateControls impersonating={impersonating} />
+            </div>
+          )}
         </div>
         <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
           <NavLinks nav={nav} pathname={pathname} />
@@ -193,6 +209,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        {impersonating && <ImpersonateBanner impersonating={impersonating} />}
         <header className="flex shrink-0 items-center justify-between gap-2 border-b border-stone-200 bg-white px-3 py-3 md:px-4">
           <div className="flex min-w-0 items-center gap-2 md:hidden">
             <Button
@@ -322,6 +339,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       </option>
                     ))}
                   </select>
+                </div>
+              )}
+              {isPlatformOperator && (
+                <div className="border-b border-stone-100 px-4 py-3">
+                  <ImpersonateControls impersonating={impersonating} compact />
                 </div>
               )}
               <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">

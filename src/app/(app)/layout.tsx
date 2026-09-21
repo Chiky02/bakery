@@ -11,6 +11,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     roleLabel: ctx.roleLabel,
     permisos: ctx.permisos,
     memberships: ctx.memberships,
+    plataformaAdmin: ctx.plataformaAdmin,
+    isPlatformOperator: ctx.isPlatformOperator,
+    impersonating: ctx.impersonating,
   };
 
   return (

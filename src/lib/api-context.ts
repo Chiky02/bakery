@@ -26,7 +26,7 @@ export async function requireApiFeature(
   const { ctx, supabase } = result;
   const feature = FEATURE_PERMISOS.find((f) => f.key === featureKey);
   const href = feature?.href ?? `/${featureKey}`;
-  if (!canAccess(ctx.rol, href, ctx.permisos)) {
+  if (!canAccess(ctx.rol, href, ctx.permisos, { plataformaAdmin: ctx.plataformaAdmin })) {
     return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
   }
   return { ctx, supabase };
@@ -38,6 +38,17 @@ export function assertRoles(
 ): NextResponse | null {
   if (!roles.includes(ctx.rol)) {
     return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
+  }
+  return null;
+}
+
+/** Solo admin de plataforma (profiles.plataforma_admin). */
+export function assertPlatformAdmin(ctx: SessionContext): NextResponse | null {
+  if (!ctx.plataformaAdmin) {
+    return NextResponse.json(
+      { error: "Solo el administrador de la plataforma puede hacer esto" },
+      { status: 403 },
+    );
   }
   return null;
 }

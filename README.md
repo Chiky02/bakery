@@ -54,34 +54,46 @@ npm run dev
 ## Multitenant
 
 - Tabla `panaderias` = cada local/negocio
-- Tabla `miembros` = usuario + rol **por panadería**
+- Tabla `miembros` = usuario + rol **por panadería** (dueño, gerente, mostrador…)
+- `profiles.plataforma_admin` = **admin de la plataforma** (SaaS): ve todos los negocios, cuentas Auth y altas de dueños. No es un rol de un local.
 - `profiles.panaderia_activa_id` = panadería en uso
 - Selector en el menú lateral; pantalla `/panaderias` para crear o cambiar
 
+### Quién puede qué
+
+| Actor | Alcance | Ejemplos |
+|-------|---------|----------|
+| Admin plataforma | Toda la app | `/negocios`, Usuarios → Cuentas Auth, Config → Alta de negocio |
+| Dueño / Gerente | Solo su(s) local(es) | Equipo, productos, caja, reportes, config del negocio |
+| Staff | Según rol del local | Mostrador, mesas, cocina… |
+
 ## Módulos
 
-| Módulo | Ruta | Roles |
+| Módulo | Ruta | Quién |
 |--------|------|-------|
-| Dashboard | `/dashboard` | dueño, admin |
-| Mostrador | `/mostrador` | dueño, admin, mostrador, caja |
-| Mesas | `/mesas` | dueño, admin, mesero, caja |
-| Cocina | `/cocina` | dueño, admin, cocina |
-| Caja | `/caja` | dueño, admin, caja |
-| Encargos | `/encargos` | dueño, admin, mostrador, mesero |
-| Recepciones | `/recepciones` | dueño, admin, mostrador, caja |
-| Productos | `/productos` | dueño, admin |
-| Reportes | `/reportes` | dueño, admin |
-| Configuración | `/configuracion` | dueño, admin |
-| Usuarios | `/usuarios` | dueño, admin |
+| Dashboard | `/dashboard` | todos (KPIs: dueño/gerente/admin plataforma; staff: atajos) |
+| Mostrador | `/mostrador` | dueño, gerente, mostrador, caja |
+| Mesas | `/mesas` | dueño, gerente, mesero, caja |
+| Cocina | `/cocina` | dueño, gerente, cocina |
+| Caja | `/caja` | dueño, gerente, caja |
+| Encargos | `/encargos` | dueño, gerente, mostrador, mesero |
+| Recepciones | `/recepciones` | dueño, gerente, mostrador, caja |
+| Productos | `/productos` | dueño, gerente |
+| Reportes | `/reportes` | dueño, gerente |
+| Configuración | `/configuracion` | dueño, gerente (+ alta solo plataforma) |
+| Usuarios (equipo) | `/usuarios` | dueño, gerente |
+| Negocios | `/negocios` | **solo admin plataforma** |
 | Mis panaderías | `/panaderias` | todos |
 | Menú QR | `/qr/[mesaId]` | público |
+
+El **admin de plataforma** puede simular cualquier rol (selector “Simular rol” en el menú) sin cerrar sesión: menú, dashboard y APIs respetan el rol simulado. Baner ámbar para salir.
 
 ## Usuarios de prueba (seed)
 
 | Rol | Email | Contraseña |
 |-----|-------|------------|
-| Dueño | dueno@panaderiasissa.com | Sissa2026! |
-| Admin | admin@panaderiasissa.com | Sissa2026! |
+| Dueño (local) | dueno@panaderiasissa.com | Sissa2026! |
+| Admin plataforma | admin@panaderiasissa.com | Sissa2026! |
 | Mostrador | mostrador@panaderiasissa.com | Sissa2026! |
 | Mesero | mesero@panaderiasissa.com | Sissa2026! |
 | Cocina | cocina@panaderiasissa.com | Sissa2026! |

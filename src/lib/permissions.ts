@@ -23,12 +23,20 @@ import {
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   dueno: "Dueño",
-  admin: "Administrador",
+  /** Gerente operativo del local (tenant). No es admin de plataforma. */
+  admin: "Gerente",
   mostrador: "Mostrador",
   mesero: "Mesero",
   cocina: "Cocina",
   caja: "Caja",
 };
+
+/** Módulos exclusivos del admin de plataforma (no van en roles de panadería). */
+export const PLATFORM_FEATURE_KEYS = ["negocios"] as const;
+
+export function isPlatformFeature(key: string): boolean {
+  return (PLATFORM_FEATURE_KEYS as readonly string[]).includes(key);
+}
 
 /** Claves de funcionalidad del panel (menú). */
 export const FEATURE_PERMISOS: {
@@ -37,13 +45,15 @@ export const FEATURE_PERMISOS: {
   href: string;
   icon: LucideIcon;
   defaultRoles: UserRole[];
+  /** Solo profiles.plataforma_admin */
+  platformOnly?: boolean;
 }[] = [
   {
     key: "dashboard",
     label: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
-    defaultRoles: ["dueno", "admin"],
+    defaultRoles: ["dueno", "admin", "mostrador", "mesero", "cocina", "caja"],
   },
   {
     key: "mostrador",
@@ -148,7 +158,8 @@ export const FEATURE_PERMISOS: {
     label: "Negocios",
     href: "/negocios",
     icon: Building2,
-    defaultRoles: ["dueno", "admin"],
+    defaultRoles: [],
+    platformOnly: true,
   },
   {
     key: "configuracion",
@@ -166,6 +177,9 @@ export const FEATURE_PERMISOS: {
   },
 ];
 
+/** Permisos asignables a roles de un local (sin módulos de plataforma). */
+export const TENANT_FEATURE_PERMISOS = FEATURE_PERMISOS.filter((f) => !f.platformOnly);
+
 export const NAV_ITEMS = FEATURE_PERMISOS.map((f) => ({
   href: f.href,
   label: f.label,
@@ -175,33 +189,88 @@ export const NAV_ITEMS = FEATURE_PERMISOS.map((f) => ({
 }));
 
 export function defaultPermisosForRole(rol: UserRole): string[] {
-  return FEATURE_PERMISOS.filter((f) => f.defaultRoles.includes(rol)).map((f) => f.key);
+  return FEATURE_PERMISOS.filter(
+    (f) => !f.platformOnly && f.defaultRoles.includes(rol),
+  ).map((f) => f.key);
 }
 
-export function canAccess(rol: UserRole, href: string, permisos?: string[] | null): boolean {
+export type AccessOpts = {
+  plataformaAdmin?: boolean;
+};
+
+export function canAccess(
+  rol: UserRole,
+  href: string,
+  permisos?: string[] | null,
+  opts?: AccessOpts,
+): boolean {
   const item = [...FEATURE_PERMISOS]
     .sort((a, b) => b.href.length - a.href.length)
     .find((n) => href === n.href || href.startsWith(`${n.href}/`));
-  if (!item) return rol === "dueno" || rol === "admin";
-  if (permisos && permisos.length > 0) return permisos.includes(item.key);
+  if (!item) return rol === "dueno" || rol === "admin" || !!opts?.plataformaAdmin;
+  if (item.platformOnly) return !!opts?.plataformaAdmin;
+  if (permisos && permisos.length > 0) {
+    if (item.key === "negocios") return !!opts?.plataformaAdmin;
+    return permisos.includes(item.key);
+  }
   return item.defaultRoles.includes(rol);
 }
 
-export function navForRole(rol: UserRole, permisos?: string[] | null) {
-  if (permisos && permisos.length > 0) {
-    return FEATURE_PERMISOS.filter((n) => permisos.includes(n.key)).map((n) => ({
-      href: n.href,
-      label: n.label,
-      icon: n.icon,
-      key: n.key,
-    }));
-  }
-  return FEATURE_PERMISOS.filter((n) => n.defaultRoles.includes(rol)).map((n) => ({
+export function navForRole(
+  rol: UserRole,
+  permisos?: string[] | null,
+  opts?: AccessOpts,
+) {
+  return FEATURE_PERMISOS.filter((n) => {
+    if (n.platformOnly) return !!opts?.plataformaAdmin;
+    if (permisos && permisos.length > 0) {
+      return permisos.includes(n.key) && !isPlatformFeature(n.key);
+    }
+    return n.defaultRoles.includes(rol);
+  }).map((n) => ({
     href: n.href,
     label: n.label,
     icon: n.icon,
     key: n.key,
   }));
+}
+
+/** Une permisos de tenant + módulos de plataforma si aplica. */
+export function resolveSessionPermisos(
+  rol: UserRole,
+  customPermisos: string[] | null | undefined,
+  plataformaAdmin: boolean,
+): string[] {
+  let base =
+    customPermisos && customPermisos.length > 0
+      ? customPermisos.filter((p) => !isPlatformFeature(p))
+      : defaultPermisosForRole(rol);
+  // Hub de inicio: todos los roles llegan al dashboard (KPIs o atajos).
+  if (!base.includes("dashboard")) {
+    base = ["dashboard", ...base];
+  }
+  if (plataformaAdmin && !base.includes("negocios")) {
+    return [...base, "negocios"];
+  }
+  return base;
+}
+
+export const USER_ROLES: UserRole[] = [
+  "dueno",
+  "admin",
+  "mostrador",
+  "mesero",
+  "cocina",
+  "caja",
+];
+
+export function isUserRole(value: string): value is UserRole {
+  return (USER_ROLES as string[]).includes(value);
+}
+
+/** Roles de gestión: ven KPIs en el dashboard. */
+export function isManagementRole(rol: UserRole): boolean {
+  return rol === "dueno" || rol === "admin";
 }
 
 export function slugify(name: string) {
