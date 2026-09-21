@@ -7,7 +7,6 @@ import type { Mesa } from "@/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MesaQrLink } from "@/components/app/mesa-qr-link";
 import { Armchair } from "lucide-react";
 
 export type MesaRow = Mesa & {
@@ -36,7 +35,8 @@ export function MesasClient({ mesas, qrOn }: { mesas: MesaRow[]; qrOn: boolean }
       <div>
         <h1 className="text-2xl font-bold">Mesas</h1>
         <p className="text-sm text-stone-500">
-          Abre cuentas y atiende mesas activas. La creación y desactivación está en Gestionar mesas.
+          Abre cuentas y atiende mesas activas. La creación, QR y desactivación están en Gestionar
+          mesas.
         </p>
         {!qrOn && (
           <p className="mt-2 text-sm text-orange-700">
@@ -61,7 +61,7 @@ export function MesasClient({ mesas, qrOn }: { mesas: MesaRow[]; qrOn: boolean }
           {mesas.map((mesa) => {
             const cuentaAbierta = mesa.cuentas_mesa?.find((c) => c.estado === "abierta");
             return (
-              <Card key={mesa.id} className="flex min-h-[11rem] flex-col justify-between">
+              <Card key={mesa.id} className="flex min-h-[9rem] flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="text-lg font-semibold">{mesa.nombre}</h3>
@@ -72,9 +72,6 @@ export function MesasClient({ mesas, qrOn }: { mesas: MesaRow[]; qrOn: boolean }
                   <p className="text-sm text-stone-500">{mesa.zona}</p>
                   {cuentaAbierta && (
                     <p className="mt-2 text-xs text-orange-700">Cuenta abierta</p>
-                  )}
-                  {qrOn && mesa.qr_habilitado && (
-                    <MesaQrLink mesaId={mesa.id} mesaNombre={mesa.nombre} />
                   )}
                 </div>
                 <div className="mt-4">
