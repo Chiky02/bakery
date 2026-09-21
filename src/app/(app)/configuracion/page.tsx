@@ -200,10 +200,9 @@ export default function ConfiguracionPage() {
       </div>
 
       {tab === "negocio" && canManageNegocio && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card className="space-y-4">
-            <CardTitle>Local actual</CardTitle>
-            <div className="grid gap-4 sm:grid-cols-2">
+        <Card className="w-full space-y-4">
+          <CardTitle>Local actual</CardTitle>
+          <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label className="text-sm font-medium">Nombre del negocio</label>
                 <input
@@ -396,12 +395,11 @@ export default function ConfiguracionPage() {
                   El cliente no podrá pedir torta con entrega antes de ese plazo.
                 </p>
               </div>
-            </div>
+          </div>
 
-            <Button onClick={guardarNegocio}>Guardar</Button>
-            {saved && <p className="text-sm text-green-600">Guardado</p>}
-          </Card>
-        </div>
+          <Button onClick={guardarNegocio}>Guardar</Button>
+          {saved && <p className="text-sm text-green-600">Guardado</p>}
+        </Card>
       )}
 
       {tab === "cuenta" && (

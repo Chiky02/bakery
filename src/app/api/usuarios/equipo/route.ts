@@ -32,14 +32,16 @@ export async function GET(request: Request) {
   if (result instanceof NextResponse) return result;
   const { ctx } = result;
 
-  if (!["dueno", "admin"].includes(ctx.rol)) {
-    return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
+  if (!ctx.plataformaAdmin) {
+    if (!["dueno", "admin"].includes(ctx.rol)) {
+      return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
+    }
   }
 
   const url = new URL(request.url);
   const panaderiaId = url.searchParams.get("panaderia_id") || ctx.panaderia.id;
 
-  if (!canManagePanaderia(ctx.memberships, panaderiaId)) {
+  if (!ctx.plataformaAdmin && !canManagePanaderia(ctx.memberships, panaderiaId)) {
     return NextResponse.json({ error: "Sin permiso en ese negocio" }, { status: 403 });
   }
 

@@ -8,18 +8,22 @@ import { Button } from "@/components/ui/button";
 
 export function ImpersonateControls({
   impersonating,
+  impersonatingUser,
   compact,
 }: {
   impersonating: UserRole | null;
+  impersonatingUser: { id: string; nombre: string } | null;
   compact?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  const activeRol = impersonatingUser ? "" : (impersonating ?? "");
+
   async function apply(rol: string) {
     setError(null);
-    const body = rol ? { rol } : { rol: null };
+    const body = rol ? { rol } : { clear: true };
     const res = await fetch("/api/impersonate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -43,8 +47,8 @@ export function ImpersonateControls({
       </label>
       <select
         className="w-full rounded-lg border border-stone-200 bg-stone-50 px-2 py-1.5 text-sm disabled:opacity-60"
-        value={impersonating ?? ""}
-        disabled={pending}
+        value={activeRol}
+        disabled={pending || !!impersonatingUser}
         onChange={(e) => void apply(e.target.value)}
       >
         <option value="">Admin plataforma</option>
@@ -54,7 +58,12 @@ export function ImpersonateControls({
           </option>
         ))}
       </select>
-      {impersonating && (
+      {impersonatingUser && (
+        <p className="text-[11px] text-amber-800">
+          Viendo como usuario: {impersonatingUser.nombre}. Usa el banner para salir.
+        </p>
+      )}
+      {(impersonating || impersonatingUser) && (
         <Button
           type="button"
           variant="ghost"
@@ -73,8 +82,10 @@ export function ImpersonateControls({
 
 export function ImpersonateBanner({
   impersonating,
+  impersonatingUser,
 }: {
-  impersonating: UserRole;
+  impersonating: UserRole | null;
+  impersonatingUser: { nombre: string } | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -87,12 +98,21 @@ export function ImpersonateBanner({
     });
   }
 
+  const label = impersonatingUser
+    ? impersonatingUser.nombre
+    : impersonating
+      ? ROLE_LABELS[impersonating]
+      : "";
+
+  if (!label) return null;
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950 md:px-4">
       <p>
-        <span className="font-semibold">Modo prueba:</span> estás viendo el panel como{" "}
-        <span className="font-semibold">{ROLE_LABELS[impersonating]}</span>. Menú y permisos
-        reflejan ese rol (incluidas las APIs).
+        <span className="font-semibold">Modo prueba / soporte:</span> estás viendo el panel como{" "}
+        <span className="font-semibold">{label}</span>
+        {impersonatingUser ? " (usuario del equipo)" : " (rol)"}. Menú y permisos reflejan esa
+        vista.
       </p>
       <Button
         type="button"

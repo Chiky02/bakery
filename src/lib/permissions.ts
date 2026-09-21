@@ -19,6 +19,7 @@ import {
   FileText,
   Contact,
   Boxes,
+  ScrollText,
 } from "lucide-react";
 
 export const ROLE_LABELS: Record<UserRole, string> = {
@@ -32,7 +33,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 };
 
 /** Módulos exclusivos del admin de plataforma (no van en roles de panadería). */
-export const PLATFORM_FEATURE_KEYS = ["negocios"] as const;
+export const PLATFORM_FEATURE_KEYS = ["negocios", "terminos"] as const;
 
 export function isPlatformFeature(key: string): boolean {
   return (PLATFORM_FEATURE_KEYS as readonly string[]).includes(key);
@@ -162,6 +163,14 @@ export const FEATURE_PERMISOS: {
     platformOnly: true,
   },
   {
+    key: "terminos",
+    label: "Términos",
+    href: "/terminos",
+    icon: ScrollText,
+    defaultRoles: [],
+    platformOnly: true,
+  },
+  {
     key: "configuracion",
     label: "Configuración",
     href: "/configuracion",
@@ -210,7 +219,7 @@ export function canAccess(
   if (!item) return rol === "dueno" || rol === "admin" || !!opts?.plataformaAdmin;
   if (item.platformOnly) return !!opts?.plataformaAdmin;
   if (permisos && permisos.length > 0) {
-    if (item.key === "negocios") return !!opts?.plataformaAdmin;
+    if (item.key === "negocios" || item.key === "terminos") return !!opts?.plataformaAdmin;
     return permisos.includes(item.key);
   }
   return item.defaultRoles.includes(rol);
@@ -250,7 +259,10 @@ export function resolveSessionPermisos(
     base = ["dashboard", ...base];
   }
   if (plataformaAdmin && !base.includes("negocios")) {
-    return [...base, "negocios"];
+    base = [...base, "negocios"];
+  }
+  if (plataformaAdmin && !base.includes("terminos")) {
+    base = [...base, "terminos"];
   }
   return base;
 }

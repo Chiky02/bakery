@@ -14,6 +14,7 @@ export type BakeryClientContext = Pick<
   | "plataformaAdmin"
   | "isPlatformOperator"
   | "impersonating"
+  | "impersonatingUser"
 >;
 
 const BakeryContext = createContext<BakeryClientContext | null>(null);

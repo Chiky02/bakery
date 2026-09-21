@@ -7,7 +7,8 @@ import {
   FEATURE_PERMISOS,
   resolveSessionPermisos,
 } from "@/lib/permissions";
-import { readImpersonateRol } from "@/lib/impersonate";
+import { readImpersonation } from "@/lib/impersonate";
+import { getServiceClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 
 /** Deduped per request: layout + page share the same Auth roundtrip. */
@@ -77,10 +78,63 @@ export const getSessionContext = cache(async (): Promise<SessionContext | null> 
   const list = (membershipsRes.data as Miembro[]) ?? [];
   if (list.length === 0) return null;
 
-  const active =
+  const isPlatformOperator = !!profile.plataforma_admin;
+  const imp = isPlatformOperator ? await readImpersonation() : null;
+
+  let active =
     list.find((m) => m.panaderia_id === profile.panaderia_activa_id) ?? list[0];
 
-  if (profile.panaderia_activa_id !== active.panaderia_id) {
+  let impersonating: UserRole | null = null;
+  let impersonatingUser: SessionContext["impersonatingUser"] = null;
+  let rol: UserRole = active.rol as UserRole;
+  let custom = (active.roles as RolCustom | null | undefined) ?? null;
+  let panaderia = active.panaderias as Panaderia;
+
+  if (imp?.kind === "rol") {
+    impersonating = imp.rol;
+    rol = imp.rol;
+    custom = null;
+  } else if (imp?.kind === "user") {
+    try {
+      const admin = getServiceClient();
+      const { data: targetMember } = await admin
+        .from("miembros")
+        .select("*, panaderias(*), roles(*, role_permisos(permiso))")
+        .eq("user_id", imp.userId)
+        .eq("panaderia_id", imp.panaderiaId)
+        .eq("activo", true)
+        .maybeSingle();
+
+      if (targetMember) {
+        const tm = targetMember as Miembro;
+        active = tm;
+        panaderia = tm.panaderias as Panaderia;
+        rol = tm.rol as UserRole;
+        custom = (tm.roles as RolCustom | null | undefined) ?? null;
+        impersonating = rol;
+
+        const { data: targetProfile } = await admin
+          .from("profiles")
+          .select("id, nombre")
+          .eq("id", imp.userId)
+          .maybeSingle();
+
+        impersonatingUser = {
+          id: imp.userId,
+          nombre: targetProfile?.nombre?.trim() || "Usuario",
+          panaderiaId: imp.panaderiaId,
+        };
+      }
+    } catch {
+      // Sin service role o membership inválido: ignorar impersonación
+    }
+  }
+
+  const actingAsOther = !!impersonating || !!impersonatingUser;
+  /** Efectivo: apagado durante simulación para que APIs/UI reflejen el rol. */
+  const plataformaAdmin = isPlatformOperator && !actingAsOther;
+
+  if (!impersonatingUser && profile.panaderia_activa_id !== active.panaderia_id) {
     await supabase
       .from("profiles")
       .update({ panaderia_activa_id: active.panaderia_id })
@@ -88,29 +142,25 @@ export const getSessionContext = cache(async (): Promise<SessionContext | null> 
     profile.panaderia_activa_id = active.panaderia_id;
   }
 
-  const panaderia = active.panaderias as Panaderia;
   if (!panaderia) return null;
 
-  const isPlatformOperator = !!profile.plataforma_admin;
-  const impersonating = isPlatformOperator ? await readImpersonateRol() : null;
-  /** Efectivo: apagado durante simulación para que APIs/UI reflejen el rol. */
-  const plataformaAdmin = isPlatformOperator && !impersonating;
-
-  const realRol = active.rol as UserRole;
-  const rol = impersonating ?? realRol;
-  const custom = (active.roles as RolCustom | null | undefined) ?? null;
-
-  const roleLabel = impersonating
-    ? `Simulando: ${ROLE_LABELS[impersonating]}`
-    : isPlatformOperator
-      ? "Admin plataforma"
-      : custom?.nombre?.trim() || ROLE_LABELS[rol];
+  const roleLabel = impersonatingUser
+    ? `Como: ${impersonatingUser.nombre} (${custom?.nombre?.trim() || ROLE_LABELS[rol]})`
+    : impersonating
+      ? `Simulando: ${ROLE_LABELS[impersonating]}`
+      : isPlatformOperator
+        ? "Admin plataforma"
+        : custom?.nombre?.trim() || ROLE_LABELS[rol];
 
   const fromDb = custom?.role_permisos?.map((p) => p.permiso) ?? [];
-  // Al simular, usamos el set por defecto del rol (no el custom del membership real).
-  const permisos = impersonating
-    ? resolveSessionPermisos(rol, null, false)
-    : resolveSessionPermisos(rol, fromDb.length > 0 ? fromDb : null, plataformaAdmin);
+  const permisos =
+    impersonating || impersonatingUser
+      ? resolveSessionPermisos(
+          rol,
+          impersonatingUser && fromDb.length > 0 ? fromDb : null,
+          false,
+        )
+      : resolveSessionPermisos(rol, fromDb.length > 0 ? fromDb : null, plataformaAdmin);
 
   return {
     profile,
@@ -121,7 +171,8 @@ export const getSessionContext = cache(async (): Promise<SessionContext | null> 
     memberships: list,
     plataformaAdmin,
     isPlatformOperator,
-    impersonating,
+    impersonating: impersonatingUser ? null : impersonating,
+    impersonatingUser,
   };
 });
 

@@ -60,10 +60,13 @@ describe("canAccess", () => {
 });
 
 describe("resolveSessionPermisos", () => {
-  it("inyecta negocios solo a admin de plataforma", () => {
+  it("inyecta negocios y terminos solo a admin de plataforma", () => {
     const base = resolveSessionPermisos("dueno", null, false);
     expect(base).not.toContain("negocios");
-    expect(resolveSessionPermisos("dueno", null, true)).toContain("negocios");
+    expect(base).not.toContain("terminos");
+    const admin = resolveSessionPermisos("dueno", null, true);
+    expect(admin).toContain("negocios");
+    expect(admin).toContain("terminos");
   });
 
   it("limpia negocios de permisos custom de tenant", () => {
@@ -83,11 +86,12 @@ describe("navForRole", () => {
     expect(nav.map((n) => n.key).sort()).toEqual(["caja", "dashboard"]);
   });
 
-  it("incluye negocios en nav solo con plataformaAdmin", () => {
+  it("incluye negocios y terminos en nav solo con plataformaAdmin", () => {
     expect(navForRole("dueno").map((n) => n.key)).not.toContain("negocios");
-    expect(navForRole("dueno", null, { plataformaAdmin: true }).map((n) => n.key)).toContain(
-      "negocios",
-    );
+    expect(navForRole("dueno").map((n) => n.key)).not.toContain("terminos");
+    const keys = navForRole("dueno", null, { plataformaAdmin: true }).map((n) => n.key);
+    expect(keys).toContain("negocios");
+    expect(keys).toContain("terminos");
   });
 
   it("filtra por rol si no hay custom", () => {

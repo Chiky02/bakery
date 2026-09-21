@@ -36,7 +36,15 @@ export default function PanaderiasPage() {
   }
 
   useEffect(() => {
-    load();
+    (async () => {
+      const termsRes = await fetch("/api/terminos");
+      const terms = await termsRes.json().catch(() => ({}));
+      if (termsRes.ok && terms.vigente && !terms.accepted) {
+        router.replace("/aceptar-terminos");
+        return;
+      }
+      await load();
+    })();
   }, []);
 
   async function enterBakery(id: string) {

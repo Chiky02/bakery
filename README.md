@@ -83,10 +83,15 @@ npm run dev
 | Configuración | `/configuracion` | dueño, gerente (+ alta solo plataforma) |
 | Usuarios (equipo) | `/usuarios` | dueño, gerente |
 | Negocios | `/negocios` | **solo admin plataforma** |
+| Términos | `/terminos` | **solo admin plataforma** |
 | Mis panaderías | `/panaderias` | todos |
 | Menú QR | `/qr/[mesaId]` | público |
 
-El **admin de plataforma** puede simular cualquier rol (selector “Simular rol” en el menú) sin cerrar sesión: menú, dashboard y APIs respetan el rol simulado. Baner ámbar para salir.
+El **admin de plataforma** puede simular un rol (selector en el menú) o ver el panel como un usuario del Equipo / Negocios (“Ver como”). Baner ámbar para salir; las intervenciones se registran en auditoría interna.
+
+### Términos y condiciones
+- Versiones gestionadas en **Términos** (admin plataforma).
+- Si no se ha aceptado la versión vigente, el usuario ve `/aceptar-terminos` (card + botón aceptar) antes de usar el panel.
 
 ## Usuarios de prueba (seed)
 

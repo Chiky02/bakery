@@ -5,6 +5,7 @@ import type { UserRole } from "@/types";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GestionarEquipoButton } from "./gestionar-equipo-button";
+import { ImpersonateUserButton } from "@/components/app/impersonate-user-button";
 import Link from "next/link";
 
 type MemberRow = {
@@ -169,6 +170,13 @@ export default async function NegociosPage() {
                             <Badge color={m.activo ? "success" : "danger"}>
                               {m.activo ? "Activo" : "Inactivo"}
                             </Badge>
+                            {m.activo && (
+                              <ImpersonateUserButton
+                                userId={m.user_id}
+                                panaderiaId={m.panaderia_id}
+                                nombre={m.nombre}
+                              />
+                            )}
                           </div>
                         </li>
                       );

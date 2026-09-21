@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CuentasAuthPanel } from "./cuentas-auth-panel";
+import { ImpersonateUserButton } from "@/components/app/impersonate-user-button";
 
 type EquipoMember = {
   id: string;
@@ -47,7 +48,7 @@ const emptyForm = (): RoleForm => ({
 });
 
 export default function UsuariosPage() {
-  const { panaderia, plataformaAdmin } = useBakery();
+  const { panaderia, plataformaAdmin, isPlatformOperator, profile } = useBakery();
   const { panaderiaId } = useBakeryId();
   const [tab, setTab] = useState<Tab>("equipo");
   const [miembros, setMiembros] = useState<EquipoMember[]>([]);
@@ -344,6 +345,13 @@ export default function UsuariosPage() {
                       <Badge color={m.activo ? "success" : "danger"}>
                         {m.activo ? "Activo" : "Inactivo"}
                       </Badge>
+                      {isPlatformOperator && m.user_id !== profile.id && m.activo && (
+                        <ImpersonateUserButton
+                          userId={m.user_id}
+                          panaderiaId={m.panaderia_id}
+                          nombre={m.nombre}
+                        />
+                      )}
                     </div>
                   </li>
                 ))}

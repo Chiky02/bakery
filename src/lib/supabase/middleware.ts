@@ -48,6 +48,7 @@ export async function updateSession(request: NextRequest) {
     path === "/" ||
     path === "/login" ||
     path === "/encargar" ||
+    path === "/aceptar-terminos" ||
     path.startsWith("/qr") ||
     path.startsWith("/api/qr") ||
     path.startsWith("/api/public");
@@ -60,7 +61,7 @@ export async function updateSession(request: NextRequest) {
 
   if (user && path === "/login") {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = "/aceptar-terminos";
     return NextResponse.redirect(url);
   }
 

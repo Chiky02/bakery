@@ -67,10 +67,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     plataformaAdmin,
     isPlatformOperator,
     impersonating,
+    impersonatingUser,
   } = useBakery();
   const pathname = usePathname();
   const router = useRouter();
   const nav = navForRole(rol, permisos, { plataformaAdmin });
+  const isSimulating = !!impersonating || !!impersonatingUser;
   const [notifs, setNotifs] = useState<Notificacion[]>([]);
   const [openNotif, setOpenNotif] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -194,7 +196,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           )}
           {isPlatformOperator && (
             <div className="mt-3 border-t border-stone-100 pt-3">
-              <ImpersonateControls impersonating={impersonating} />
+              <ImpersonateControls
+                impersonating={impersonating}
+                impersonatingUser={impersonatingUser}
+              />
             </div>
           )}
         </div>
@@ -209,7 +214,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        {impersonating && <ImpersonateBanner impersonating={impersonating} />}
+        {isSimulating && (
+          <ImpersonateBanner
+            impersonating={impersonating}
+            impersonatingUser={impersonatingUser}
+          />
+        )}
         <header className="flex shrink-0 items-center justify-between gap-2 border-b border-stone-200 bg-white px-3 py-3 md:px-4">
           <div className="flex min-w-0 items-center gap-2 md:hidden">
             <Button
@@ -343,7 +353,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               )}
               {isPlatformOperator && (
                 <div className="border-b border-stone-100 px-4 py-3">
-                  <ImpersonateControls impersonating={impersonating} compact />
+                  <ImpersonateControls
+                    impersonating={impersonating}
+                    impersonatingUser={impersonatingUser}
+                    compact
+                  />
                 </div>
               )}
               <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">

@@ -92,8 +92,10 @@ export type SessionContext = {
   plataformaAdmin: boolean;
   /** profiles.plataforma_admin real; permite controles de impersonación. */
   isPlatformOperator: boolean;
-  /** Rol simulado activo (solo operadores de plataforma). */
+  /** Rol simulado activo (solo operadores de plataforma; null si se impersona usuario). */
   impersonating: UserRole | null;
+  /** Usuario concreto del equipo cuya vista se está simulando. */
+  impersonatingUser: { id: string; nombre: string; panaderiaId: string } | null;
 };
 
 export type Categoria = {
@@ -351,4 +353,22 @@ export type Factura = {
   notas?: string | null;
   emitida_por?: string | null;
   created_at: string;
+};
+
+export type TerminosVersion = {
+  id: string;
+  version: string;
+  titulo: string;
+  contenido: string;
+  vigente: boolean;
+  publicada_at?: string | null;
+  created_at?: string;
+  created_by?: string | null;
+};
+
+export type TerminosAceptacion = {
+  id: string;
+  user_id: string;
+  terminos_version_id: string;
+  accepted_at: string;
 };

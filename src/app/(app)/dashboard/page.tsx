@@ -9,10 +9,11 @@ import Link from "next/link";
 
 export default async function DashboardPage() {
   const ctx = await requireFeature("dashboard");
-  const { panaderia, rol, roleLabel, permisos, plataformaAdmin, impersonating } = ctx;
+  const { panaderia, rol, roleLabel, permisos, plataformaAdmin, impersonating, impersonatingUser } =
+    ctx;
   const hoyInput = bogotaTodayInput();
 
-  const showKpis = isManagementRole(rol) || (plataformaAdmin && !impersonating);
+  const showKpis = isManagementRole(rol) || (plataformaAdmin && !impersonating && !impersonatingUser);
 
   if (!showKpis) {
     const modules = navForRole(rol, permisos, { plataformaAdmin }).filter(
