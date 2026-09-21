@@ -10,6 +10,7 @@ const itemSchema = z.object({
 });
 
 const schema = z.object({
+  client_request_id: z.string().uuid().optional().nullable(),
   medio_pago: z.enum(["efectivo", "electronico", "mixto"]),
   monto_efectivo: z.number().int().min(0).optional().nullable(),
   monto_electronico: z.number().int().min(0).optional().nullable(),
@@ -23,6 +24,19 @@ export async function POST(request: Request) {
 
   try {
     const body = schema.parse(await request.json());
+    const clientRequestId = body.client_request_id ?? null;
+
+    if (clientRequestId) {
+      const { data: existing } = await supabase
+        .from("ventas_mostrador")
+        .select("*")
+        .eq("panaderia_id", ctx.panaderia.id)
+        .eq("client_request_id", clientRequestId)
+        .maybeSingle();
+      if (existing) {
+        return NextResponse.json(existing);
+      }
+    }
 
     const ids = body.detalle.map((d) => d.producto_id);
     const { data: productos } = await supabase
@@ -75,13 +89,37 @@ export async function POST(request: Request) {
 
     if (error) {
       if (/registrar_venta_mostrador|function/i.test(error.message)) {
-        // Fallback legacy: insert + stock (sin atomicidad plena)
-        return await legacyVenta(supabase, ctx, pago.value, detalleRpc, byId, turnoId);
+        return await legacyVenta(
+          supabase,
+          ctx,
+          pago.value,
+          detalleRpc,
+          byId,
+          turnoId,
+          clientRequestId,
+        );
       }
       if (/Stock insuficiente|No hay apertura/i.test(error.message)) {
         return NextResponse.json({ error: error.message }, { status: 409 });
       }
       return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    if (clientRequestId && ventaId) {
+      const { error: idErr } = await supabase
+        .from("ventas_mostrador")
+        .update({ client_request_id: clientRequestId })
+        .eq("id", ventaId);
+      // Si la columna aún no existe o hay carrera única, no tumbar la venta
+      if (idErr && /duplicate|unique/i.test(idErr.message)) {
+        const { data: raced } = await supabase
+          .from("ventas_mostrador")
+          .select("*")
+          .eq("panaderia_id", ctx.panaderia.id)
+          .eq("client_request_id", clientRequestId)
+          .maybeSingle();
+        if (raced) return NextResponse.json(raced);
+      }
     }
 
     const { data: venta } = await supabase
@@ -114,6 +152,7 @@ async function legacyVenta(
     { id: string; nombre: string; precio: number; control_stock?: boolean }
   >,
   turnoId: string,
+  clientRequestId: string | null,
 ) {
   const detalle = detalleRpc.map((d) => {
     const p = byId.get(d.producto_id)!;
@@ -136,6 +175,7 @@ async function legacyVenta(
     monto_efectivo: pago.monto_efectivo,
     monto_electronico: pago.monto_electronico,
   };
+  if (clientRequestId) insertPayload.client_request_id = clientRequestId;
 
   let { data, error } = await supabase
     .from("ventas_mostrador")
@@ -143,14 +183,26 @@ async function legacyVenta(
     .select()
     .single();
 
-  if (error && /monto_efectivo|monto_electronico/i.test(error.message)) {
+  if (error && /monto_efectivo|monto_electronico|client_request_id/i.test(error.message)) {
     delete insertPayload.monto_efectivo;
     delete insertPayload.monto_electronico;
+    if (/client_request_id/i.test(error.message)) {
+      delete insertPayload.client_request_id;
+    }
     ({ data, error } = await supabase
       .from("ventas_mostrador")
       .insert(insertPayload)
       .select()
       .single());
+  }
+  if (error && /duplicate|unique/i.test(error.message) && clientRequestId) {
+    const { data: existing } = await supabase
+      .from("ventas_mostrador")
+      .select("*")
+      .eq("panaderia_id", ctx.panaderia.id)
+      .eq("client_request_id", clientRequestId)
+      .maybeSingle();
+    if (existing) return NextResponse.json(existing);
   }
   if (error || !data) {
     return NextResponse.json(

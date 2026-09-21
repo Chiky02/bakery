@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ProductGrid } from "@/components/app/product-grid";
 import { CartPanel } from "@/components/app/cart-panel";
 import { ClientePicker } from "@/components/app/cliente-picker";
@@ -9,9 +9,17 @@ import type { CartItem, Cliente, Factura, Panaderia, Producto } from "@/types";
 import { SIN_TURNO_CAJA_MSG } from "@/lib/turno-caja-messages";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
+import { useOnlineStatus, notifyOutboxChanged } from "@/lib/offline/hooks";
+import {
+  enqueueOutbox,
+  loadCatalog,
+  newClientRequestId,
+  saveCatalog,
+  type OutboxItem,
+} from "@/lib/offline/store";
 
 export function MostradorClient({
-  productos,
+  productos: initialProductos,
   panaderia,
   turnoAbierto,
 }: {
@@ -19,6 +27,8 @@ export function MostradorClient({
   panaderia: Pick<Panaderia, "id" | "imprimir_ticket_venta">;
   turnoAbierto: boolean;
 }) {
+  const online = useOnlineStatus();
+  const [productos, setProductos] = useState<Producto[]>(initialProductos);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
   const [medioPago, setMedioPago] = useState<"efectivo" | "electronico" | "mixto">("efectivo");
@@ -38,6 +48,25 @@ export function MostradorClient({
   const [montoEfectivo, setMontoEfectivo] = useState("");
   const [montoElectronico, setMontoElectronico] = useState("");
   const printTicket = panaderia.imprimir_ticket_venta !== false;
+
+  useEffect(() => {
+    setProductos(initialProductos);
+    if (initialProductos.length > 0) {
+      void saveCatalog(panaderia.id, initialProductos);
+    }
+  }, [initialProductos, panaderia.id]);
+
+  useEffect(() => {
+    if (initialProductos.length > 0) return;
+    void (async () => {
+      const cached = await loadCatalog(panaderia.id);
+      if (cached?.productos?.length) {
+        setProductos(cached.productos as Producto[]);
+        setMessage("Catálogo desde caché local (sin datos frescos del servidor).");
+        setMessageError(false);
+      }
+    })();
+  }, [initialProductos.length, panaderia.id]);
 
   function applyCliente(c: Cliente | null) {
     setClienteId(c?.id ?? null);
@@ -77,10 +106,54 @@ export function MostradorClient({
     );
   }
 
+  async function queueLocally(
+    clientRequestId: string,
+    detalleCart: OutboxItem["payload"]["detalle"],
+  ) {
+    const item: OutboxItem = {
+      id: clientRequestId,
+      kind: "venta_mostrador",
+      created_at: new Date().toISOString(),
+      status: "pending",
+      payload: {
+        panaderia_id: panaderia.id,
+        client_request_id: clientRequestId,
+        medio_pago: medioPago,
+        monto_efectivo: medioPago === "mixto" ? Number(montoEfectivo) || 0 : undefined,
+        monto_electronico: medioPago === "mixto" ? Number(montoElectronico) || 0 : undefined,
+        detalle: detalleCart,
+        emitir_factura: emitirFactura,
+        factura: emitirFactura
+          ? {
+              cliente_id: clienteId,
+              cliente_nombre: cliente.nombre,
+              cliente_documento: cliente.documento,
+              cliente_email: cliente.email,
+              cliente_telefono: cliente.telefono,
+              cliente_direccion: cliente.direccion,
+              iva_porcentaje: Number(ivaPct) || 0,
+            }
+          : undefined,
+        print_ticket: printTicket && !emitirFactura,
+      },
+    };
+    await enqueueOutbox(item);
+    notifyOutboxChanged();
+    setCart([]);
+    setMessageError(false);
+    setMessage(
+      "✓ Venta guardada en este dispositivo. Se sincronizará al recuperar internet (hace falta turno de caja abierto).",
+    );
+  }
+
   async function checkout() {
     if (!turnoAbierto) {
       setMessageError(true);
-      setMessage(SIN_TURNO_CAJA_MSG);
+      setMessage(
+        online
+          ? SIN_TURNO_CAJA_MSG
+          : "Sin turno de caja en esta sesión. Abre turno con red y recarga el mostrador antes de vender offline.",
+      );
       return;
     }
     if (emitirFactura && !cliente.nombre.trim()) {
@@ -88,6 +161,8 @@ export function MostradorClient({
       setMessage("Indica razón social / nombre del cliente para la factura");
       return;
     }
+    if (cart.length === 0) return;
+
     setLoading(true);
     setMessage("");
     setMessageError(false);
@@ -98,72 +173,84 @@ export function MostradorClient({
       precio: i.producto.precio,
       subtotal: i.producto.precio * i.cantidad,
     }));
+    const clientRequestId = newClientRequestId();
 
-    const res = await fetch("/api/ventas", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        medio_pago: medioPago,
-        monto_efectivo: medioPago === "mixto" ? Number(montoEfectivo) || 0 : undefined,
-        monto_electronico: medioPago === "mixto" ? Number(montoElectronico) || 0 : undefined,
-        detalle: detalleCart,
-      }),
-    });
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      setMessageError(true);
-      setMessage(body.error ?? "Error al registrar la venta");
+    if (!online) {
+      await queueLocally(clientRequestId, detalleCart);
       setLoading(false);
       return;
     }
 
-    const venta = await res.json();
-    setCart([]);
-    let msg = "✓ Venta registrada. Digita el total en la caja fiscal.";
-
-    if (emitirFactura) {
-      const fRes = await fetch("/api/facturas", {
+    try {
+      const res = await fetch("/api/ventas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          origen: "mostrador",
-          venta_id: venta.id,
-          cliente_id: clienteId,
-          cliente_nombre: cliente.nombre.trim(),
-          cliente_documento: cliente.documento.trim() || null,
-          cliente_email: cliente.email.trim() || null,
-          cliente_telefono: cliente.telefono.trim() || null,
-          cliente_direccion: cliente.direccion.trim() || null,
+          client_request_id: clientRequestId,
           medio_pago: medioPago,
-          iva_porcentaje: Number(ivaPct) || 0,
-          detalle: detalleCart.map((d) => ({
-            producto_id: d.producto_id,
-            nombre: d.nombre,
-            cantidad: d.cantidad,
-            precio: d.precio,
-          })),
-          notas: "Documento comercial de venta (no es factura electrónica DIAN).",
+          monto_efectivo: medioPago === "mixto" ? Number(montoEfectivo) || 0 : undefined,
+          monto_electronico: medioPago === "mixto" ? Number(montoElectronico) || 0 : undefined,
+          detalle: detalleCart,
         }),
       });
-      if (fRes.ok) {
-        const f = (await fRes.json()) as Factura;
-        setEmitirFactura(false);
-        setClienteId(null);
-        setCliente({ nombre: "", documento: "", email: "", telefono: "", direccion: "" });
-        window.open(`/facturas/${f.id}`, "_blank");
-        msg = "✓ Venta y factura emitida. Imprime o guarda el PDF del navegador.";
-      } else {
-        const body = await fRes.json().catch(() => ({}));
-        msg = `Venta OK, pero factura falló: ${body.error ?? "error"}`;
-      }
-    } else if (printTicket) {
-      window.open(`/ventas/${venta.id}/ticket`, "_blank");
-      msg = "✓ Venta registrada. Ticket listo para imprimir / PDF.";
-    }
 
-    setMessageError(false);
-    setMessage(msg);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setMessageError(true);
+        setMessage(body.error ?? "Error al registrar la venta");
+        setLoading(false);
+        return;
+      }
+
+      const venta = await res.json();
+      setCart([]);
+      let msg = "✓ Venta registrada. Digita el total en la caja fiscal.";
+
+      if (emitirFactura) {
+        const fRes = await fetch("/api/facturas", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            origen: "mostrador",
+            venta_id: venta.id,
+            cliente_id: clienteId,
+            cliente_nombre: cliente.nombre.trim(),
+            cliente_documento: cliente.documento.trim() || null,
+            cliente_email: cliente.email.trim() || null,
+            cliente_telefono: cliente.telefono.trim() || null,
+            cliente_direccion: cliente.direccion.trim() || null,
+            medio_pago: medioPago,
+            iva_porcentaje: Number(ivaPct) || 0,
+            detalle: detalleCart.map((d) => ({
+              producto_id: d.producto_id,
+              nombre: d.nombre,
+              cantidad: d.cantidad,
+              precio: d.precio,
+            })),
+            notas: "Documento comercial de venta (no es factura electrónica DIAN).",
+          }),
+        });
+        if (fRes.ok) {
+          const f = (await fRes.json()) as Factura;
+          setEmitirFactura(false);
+          setClienteId(null);
+          setCliente({ nombre: "", documento: "", email: "", telefono: "", direccion: "" });
+          window.open(`/facturas/${f.id}`, "_blank");
+          msg = "✓ Venta y factura emitida. Imprime o guarda el PDF del navegador.";
+        } else {
+          const body = await fRes.json().catch(() => ({}));
+          msg = `Venta OK, pero factura falló: ${body.error ?? "error"}`;
+        }
+      } else if (printTicket) {
+        window.open(`/ventas/${venta.id}/ticket`, "_blank");
+        msg = "✓ Venta registrada. Ticket listo para imprimir / PDF.";
+      }
+
+      setMessageError(false);
+      setMessage(msg);
+    } catch {
+      await queueLocally(clientRequestId, detalleCart);
+    }
     setLoading(false);
   }
 
@@ -174,7 +261,7 @@ export function MostradorClient({
           type="checkbox"
           checked={emitirFactura}
           onChange={(e) => setEmitirFactura(e.target.checked)}
-          disabled={!turnoAbierto}
+          disabled={!turnoAbierto && online}
         />
         Emitir factura de venta (impresa)
       </label>
@@ -182,6 +269,7 @@ export function MostradorClient({
         <div className="space-y-2">
           <p className="text-xs text-stone-500">
             Completa los datos del comprador aquí (quedan encima del total). No es FE DIAN.
+            {!online && " Sin red: la factura se emitirá al sincronizar."}
           </p>
           <ClientePicker selectedId={clienteId} onSelect={applyCliente} />
           <Input
@@ -243,11 +331,16 @@ export function MostradorClient({
     </div>
   );
 
+  const canCheckout = turnoAbierto;
+
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold">Calculadora de venta</h1>
-        <p className="text-sm text-stone-500">Mostrador — referencia para caja fiscal</p>
+        <p className="text-sm text-stone-500">
+          Mostrador — referencia para caja fiscal
+          {!online ? " · modo offline" : ""}
+        </p>
       </div>
       <TurnoCajaRequiredBanner abierto={turnoAbierto} />
       {message && (
@@ -291,7 +384,7 @@ export function MostradorClient({
           onRemove={(id) => updateQty(id, -999)}
           onClear={() => setCart([])}
           onCheckout={checkout}
-          disabled={loading || !turnoAbierto}
+          disabled={loading || !canCheckout}
           message={messageError ? message : undefined}
           extra={facturaExtra}
         />

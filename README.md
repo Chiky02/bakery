@@ -93,6 +93,13 @@ npm run dev
 
 El **admin de plataforma** puede simular un rol (selector en el menú) o ver el panel como un usuario del Equipo / Negocios (“Ver como”). Baner ámbar para salir; las intervenciones se registran en auditoría interna.
 
+### Offline / PWA (mostrador)
+- Manifest + service worker: el panel se puede instalar y cachear el shell.
+- Banner de conexión: avisa sin red y ventas pendientes de sync.
+- Catálogo de mostrador en IndexedDB; ventas offline van a una cola local y se envían al volver internet (`client_request_id` evita duplicados).
+- Migración: `20260921180000_ventas_client_request_id.sql`.
+- En desarrollo el SW no se registra salvo `NEXT_PUBLIC_PWA_DEV=1`.
+
 ### Términos y condiciones
 - Versiones gestionadas en **Términos** (admin plataforma).
 - Si no se ha aceptado la versión vigente, el usuario ve `/aceptar-terminos` (card + botón aceptar) antes de usar el panel.

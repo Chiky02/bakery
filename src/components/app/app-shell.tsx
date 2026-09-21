@@ -13,6 +13,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Bell, Menu, X } from "lucide-react";
 import { notificationHref } from "@/lib/notifications";
 import { ImpersonateBanner, ImpersonateControls } from "@/components/app/impersonate-controls";
+import { OfflineBanner } from "@/components/app/offline-banner";
 
 function NavLinks({
   nav,
@@ -214,6 +215,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <OfflineBanner />
         {isSimulating && (
           <ImpersonateBanner
             impersonating={impersonating}

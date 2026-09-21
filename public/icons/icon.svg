@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img">
+  <rect width="512" height="512" rx="96" fill="#ea580c"/>
+  <circle cx="256" cy="220" r="88" fill="#fff7ed"/>
+  <path fill="#ffedd5" d="M140 320h232c20 0 36 16 36 36v20H104v-20c0-20 16-36 36-36z"/>
+  <text x="256" y="430" text-anchor="middle" font-family="system-ui,sans-serif" font-size="72" font-weight="700" fill="#fff7ed">P</text>
+</svg>

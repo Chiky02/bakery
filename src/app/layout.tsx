@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { DM_Sans, Geist_Mono } from "next/font/google";
 import { LightModeLock } from "@/components/light-mode-lock";
+import { PwaRegister } from "@/components/app/pwa-register";
 import "./globals.css";
 
 const display = DM_Sans({
@@ -17,6 +18,20 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Panel",
   description: "Gestión de panadería — ventas, mesas, encargos y recepciones",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Panel",
+  },
+  icons: {
+    icon: [{ url: "/icons/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/icons/icon.svg" }],
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#ea580c",
 };
 
 const forceLightScript = `(function(){var r=document.documentElement;r.classList.remove("dark");r.style.colorScheme="light";try{localStorage.removeItem("bakerychiky-theme");localStorage.removeItem("app-theme");}catch(e){}})();`;
@@ -33,7 +48,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: forceLightScript }} />
       </head>
       <body className="min-h-full bg-[#f7f4ef] text-stone-900 antialiased">
-        <LightModeLock>{children}</LightModeLock>
+        <LightModeLock>
+          <PwaRegister />
+          {children}
+        </LightModeLock>
       </body>
     </html>
   );
