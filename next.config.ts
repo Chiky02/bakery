@@ -18,6 +18,7 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_VERCEL_PROD_ORIGIN: vercelProductionOrigin(),
   },
+  serverExternalPackages: ["heic-convert"],
 };
 
 export default nextConfig;

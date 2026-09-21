@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Categoria, Producto } from "@/types";
 import { formatCOP } from "@/lib/format";
@@ -10,6 +10,8 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { EyeOff, Eye, Pencil, Trash2, Cake } from "lucide-react";
+
+const PAGE_SIZE = 20;
 
 type ProductForm = {
   id?: string;
@@ -43,6 +45,8 @@ export default function ProductosPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [search, setSearch] = useState("");
+  const [categoriaFiltro, setCategoriaFiltro] = useState("");
+  const [page, setPage] = useState(1);
   const [tab, setTab] = useState<"productos" | "categorias">("productos");
   const [form, setForm] = useState<ProductForm>(emptyProduct());
   const [catNombre, setCatNombre] = useState("");
@@ -77,6 +81,10 @@ export default function ProductosPage() {
   useEffect(() => {
     load();
   }, [panaderiaId]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, categoriaFiltro]);
 
   async function saveProduct(e: React.FormEvent) {
     e.preventDefault();
@@ -248,17 +256,23 @@ export default function ProductosPage() {
     await load();
   }
 
-  const filtered = productos.filter(
-    (p) =>
-      p.nombre.toLowerCase().includes(search.toLowerCase()) ||
-      (p.codigo_barras ?? "").includes(search),
-  );
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return productos.filter((p) => {
+      if (categoriaFiltro && p.categoria_id !== categoriaFiltro) return false;
+      if (!q) return true;
+      return (
+        p.nombre.toLowerCase().includes(q) || (p.codigo_barras ?? "").includes(search.trim())
+      );
+    });
+  }, [productos, search, categoriaFiltro]);
 
-  const byCat = filtered.reduce<Record<string, Producto[]>>((acc, p) => {
-    const cat = p.categorias?.nombre ?? "Otros";
-    (acc[cat] ??= []).push(p);
-    return acc;
-  }, {});
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageItems = filtered.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
 
   return (
     <div className="space-y-6">
@@ -463,74 +477,127 @@ export default function ProductosPage() {
             </form>
           </Card>
 
-          <Input
-            placeholder="Buscar producto..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <div className="flex flex-wrap gap-2">
+            <Input
+              className="min-w-[12rem] flex-1"
+              placeholder="Buscar producto..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <select
+              className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm"
+              value={categoriaFiltro}
+              onChange={(e) => setCategoriaFiltro(e.target.value)}
+              aria-label="Filtrar por categoría"
+            >
+              <option value="">Todas las categorías</option>
+              {categorias.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          {Object.entries(byCat).map(([cat, items]) => (
-            <Card key={cat}>
-              <CardTitle>{cat}</CardTitle>
-              <ul className="mt-4 divide-y ">
-                {items.map((p) => (
-                  <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                    <div>
-                      <p className="font-medium">{p.nombre}</p>
-                      <p className="text-sm text-stone-500">
-                        {formatCOP(p.precio)}
-                        {p.codigo_barras ? ` · ${p.codigo_barras}` : ""}
-                        {p.control_stock ? ` · stock ${p.stock ?? 0}` : ""}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1">
-                      <Badge color={p.disponible ? "success" : "danger"}>
-                        {p.disponible ? "Disponible" : "Agotado"}
-                      </Badge>
-                      {p.encargable && <Badge color="info">Encargable</Badge>}
-                      {p.control_stock && <Badge color="warning">Stock</Badge>}
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        title={p.disponible ? "Agotar" : "Disponible"}
-                        aria-label={p.disponible ? "Agotar" : "Disponible"}
-                        onClick={() => toggleDisponible(p.id, p.disponible)}
-                      >
-                        {p.disponible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={p.encargable ? "primary" : "secondary"}
-                        title={p.encargable ? "Quitar encargable" : "Marcar encargable"}
-                        aria-label="Encargable"
-                        onClick={() => toggleEncargable(p.id, !!p.encargable)}
-                      >
-                        <Cake className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        title="Editar"
-                        aria-label="Editar"
-                        onClick={() => editProduct(p)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        title="Borrar"
-                        aria-label="Borrar"
-                        onClick={() => deleteProduct(p.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          ))}
+          <Card>
+            <CardTitle>
+              Listado ({filtered.length}
+              {filtered.length !== productos.length ? ` de ${productos.length}` : ""})
+            </CardTitle>
+            <ul className="mt-4 divide-y">
+              {pageItems.map((p) => (
+                <li
+                  key={p.id}
+                  className="flex flex-wrap items-center justify-between gap-3 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium">{p.nombre}</p>
+                    <p className="text-sm text-stone-500">
+                      {p.categorias?.nombre ?? "Sin categoría"} · {formatCOP(p.precio)}
+                      {p.codigo_barras ? ` · ${p.codigo_barras}` : ""}
+                      {p.control_stock ? ` · stock ${p.stock ?? 0}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <Badge color={p.disponible ? "success" : "danger"}>
+                      {p.disponible ? "Disponible" : "Agotado"}
+                    </Badge>
+                    {p.encargable && <Badge color="info">Encargable</Badge>}
+                    {p.control_stock && <Badge color="warning">Stock</Badge>}
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      title={p.disponible ? "Agotar" : "Disponible"}
+                      aria-label={p.disponible ? "Agotar" : "Disponible"}
+                      onClick={() => toggleDisponible(p.id, p.disponible)}
+                    >
+                      {p.disponible ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={p.encargable ? "primary" : "secondary"}
+                      title={p.encargable ? "Quitar encargable" : "Marcar encargable"}
+                      aria-label="Encargable"
+                      onClick={() => toggleEncargable(p.id, !!p.encargable)}
+                    >
+                      <Cake className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      title="Editar"
+                      aria-label="Editar"
+                      onClick={() => editProduct(p)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      title="Borrar"
+                      aria-label="Borrar"
+                      onClick={() => deleteProduct(p.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </li>
+              ))}
+              {pageItems.length === 0 && (
+                <li className="py-4 text-sm text-stone-500">Sin productos</li>
+              )}
+            </ul>
+
+            {totalPages > 1 && (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-stone-100 pt-3">
+                <p className="text-xs text-stone-500">
+                  Página {currentPage} de {totalPages} · {PAGE_SIZE} por página
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={currentPage <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Anterior
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  >
+                    Siguiente
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Card>
         </>
       )}
     </div>

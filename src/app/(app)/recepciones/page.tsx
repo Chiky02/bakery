@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Producto, Proveedor, Recepcion, RecepcionItem } from "@/types";
+import type { Producto, Proveedor, Recepcion } from "@/types";
 import { formatCOP } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Eye, Pencil, Trash2, Plus, Check } from "lucide-react";
 import { useBakery } from "@/lib/use-bakery-id";
 import { ProductSearchSelect } from "@/components/app/product-search-select";
+import { OcrScanPanel } from "@/components/app/ocr-scan-panel";
+import type { OcrAcceptedLine } from "@/components/app/ocr-lines-review-modal";
 import { resolveUnidades } from "@/lib/unidades-medida";
 
 type DraftItem = {
@@ -156,6 +158,33 @@ export default function RecepcionesPage() {
       setMsg("Proveedor eliminado");
     }
     await loadAll(panaderiaId);
+  }
+
+  function applyOcrLines(accepted: OcrAcceptedLine[]) {
+    setItems((prev) => {
+      const isBlank = (item: DraftItem) => !item.descripcion.trim() && !item.producto_id;
+      const next = prev.every(isBlank) ? [] : [...prev];
+      for (const line of accepted) {
+        const existing = next.find((row) => row.producto_id === line.fk_product);
+        if (existing) {
+          existing.cantidad_pedida = String(
+            (Number(existing.cantidad_pedida) || 0) + line.quantity,
+          );
+          if (line.unit_price > 0) existing.costo_unitario = String(line.unit_price);
+          if (!existing.descripcion.trim()) existing.descripcion = line.name;
+          continue;
+        }
+        next.push({
+          descripcion: line.name,
+          producto_id: line.fk_product,
+          cantidad_pedida: String(line.quantity),
+          unidad: "unidad",
+          costo_unitario: String(line.unit_price || 0),
+        });
+      }
+      return next.length > 0 ? next : [emptyItem()];
+    });
+    setMsg(`OCR: se aplicaron ${accepted.length} línea(s) al pedido`);
   }
 
   async function crearRecepcion(e: React.FormEvent) {
@@ -336,6 +365,7 @@ export default function RecepcionesPage() {
                 ))}
               </select>
             </div>
+            <OcrScanPanel products={productos} onApplyLines={applyOcrLines} />
             <div className="space-y-3">
               <p className="text-sm font-medium">Ítems</p>
               {items.map((item, idx) => (

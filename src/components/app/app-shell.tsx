@@ -9,6 +9,7 @@ import { useBakery } from "@/lib/use-bakery-id";
 import { cn } from "@/lib/utils";
 import type { Notificacion, Panaderia } from "@/types";
 import { Button } from "@/components/ui/button";
+import { Card, CardTitle } from "@/components/ui/card";
 import { Bell, Menu, X } from "lucide-react";
 import { notificationHref } from "@/lib/notifications";
 
@@ -62,6 +63,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [notifs, setNotifs] = useState<Notificacion[]>([]);
   const [openNotif, setOpenNotif] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -137,8 +140,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   async function logout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
     const supabase = createClient();
     await supabase.auth.signOut();
+    setLogoutOpen(false);
     router.push("/login");
     router.refresh();
   }
@@ -180,7 +186,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <NavLinks nav={nav} pathname={pathname} />
         </nav>
         <div className="shrink-0 space-y-2 border-t border-stone-200 p-3">
-          <Button variant="ghost" className="w-full" onClick={logout}>
+          <Button variant="ghost" className="w-full" onClick={() => setLogoutOpen(true)}>
             Cerrar sesión
           </Button>
         </div>
@@ -326,7 +332,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 />
               </nav>
               <div className="border-t border-stone-200 p-3">
-                <Button variant="ghost" className="w-full" onClick={logout}>
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    setLogoutOpen(true);
+                  }}
+                >
                   Cerrar sesión
                 </Button>
               </div>
@@ -336,6 +349,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <main className="min-h-0 flex-1 overflow-auto p-4 md:p-6">{children}</main>
       </div>
+
+      {logoutOpen && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-stone-900/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="logout-title"
+          onClick={() => !loggingOut && setLogoutOpen(false)}
+        >
+          <Card
+            className="w-full max-w-sm space-y-3 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardTitle id="logout-title">Cerrar sesión</CardTitle>
+            <p className="text-sm text-stone-600">
+              ¿Seguro que quieres salir del panel? Tendrás que volver a iniciar sesión.
+            </p>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button
+                variant="ghost"
+                disabled={loggingOut}
+                onClick={() => setLogoutOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button disabled={loggingOut} onClick={() => void logout()}>
+                {loggingOut ? "Saliendo…" : "Sí, cerrar sesión"}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
