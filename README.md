@@ -76,9 +76,13 @@ npm run dev
 | Mesas | `/mesas` | dueño, gerente, mesero, caja |
 | Cocina | `/cocina` | dueño, gerente, cocina |
 | Caja | `/caja` | dueño, gerente, caja |
-| Encargos | `/encargos` | dueño, gerente, mostrador, mesero |
-| Recepciones | `/recepciones` | dueño, gerente, mostrador, caja |
-| Productos | `/productos` | dueño, gerente |
+| Clientes | `/clientes` | listado / crear (permisos aparte) |
+| Encargos | `/encargos` | listado / crear |
+| Recepciones | `/recepciones` | lista / crear / proveedores |
+| Productos | `/productos` | listado / crear / categorías |
+| Materia prima | `/insumos` | listado / crear |
+| Inventario | `/inventario` | dueño, gerente, caja |
+| Facturas | `/facturas` | dueño, gerente, caja, mostrador |
 | Reportes | `/reportes` | dueño, gerente |
 | Configuración | `/configuracion` | dueño, gerente (+ alta solo plataforma) |
 | Usuarios (equipo) | `/usuarios` | dueño, gerente |

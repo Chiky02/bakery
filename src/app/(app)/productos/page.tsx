@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Categoria, Producto } from "@/types";
 import { formatCOP } from "@/lib/format";
-import { useBakeryId } from "@/lib/use-bakery-id";
+import { useBakery, useBakeryId } from "@/lib/use-bakery-id";
+import { hasPermiso } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,10 @@ const selectClass =
 
 export default function ProductosPage() {
   const { panaderiaId } = useBakeryId();
+  const { permisos, rol } = useBakery();
+  const canList = hasPermiso("productos", permisos, rol);
+  const canCreate = hasPermiso("productos_crear", permisos, rol);
+  const canCategorias = hasPermiso("productos_categorias", permisos, rol);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [search, setSearch] = useState("");
@@ -56,7 +61,7 @@ export default function ProductosPage() {
   const [encargableFiltro, setEncargableFiltro] = useState<TriFilter>("");
   const [stockFiltro, setStockFiltro] = useState<TriFilter>("");
   const [page, setPage] = useState(1);
-  const [tab, setTab] = useState<Tab>("listado");
+  const [tab, setTab] = useState<Tab>(canList ? "listado" : canCreate ? "crear" : "categorias");
   const [form, setForm] = useState<ProductForm>(emptyProduct());
   const [catNombre, setCatNombre] = useState("");
   const [catMedida, setCatMedida] = useState("unidad");
@@ -329,10 +334,10 @@ export default function ProductosPage() {
     setStockFiltro("");
   }
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: "listado", label: "Listado" },
-    { id: "crear", label: form.id ? "Editar" : "Crear" },
-    { id: "categorias", label: "Categorías" },
+  const tabs: { id: Tab; label: string; show: boolean }[] = [
+    { id: "listado", label: "Listado", show: canList },
+    { id: "crear", label: form.id ? "Editar" : "Crear", show: canCreate },
+    { id: "categorias", label: "Categorías", show: canCategorias },
   ];
 
   return (
@@ -344,7 +349,7 @@ export default function ProductosPage() {
             Catálogo de venta: crea en un apartado y consulta con filtros en otro
           </p>
         </div>
-        {tab === "listado" && (
+        {tab === "listado" && canCreate && (
           <Button type="button" onClick={() => goCrear(true)}>
             Nuevo producto
           </Button>
@@ -352,7 +357,9 @@ export default function ProductosPage() {
       </div>
 
       <div className="flex gap-2 border-b border-stone-200 pb-px">
-        {tabs.map((t) => (
+        {tabs
+          .filter((t) => t.show)
+          .map((t) => (
           <button
             key={t.id}
             type="button"
@@ -381,7 +388,7 @@ export default function ProductosPage() {
         </p>
       )}
 
-      {tab === "categorias" && (
+      {tab === "categorias" && canCategorias && (
         <div className="grid gap-4 lg:grid-cols-2">
           <Card className="space-y-3">
             <CardTitle>{editingCat ? "Editar categoría" : "Nueva categoría"}</CardTitle>
@@ -455,7 +462,7 @@ export default function ProductosPage() {
         </div>
       )}
 
-      {tab === "crear" && (
+      {tab === "crear" && canCreate && (
         <Card className="space-y-3">
           <CardTitle>{form.id ? "Editar producto" : "Nuevo producto"}</CardTitle>
           <form onSubmit={saveProduct} className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -556,7 +563,7 @@ export default function ProductosPage() {
         </Card>
       )}
 
-      {tab === "listado" && (
+      {tab === "listado" && canList && (
         <>
           <Card className="space-y-3">
             <CardTitle>Filtros</CardTitle>
@@ -645,46 +652,50 @@ export default function ProductosPage() {
                     </Badge>
                     {p.encargable && <Badge color="info">Encargable</Badge>}
                     {p.control_stock && <Badge color="warning">Stock</Badge>}
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      title={p.disponible ? "Agotar" : "Disponible"}
-                      aria-label={p.disponible ? "Agotar" : "Disponible"}
-                      onClick={() => toggleDisponible(p.id, p.disponible)}
-                    >
-                      {p.disponible ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={p.encargable ? "primary" : "secondary"}
-                      title={p.encargable ? "Quitar encargable" : "Marcar encargable"}
-                      aria-label="Encargable"
-                      onClick={() => toggleEncargable(p.id, !!p.encargable)}
-                    >
-                      <Cake className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      title="Editar"
-                      aria-label="Editar"
-                      onClick={() => editProduct(p)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      title="Borrar"
-                      aria-label="Borrar"
-                      onClick={() => deleteProduct(p.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {canCreate && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          title={p.disponible ? "Agotar" : "Disponible"}
+                          aria-label={p.disponible ? "Agotar" : "Disponible"}
+                          onClick={() => toggleDisponible(p.id, p.disponible)}
+                        >
+                          {p.disponible ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={p.encargable ? "primary" : "secondary"}
+                          title={p.encargable ? "Quitar encargable" : "Marcar encargable"}
+                          aria-label="Encargable"
+                          onClick={() => toggleEncargable(p.id, !!p.encargable)}
+                        >
+                          <Cake className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          title="Editar"
+                          aria-label="Editar"
+                          onClick={() => editProduct(p)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          title="Borrar"
+                          aria-label="Borrar"
+                          onClick={() => deleteProduct(p.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </li>
               ))}

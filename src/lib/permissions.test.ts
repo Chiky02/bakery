@@ -28,6 +28,13 @@ describe("defaultPermisosForRole", () => {
     expect(p).not.toContain("caja");
     expect(p).not.toContain("usuarios");
   });
+  it("dueño incluye subpermisos crear de clientes/productos", () => {
+    const p = defaultPermisosForRole("dueno");
+    expect(p).toContain("clientes");
+    expect(p).toContain("clientes_crear");
+    expect(p).toContain("productos_crear");
+    expect(p).toContain("encargos_crear");
+  });
 });
 
 describe("canAccess", () => {
@@ -51,6 +58,11 @@ describe("canAccess", () => {
   it("respeta lista custom de permisos", () => {
     expect(canAccess("mostrador", "/caja", ["mostrador"])).toBe(false);
     expect(canAccess("mostrador", "/caja", ["caja", "mostrador"])).toBe(true);
+  });
+
+  it("permite /clientes con solo clientes_crear", () => {
+    expect(canAccess("mostrador", "/clientes", ["clientes_crear", "dashboard"])).toBe(true);
+    expect(canAccess("mostrador", "/clientes", ["dashboard"])).toBe(false);
   });
 
   it("dueno/admin pasan rutas desconocidas", () => {
@@ -92,6 +104,12 @@ describe("navForRole", () => {
     const keys = navForRole("dueno", null, { plataformaAdmin: true }).map((n) => n.key);
     expect(keys).toContain("negocios");
     expect(keys).toContain("terminos");
+  });
+
+  it("muestra Clientes en nav si solo tiene clientes_crear", () => {
+    const keys = navForRole("mostrador", ["clientes_crear", "dashboard"]).map((n) => n.key);
+    expect(keys).toContain("clientes");
+    expect(keys).not.toContain("clientes_crear");
   });
 
   it("filtra por rol si no hay custom", () => {

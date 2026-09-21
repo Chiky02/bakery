@@ -39,8 +39,7 @@ export function isPlatformFeature(key: string): boolean {
   return (PLATFORM_FEATURE_KEYS as readonly string[]).includes(key);
 }
 
-/** Claves de funcionalidad del panel (menú). */
-export const FEATURE_PERMISOS: {
+export type FeaturePermiso = {
   key: string;
   label: string;
   href: string;
@@ -48,13 +47,28 @@ export const FEATURE_PERMISOS: {
   defaultRoles: UserRole[];
   /** Solo profiles.plataforma_admin */
   platformOnly?: boolean;
-}[] = [
+  /**
+   * false = no va al menú lateral; sí aparece en roles / pestañas.
+   * Por defecto true.
+   */
+  nav?: boolean;
+};
+
+const ALL_STAFF: UserRole[] = ["dueno", "admin", "mostrador", "mesero", "cocina", "caja"];
+const OPS_CLIENTES: UserRole[] = ["dueno", "admin", "mostrador", "mesero", "caja"];
+const OPS_ENCARGOS: UserRole[] = ["dueno", "admin", "mostrador", "mesero"];
+const OPS_RECEPCIONES: UserRole[] = ["dueno", "admin", "mostrador", "caja"];
+const OPS_INSUMOS: UserRole[] = ["dueno", "admin", "mostrador", "caja"];
+const GESTION: UserRole[] = ["dueno", "admin"];
+
+/** Claves de funcionalidad del panel (menú + subpermisos listado/crear). */
+export const FEATURE_PERMISOS: FeaturePermiso[] = [
   {
     key: "dashboard",
     label: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
-    defaultRoles: ["dueno", "admin", "mostrador", "mesero", "cocina", "caja"],
+    defaultRoles: ALL_STAFF,
   },
   {
     key: "mostrador",
@@ -68,7 +82,7 @@ export const FEATURE_PERMISOS: {
     label: "Gestionar mesas",
     href: "/mesas/gestion",
     icon: TableProperties,
-    defaultRoles: ["dueno", "admin"],
+    defaultRoles: GESTION,
   },
   {
     key: "mesas",
@@ -103,35 +117,91 @@ export const FEATURE_PERMISOS: {
     label: "Encargos",
     href: "/encargos",
     icon: Package,
-    defaultRoles: ["dueno", "admin", "mostrador", "mesero"],
+    defaultRoles: OPS_ENCARGOS,
+  },
+  {
+    key: "encargos_crear",
+    label: "Encargos · Crear",
+    href: "/encargos",
+    icon: Package,
+    defaultRoles: OPS_ENCARGOS,
+    nav: false,
   },
   {
     key: "clientes",
     label: "Clientes",
     href: "/clientes",
     icon: Contact,
-    defaultRoles: ["dueno", "admin", "mostrador", "mesero", "caja"],
+    defaultRoles: OPS_CLIENTES,
+  },
+  {
+    key: "clientes_crear",
+    label: "Clientes · Crear",
+    href: "/clientes",
+    icon: Contact,
+    defaultRoles: OPS_CLIENTES,
+    nav: false,
   },
   {
     key: "recepciones",
     label: "Recepciones",
     href: "/recepciones",
     icon: Truck,
-    defaultRoles: ["dueno", "admin", "mostrador", "caja"],
+    defaultRoles: OPS_RECEPCIONES,
+  },
+  {
+    key: "recepciones_crear",
+    label: "Recepciones · Crear",
+    href: "/recepciones",
+    icon: Truck,
+    defaultRoles: OPS_RECEPCIONES,
+    nav: false,
+  },
+  {
+    key: "recepciones_proveedores",
+    label: "Recepciones · Proveedores",
+    href: "/recepciones",
+    icon: Truck,
+    defaultRoles: OPS_RECEPCIONES,
+    nav: false,
   },
   {
     key: "productos",
     label: "Productos",
     href: "/productos",
     icon: Croissant,
-    defaultRoles: ["dueno", "admin"],
+    defaultRoles: GESTION,
+  },
+  {
+    key: "productos_crear",
+    label: "Productos · Crear",
+    href: "/productos",
+    icon: Croissant,
+    defaultRoles: GESTION,
+    nav: false,
+  },
+  {
+    key: "productos_categorias",
+    label: "Productos · Categorías",
+    href: "/productos",
+    icon: Croissant,
+    defaultRoles: GESTION,
+    nav: false,
   },
   {
     key: "insumos",
     label: "Materia prima",
     href: "/insumos",
     icon: Wheat,
-    defaultRoles: ["dueno", "admin", "mostrador", "caja"],
+    defaultRoles: OPS_INSUMOS,
+  },
+  {
+    key: "insumos_crear",
+    label: "Materia prima · Crear",
+    href: "/insumos",
+    icon: Wheat,
+    defaultRoles: OPS_INSUMOS,
+    nav: false,
   },
   {
     key: "inventario",
@@ -145,14 +215,14 @@ export const FEATURE_PERMISOS: {
     label: "Reportes",
     href: "/reportes",
     icon: BarChart3,
-    defaultRoles: ["dueno", "admin"],
+    defaultRoles: GESTION,
   },
   {
     key: "usuarios",
     label: "Usuarios",
     href: "/usuarios",
     icon: Users,
-    defaultRoles: ["dueno", "admin"],
+    defaultRoles: GESTION,
   },
   {
     key: "negocios",
@@ -175,21 +245,21 @@ export const FEATURE_PERMISOS: {
     label: "Configuración",
     href: "/configuracion",
     icon: Settings,
-    defaultRoles: ["dueno", "admin", "mostrador", "mesero", "cocina", "caja"],
+    defaultRoles: ALL_STAFF,
   },
   {
     key: "panaderias",
     label: "Mis panaderías",
     href: "/panaderias",
     icon: Store,
-    defaultRoles: ["dueno", "admin", "mostrador", "mesero", "cocina", "caja"],
+    defaultRoles: ALL_STAFF,
   },
 ];
 
 /** Permisos asignables a roles de un local (sin módulos de plataforma). */
 export const TENANT_FEATURE_PERMISOS = FEATURE_PERMISOS.filter((f) => !f.platformOnly);
 
-export const NAV_ITEMS = FEATURE_PERMISOS.map((f) => ({
+export const NAV_ITEMS = FEATURE_PERMISOS.filter((f) => f.nav !== false).map((f) => ({
   href: f.href,
   label: f.label,
   icon: f.icon,
@@ -207,22 +277,49 @@ export type AccessOpts = {
   plataformaAdmin?: boolean;
 };
 
+/** ¿Tiene la clave de permiso (lista custom o defaults del rol)? */
+export function hasPermiso(
+  key: string,
+  permisos?: string[] | null,
+  rol?: UserRole,
+): boolean {
+  if (permisos && permisos.length > 0) return permisos.includes(key);
+  if (rol) {
+    const f = FEATURE_PERMISOS.find((x) => x.key === key);
+    return !!f && !f.platformOnly && f.defaultRoles.includes(rol);
+  }
+  return false;
+}
+
+function featuresForHref(href: string): FeaturePermiso[] {
+  const matched = FEATURE_PERMISOS.filter(
+    (n) => href === n.href || href.startsWith(`${n.href}/`),
+  );
+  if (matched.length === 0) return [];
+  const maxLen = Math.max(...matched.map((m) => m.href.length));
+  return matched.filter((m) => m.href.length === maxLen);
+}
+
 export function canAccess(
   rol: UserRole,
   href: string,
   permisos?: string[] | null,
   opts?: AccessOpts,
 ): boolean {
-  const item = [...FEATURE_PERMISOS]
-    .sort((a, b) => b.href.length - a.href.length)
-    .find((n) => href === n.href || href.startsWith(`${n.href}/`));
-  if (!item) return rol === "dueno" || rol === "admin" || !!opts?.plataformaAdmin;
-  if (item.platformOnly) return !!opts?.plataformaAdmin;
-  if (permisos && permisos.length > 0) {
-    if (item.key === "negocios" || item.key === "terminos") return !!opts?.plataformaAdmin;
-    return permisos.includes(item.key);
+  const group = featuresForHref(href);
+  if (group.length === 0) {
+    return rol === "dueno" || rol === "admin" || !!opts?.plataformaAdmin;
   }
-  return item.defaultRoles.includes(rol);
+  if (group.some((g) => g.platformOnly)) {
+    return !!opts?.plataformaAdmin;
+  }
+  if (permisos && permisos.length > 0) {
+    return group.some((g) => {
+      if (g.key === "negocios" || g.key === "terminos") return !!opts?.plataformaAdmin;
+      return permisos.includes(g.key);
+    });
+  }
+  return group.some((g) => g.defaultRoles.includes(rol));
 }
 
 export function navForRole(
@@ -231,11 +328,13 @@ export function navForRole(
   opts?: AccessOpts,
 ) {
   return FEATURE_PERMISOS.filter((n) => {
+    if (n.nav === false) return false;
     if (n.platformOnly) return !!opts?.plataformaAdmin;
+    const siblings = FEATURE_PERMISOS.filter((s) => s.href === n.href);
     if (permisos && permisos.length > 0) {
-      return permisos.includes(n.key) && !isPlatformFeature(n.key);
+      return siblings.some((s) => permisos.includes(s.key) && !isPlatformFeature(s.key));
     }
-    return n.defaultRoles.includes(rol);
+    return siblings.some((s) => s.defaultRoles.includes(rol));
   }).map((n) => ({
     href: n.href,
     label: n.label,

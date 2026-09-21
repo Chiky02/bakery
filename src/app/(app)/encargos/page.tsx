@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Encargo, Producto } from "@/types";
 import { formatCOP, formatDate } from "@/lib/format";
-import { useBakeryId } from "@/lib/use-bakery-id";
+import { useBakery, useBakeryId } from "@/lib/use-bakery-id";
+import { hasPermiso } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -53,9 +54,12 @@ const emptyForm = (): FormState => ({
 
 export default function EncargosPage() {
   const { panaderiaId } = useBakeryId();
+  const { permisos, rol } = useBakery();
+  const canList = hasPermiso("encargos", permisos, rol);
+  const canCreate = hasPermiso("encargos_crear", permisos, rol);
   const [encargos, setEncargos] = useState<Encargo[]>([]);
   const [encargables, setEncargables] = useState<Producto[]>([]);
-  const [showForm, setShowForm] = useState(false);
+  const [tab, setTab] = useState<"listado" | "crear">(canList ? "listado" : "crear");
   const [form, setForm] = useState<FormState>(emptyForm());
   const [msg, setMsg] = useState("");
 
@@ -130,7 +134,7 @@ export default function EncargosPage() {
       return;
     }
     setForm(emptyForm());
-    setShowForm(false);
+    setTab(canList ? "listado" : "crear");
     load();
   }
 
@@ -186,21 +190,61 @@ export default function EncargosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Encargos y pedidos especiales</h1>
           <p className="text-sm text-stone-500">
             Elige productos marcados como encargables. Marca pago: pendiente, abonado o pagado.
           </p>
         </div>
-        <Button onClick={() => setShowForm(!showForm)}>
-          {showForm ? "Cancelar" : "Nuevo encargo"}
-        </Button>
+        {tab === "listado" && canCreate && (
+          <Button
+            type="button"
+            onClick={() => {
+              setForm(emptyForm());
+              setTab("crear");
+            }}
+          >
+            Nuevo encargo
+          </Button>
+        )}
+      </div>
+
+      <div className="flex gap-2 border-b border-stone-200 pb-px">
+        {canList && (
+          <button
+            type="button"
+            onClick={() => setTab("listado")}
+            className={
+              tab === "listado"
+                ? "border-b-2 border-orange-600 px-3 py-2 text-sm font-semibold text-orange-900"
+                : "px-3 py-2 text-sm font-medium text-stone-500 hover:text-stone-800"
+            }
+          >
+            Listado
+          </button>
+        )}
+        {canCreate && (
+          <button
+            type="button"
+            onClick={() => {
+              setForm(emptyForm());
+              setTab("crear");
+            }}
+            className={
+              tab === "crear"
+                ? "border-b-2 border-orange-600 px-3 py-2 text-sm font-semibold text-orange-900"
+                : "px-3 py-2 text-sm font-medium text-stone-500 hover:text-stone-800"
+            }
+          >
+            Crear
+          </button>
+        )}
       </div>
 
       {msg && <p className="text-sm text-red-600">{msg}</p>}
 
-      {showForm && (
+      {tab === "crear" && canCreate && (
         <Card>
           <CardTitle>Nuevo encargo</CardTitle>
           <form onSubmit={crear} className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -300,10 +344,22 @@ export default function EncargosPage() {
             <Button type="submit" className="sm:col-span-2">
               Guardar encargo
             </Button>
+            {canList && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="sm:col-span-2"
+                onClick={() => setTab("listado")}
+              >
+                Volver al listado
+              </Button>
+            )}
           </form>
         </Card>
       )}
 
+      {tab === "listado" && canList && (
+        <>
       <Card>
         <CardTitle>Próximas entregas</CardTitle>
         {proximos.length === 0 ? (
@@ -393,6 +449,8 @@ export default function EncargosPage() {
             ))}
           </ul>
         </Card>
+      )}
+        </>
       )}
     </div>
   );

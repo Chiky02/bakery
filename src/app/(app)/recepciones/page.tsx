@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Eye, Pencil, Trash2, Plus, Check } from "lucide-react";
 import { useBakery } from "@/lib/use-bakery-id";
+import { hasPermiso } from "@/lib/permissions";
 import { ProductSearchSelect } from "@/components/app/product-search-select";
 import { OcrScanPanel } from "@/components/app/ocr-scan-panel";
 import type { OcrAcceptedLine } from "@/components/app/ocr-lines-review-modal";
@@ -57,14 +58,19 @@ const emptyProv = (): ProvForm => ({
 });
 
 export default function RecepcionesPage() {
-  const { profile, panaderia } = useBakery();
+  const { profile, panaderia, permisos, rol } = useBakery();
   const panaderiaId = panaderia.id;
   const userId = profile.id;
+  const canList = hasPermiso("recepciones", permisos, rol);
+  const canCreate = hasPermiso("recepciones_crear", permisos, rol);
+  const canProveedores = hasPermiso("recepciones_proveedores", permisos, rol);
   const unidades = resolveUnidades(panaderia.unidades_medida);
   const [recepciones, setRecepciones] = useState<Recepcion[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [tab, setTab] = useState<"lista" | "nueva" | "proveedores" | "nuevo-proveedor">("lista");
+  const [tab, setTab] = useState<"lista" | "nueva" | "proveedores" | "nuevo-proveedor">(
+    canList ? "lista" : canCreate ? "nueva" : "proveedores",
+  );
   const [proveedorId, setProveedorId] = useState("");
   const [notas, setNotas] = useState("");
   const [items, setItems] = useState<DraftItem[]>([emptyItem()]);
@@ -275,33 +281,47 @@ export default function RecepcionesPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant={tab === "lista" ? "primary" : "secondary"} onClick={() => setTab("lista")}>
-            Lista
-          </Button>
-          <Button variant={tab === "nueva" ? "primary" : "secondary"} onClick={() => setTab("nueva")}>
-            Nueva orden
-          </Button>
-          <Button
-            variant={tab === "proveedores" ? "primary" : "secondary"}
-            onClick={() => setTab("proveedores")}
-          >
-            Proveedores
-          </Button>
-          <Button
-            variant={tab === "nuevo-proveedor" ? "primary" : "secondary"}
-            onClick={() => {
-              setProvForm(emptyProv());
-              setTab("nuevo-proveedor");
-            }}
-          >
-            Nuevo proveedor
-          </Button>
+          {canList && (
+            <Button
+              variant={tab === "lista" ? "primary" : "secondary"}
+              onClick={() => setTab("lista")}
+            >
+              Lista
+            </Button>
+          )}
+          {canCreate && (
+            <Button
+              variant={tab === "nueva" ? "primary" : "secondary"}
+              onClick={() => setTab("nueva")}
+            >
+              Nueva orden
+            </Button>
+          )}
+          {canProveedores && (
+            <>
+              <Button
+                variant={tab === "proveedores" ? "primary" : "secondary"}
+                onClick={() => setTab("proveedores")}
+              >
+                Proveedores
+              </Button>
+              <Button
+                variant={tab === "nuevo-proveedor" ? "primary" : "secondary"}
+                onClick={() => {
+                  setProvForm(emptyProv());
+                  setTab("nuevo-proveedor");
+                }}
+              >
+                Nuevo proveedor
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
       {msg && <p className="text-sm text-orange-700 ">{msg}</p>}
 
-      {tab === "lista" && (
+      {tab === "lista" && canList && (
         <div className="space-y-3">
           {recepciones.length === 0 ? (
             <Card>
@@ -346,7 +366,7 @@ export default function RecepcionesPage() {
         </div>
       )}
 
-      {tab === "nueva" && (
+      {tab === "nueva" && canCreate && (
         <Card className="w-full max-w-5xl space-y-4">
           <CardTitle>Nueva orden / recepción</CardTitle>
           <form onSubmit={crearRecepcion} className="space-y-4">
@@ -494,7 +514,7 @@ export default function RecepcionesPage() {
         </Card>
       )}
 
-      {tab === "nuevo-proveedor" && (
+      {tab === "nuevo-proveedor" && canProveedores && (
         <Card className="w-full space-y-3">
           <CardTitle>{provForm.id ? "Editar proveedor" : "Nuevo proveedor"}</CardTitle>
           <form onSubmit={saveProveedor} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -557,7 +577,7 @@ export default function RecepcionesPage() {
         </Card>
       )}
 
-      {tab === "proveedores" && (
+      {tab === "proveedores" && canProveedores && (
         <Card>
           <div className="mb-3 flex items-center justify-between">
             <CardTitle>Listado de proveedores</CardTitle>
