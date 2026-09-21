@@ -13,6 +13,9 @@ import { EyeOff, Eye, Pencil, Trash2, Cake } from "lucide-react";
 
 const PAGE_SIZE = 20;
 
+type Tab = "listado" | "crear" | "categorias";
+type TriFilter = "" | "si" | "no";
+
 type ProductForm = {
   id?: string;
   nombre: string;
@@ -40,14 +43,20 @@ const emptyProduct = (categoriaId = ""): ProductForm => ({
   codigo_barras: "",
 });
 
+const selectClass =
+  "rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm";
+
 export default function ProductosPage() {
   const { panaderiaId } = useBakeryId();
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [search, setSearch] = useState("");
   const [categoriaFiltro, setCategoriaFiltro] = useState("");
+  const [disponibleFiltro, setDisponibleFiltro] = useState<TriFilter>("");
+  const [encargableFiltro, setEncargableFiltro] = useState<TriFilter>("");
+  const [stockFiltro, setStockFiltro] = useState<TriFilter>("");
   const [page, setPage] = useState(1);
-  const [tab, setTab] = useState<"productos" | "categorias">("productos");
+  const [tab, setTab] = useState<Tab>("listado");
   const [form, setForm] = useState<ProductForm>(emptyProduct());
   const [catNombre, setCatNombre] = useState("");
   const [catMedida, setCatMedida] = useState("unidad");
@@ -84,7 +93,23 @@ export default function ProductosPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, categoriaFiltro]);
+  }, [search, categoriaFiltro, disponibleFiltro, encargableFiltro, stockFiltro]);
+
+  function clearFeedback() {
+    setMsg("");
+    setError("");
+  }
+
+  function goCrear(reset = true) {
+    clearFeedback();
+    if (reset) setForm(emptyProduct(categorias[0]?.id ?? form.categoria_id));
+    setTab("crear");
+  }
+
+  function goListado() {
+    clearFeedback();
+    setTab("listado");
+  }
 
   async function saveProduct(e: React.FormEvent) {
     e.preventDefault();
@@ -155,9 +180,11 @@ export default function ProductosPage() {
     }
     setForm(emptyProduct(form.categoria_id));
     await load();
+    setTab("listado");
   }
 
-  async function editProduct(p: Producto) {
+  function editProduct(p: Producto) {
+    clearFeedback();
     setForm({
       id: p.id,
       nombre: p.nombre,
@@ -171,7 +198,7 @@ export default function ProductosPage() {
       orden: String(p.orden),
       codigo_barras: p.codigo_barras ?? "",
     });
-    setTab("productos");
+    setTab("crear");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -260,12 +287,25 @@ export default function ProductosPage() {
     const q = search.trim().toLowerCase();
     return productos.filter((p) => {
       if (categoriaFiltro && p.categoria_id !== categoriaFiltro) return false;
+      if (disponibleFiltro === "si" && !p.disponible) return false;
+      if (disponibleFiltro === "no" && p.disponible) return false;
+      if (encargableFiltro === "si" && !p.encargable) return false;
+      if (encargableFiltro === "no" && p.encargable) return false;
+      if (stockFiltro === "si" && !p.control_stock) return false;
+      if (stockFiltro === "no" && p.control_stock) return false;
       if (!q) return true;
       return (
         p.nombre.toLowerCase().includes(q) || (p.codigo_barras ?? "").includes(search.trim())
       );
     });
-  }, [productos, search, categoriaFiltro]);
+  }, [
+    productos,
+    search,
+    categoriaFiltro,
+    disponibleFiltro,
+    encargableFiltro,
+    stockFiltro,
+  ]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -274,27 +314,65 @@ export default function ProductosPage() {
     currentPage * PAGE_SIZE,
   );
 
+  const hasActiveFilters =
+    !!search ||
+    !!categoriaFiltro ||
+    !!disponibleFiltro ||
+    !!encargableFiltro ||
+    !!stockFiltro;
+
+  function clearFilters() {
+    setSearch("");
+    setCategoriaFiltro("");
+    setDisponibleFiltro("");
+    setEncargableFiltro("");
+    setStockFiltro("");
+  }
+
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "listado", label: "Listado" },
+    { id: "crear", label: form.id ? "Editar" : "Crear" },
+    { id: "categorias", label: "Categorías" },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Productos</h1>
-          <p className="text-sm text-stone-500">CRUD de catálogo y categorías de esta panadería</p>
+          <p className="text-sm text-stone-500">
+            Catálogo de venta: crea en un apartado y consulta con filtros en otro
+          </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant={tab === "productos" ? "primary" : "secondary"}
-            onClick={() => setTab("productos")}
-          >
-            Productos
+        {tab === "listado" && (
+          <Button type="button" onClick={() => goCrear(true)}>
+            Nuevo producto
           </Button>
-          <Button
-            variant={tab === "categorias" ? "primary" : "secondary"}
-            onClick={() => setTab("categorias")}
+        )}
+      </div>
+
+      <div className="flex gap-2 border-b border-stone-200 pb-px">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => {
+              if (t.id === "crear") goCrear(!form.id);
+              else if (t.id === "listado") goListado();
+              else {
+                clearFeedback();
+                setTab("categorias");
+              }
+            }}
+            className={
+              tab === t.id
+                ? "border-b-2 border-orange-600 px-3 py-2 text-sm font-semibold text-orange-900"
+                : "px-3 py-2 text-sm font-medium text-stone-500 hover:text-stone-800"
+            }
           >
-            Categorías
-          </Button>
-        </div>
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {(msg || error) && (
@@ -377,131 +455,174 @@ export default function ProductosPage() {
         </div>
       )}
 
-      {tab === "productos" && (
-        <>
-          <Card className="space-y-3">
-            <CardTitle>{form.id ? "Editar producto" : "Nuevo producto"}</CardTitle>
-            <form onSubmit={saveProduct} className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              <Input
-                placeholder="Nombre"
-                value={form.nombre}
-                onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                required
-              />
-              <Input
-                type="number"
-                min={0}
-                placeholder="Precio (COP)"
-                value={form.precio}
-                onChange={(e) => setForm({ ...form, precio: e.target.value })}
-                required
-              />
-              <Input
-                placeholder="Código de barras"
-                value={form.codigo_barras}
-                onChange={(e) => setForm({ ...form, codigo_barras: e.target.value })}
-              />
-              <select
-                className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm  "
-                value={form.categoria_id}
-                onChange={(e) => setForm({ ...form, categoria_id: e.target.value })}
-                required
-              >
-                <option value="">Categoría</option>
-                {categorias.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nombre}
-                  </option>
-                ))}
-              </select>
-              <Input
-                type="number"
-                placeholder="Orden"
-                value={form.orden}
-                onChange={(e) => setForm({ ...form, orden: e.target.value })}
-              />
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.disponible}
-                  onChange={(e) => setForm({ ...form, disponible: e.target.checked })}
-                />
-                Disponible
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.encargable}
-                  onChange={(e) => setForm({ ...form, encargable: e.target.checked })}
-                />
-                Encargable (tortas / especiales)
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.control_stock}
-                  onChange={(e) => setForm({ ...form, control_stock: e.target.checked })}
-                />
-                Controlar stock
-              </label>
-              {form.control_stock && (
-                <>
-                  <Input
-                    type="number"
-                    step="0.001"
-                    placeholder="Stock actual"
-                    value={form.stock}
-                    onChange={(e) => setForm({ ...form, stock: e.target.value })}
-                  />
-                  <Input
-                    type="number"
-                    step="0.001"
-                    placeholder="Stock mínimo (alerta)"
-                    value={form.stock_minimo}
-                    onChange={(e) => setForm({ ...form, stock_minimo: e.target.value })}
-                  />
-                </>
-              )}
-              <div className="flex gap-2">
-                <Button type="submit">{form.id ? "Actualizar" : "Crear"}</Button>
-                {form.id && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setForm(emptyProduct(categorias[0]?.id ?? ""))}
-                  >
-                    Cancelar
-                  </Button>
-                )}
-              </div>
-            </form>
-          </Card>
-
-          <div className="flex flex-wrap gap-2">
+      {tab === "crear" && (
+        <Card className="space-y-3">
+          <CardTitle>{form.id ? "Editar producto" : "Nuevo producto"}</CardTitle>
+          <form onSubmit={saveProduct} className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             <Input
-              className="min-w-[12rem] flex-1"
-              placeholder="Buscar producto..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Nombre"
+              value={form.nombre}
+              onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+              required
+            />
+            <Input
+              type="number"
+              min={0}
+              placeholder="Precio (COP)"
+              value={form.precio}
+              onChange={(e) => setForm({ ...form, precio: e.target.value })}
+              required
+            />
+            <Input
+              placeholder="Código de barras"
+              value={form.codigo_barras}
+              onChange={(e) => setForm({ ...form, codigo_barras: e.target.value })}
             />
             <select
-              className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm"
-              value={categoriaFiltro}
-              onChange={(e) => setCategoriaFiltro(e.target.value)}
-              aria-label="Filtrar por categoría"
+              className={selectClass}
+              value={form.categoria_id}
+              onChange={(e) => setForm({ ...form, categoria_id: e.target.value })}
+              required
             >
-              <option value="">Todas las categorías</option>
+              <option value="">Categoría</option>
               {categorias.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.nombre}
                 </option>
               ))}
             </select>
-          </div>
+            <Input
+              type="number"
+              placeholder="Orden"
+              value={form.orden}
+              onChange={(e) => setForm({ ...form, orden: e.target.value })}
+            />
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.disponible}
+                onChange={(e) => setForm({ ...form, disponible: e.target.checked })}
+              />
+              Disponible
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.encargable}
+                onChange={(e) => setForm({ ...form, encargable: e.target.checked })}
+              />
+              Encargable (tortas / especiales)
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.control_stock}
+                onChange={(e) => setForm({ ...form, control_stock: e.target.checked })}
+              />
+              Controlar stock
+            </label>
+            {form.control_stock && (
+              <>
+                <Input
+                  type="number"
+                  step="0.001"
+                  placeholder="Stock actual"
+                  value={form.stock}
+                  onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                />
+                <Input
+                  type="number"
+                  step="0.001"
+                  placeholder="Stock mínimo (alerta)"
+                  value={form.stock_minimo}
+                  onChange={(e) => setForm({ ...form, stock_minimo: e.target.value })}
+                />
+              </>
+            )}
+            <div className="flex flex-wrap gap-2 md:col-span-2 lg:col-span-3">
+              <Button type="submit">{form.id ? "Actualizar" : "Crear"}</Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setForm(emptyProduct(categorias[0]?.id ?? ""));
+                  goListado();
+                }}
+              >
+                Volver al listado
+              </Button>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      {tab === "listado" && (
+        <>
+          <Card className="space-y-3">
+            <CardTitle>Filtros</CardTitle>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              <Input
+                className="sm:col-span-2 lg:col-span-1 xl:col-span-2"
+                placeholder="Buscar nombre o código…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <select
+                className={selectClass}
+                value={categoriaFiltro}
+                onChange={(e) => setCategoriaFiltro(e.target.value)}
+                aria-label="Filtrar por categoría"
+              >
+                <option value="">Todas las categorías</option>
+                {categorias.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre}
+                  </option>
+                ))}
+              </select>
+              <select
+                className={selectClass}
+                value={disponibleFiltro}
+                onChange={(e) => setDisponibleFiltro(e.target.value as TriFilter)}
+                aria-label="Filtrar por disponibilidad"
+              >
+                <option value="">Disponibilidad: todas</option>
+                <option value="si">Solo disponibles</option>
+                <option value="no">Solo agotados</option>
+              </select>
+              <select
+                className={selectClass}
+                value={encargableFiltro}
+                onChange={(e) => setEncargableFiltro(e.target.value as TriFilter)}
+                aria-label="Filtrar por encargable"
+              >
+                <option value="">Encargable: todos</option>
+                <option value="si">Solo encargables</option>
+                <option value="no">No encargables</option>
+              </select>
+              <select
+                className={selectClass}
+                value={stockFiltro}
+                onChange={(e) => setStockFiltro(e.target.value as TriFilter)}
+                aria-label="Filtrar por control de stock"
+              >
+                <option value="">Stock: todos</option>
+                <option value="si">Con control de stock</option>
+                <option value="no">Sin control de stock</option>
+              </select>
+            </div>
+            {hasActiveFilters && (
+              <div className="flex justify-end">
+                <Button type="button" size="sm" variant="ghost" onClick={clearFilters}>
+                  Limpiar filtros
+                </Button>
+              </div>
+            )}
+          </Card>
 
           <Card>
             <CardTitle>
-              Listado ({filtered.length}
+              Productos ({filtered.length}
               {filtered.length !== productos.length ? ` de ${productos.length}` : ""})
             </CardTitle>
             <ul className="mt-4 divide-y">
@@ -568,7 +689,11 @@ export default function ProductosPage() {
                 </li>
               ))}
               {pageItems.length === 0 && (
-                <li className="py-4 text-sm text-stone-500">Sin productos</li>
+                <li className="py-4 text-sm text-stone-500">
+                  {productos.length === 0
+                    ? "Aún no hay productos. Crea el primero en la pestaña Crear."
+                    : "Ningún producto coincide con los filtros."}
+                </li>
               )}
             </ul>
 

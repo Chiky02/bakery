@@ -14,8 +14,9 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CuentasAuthPanel } from "./cuentas-auth-panel";
 
-type Tab = "equipo" | "roles";
+type Tab = "equipo" | "cuentas" | "roles";
 
 type RoleForm = {
   id?: string;
@@ -205,7 +206,7 @@ export default function UsuariosPage() {
       <div>
         <h1 className="text-2xl font-bold">Usuarios</h1>
         <p className="text-sm text-stone-500">
-          Equipo del local y roles con funcionalidades del panel
+          Equipo del local, cuentas de Auth (todos los negocios) y roles del panel
         </p>
       </div>
 
@@ -213,6 +214,7 @@ export default function UsuariosPage() {
         {(
           [
             { id: "equipo" as const, label: "Equipo" },
+            { id: "cuentas" as const, label: "Cuentas Auth" },
             { id: "roles" as const, label: "Roles" },
           ] as const
         ).map((t) => (
@@ -329,6 +331,8 @@ export default function UsuariosPage() {
           </Card>
         </>
       )}
+
+      {tab === "cuentas" && <CuentasAuthPanel />}
 
       {tab === "roles" && (
         <div className="space-y-4">

@@ -47,6 +47,23 @@ export default function LoginPage() {
       return;
     }
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("activo")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (profile && profile.activo === false) {
+        await supabase.auth.signOut();
+        setError("Tu cuenta está desactivada. Contacta al administrador.");
+        setLoading(false);
+        return;
+      }
+    }
+
     router.push("/dashboard");
     router.refresh();
   }
