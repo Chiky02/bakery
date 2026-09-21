@@ -358,73 +358,7 @@ export default async function ReportesPage({
     return (e.valor ?? 0) > pagado && e.estado !== "cancelado";
   });
 
-  const csvRows = [
-    ["seccion", "tipo", "fecha", "detalle", "medio_o_estado", "efectivo", "electronico", "total"].join(
-      ",",
-    ),
-    ...ventasPeriodo.map((v) =>
-      [
-        "ventas",
-        "mostrador",
-        v.fecha_hora,
-        `"venta ${v.id}"`,
-        v.medio_pago,
-        aporteEfectivo(v),
-        aporteElectronico(v),
-        v.total,
-      ].join(","),
-    ),
-    ...mesasPeriodo.map((c) => {
-      const mesa = c.mesas as { nombre?: string } | null;
-      return [
-        "ventas",
-        "mesa",
-        c.hora_cierre ?? "",
-        `"${(mesa?.nombre ?? "mesa").replace(/"/g, "")}"`,
-        c.medio_pago ?? "",
-        aporteEfectivo({ ...c, total: c.total_final }),
-        aporteElectronico({ ...c, total: c.total_final }),
-        c.total_final ?? 0,
-      ].join(",");
-    }),
-    ...movsCaja.map((m) =>
-      [
-        "caja",
-        m.tipo,
-        m.created_at,
-        `"${(m.notas ?? m.referencia_id ?? "").toString().replace(/"/g, "")}"`,
-        "",
-        m.monto_efectivo ?? 0,
-        m.monto_electronico ?? 0,
-        (Number(m.monto_efectivo) || 0) + (Number(m.monto_electronico) || 0),
-      ].join(","),
-    ),
-    ...turnos.map((t) =>
-      [
-        "caja",
-        `turno_${t.estado}`,
-        t.apertura_at,
-        `"fondo ${t.fondo_inicial}"`,
-        "",
-        t.efectivo_contado ?? "",
-        t.electronico_contado ?? "",
-        "",
-      ].join(","),
-    ),
-    ...facturas.map((f) =>
-      [
-        "facturas",
-        f.origen,
-        f.created_at,
-        `"${f.numero} ${(f.cliente_nombre ?? "").replace(/"/g, "")}"`,
-        f.medio_pago ?? "",
-        "",
-        "",
-        f.total,
-      ].join(","),
-    ),
-  ].join("\n");
-  const csvHref = `data:text/csv;charset=utf-8,${encodeURIComponent(csvRows)}`;
+  const excelHref = `/api/reportes/export?desde=${encodeURIComponent(desdeInput)}&hasta=${encodeURIComponent(hastaInput)}`;
 
   const qHoy = `?desde=${hoy}&hasta=${hoy}`;
   const qSemana = `?desde=${semanaDesde}&hasta=${hoy}`;
@@ -439,8 +373,8 @@ export default async function ReportesPage({
             Ventas · Caja · Encargos · Facturas · Inventario · horario Bogotá
           </p>
         </div>
-        <a href={csvHref} download={`reporte-${desdeInput}-${hastaInput}.csv`}>
-          <Button variant="secondary">Exportar CSV</Button>
+        <a href={excelHref}>
+          <Button variant="secondary">Exportar Excel</Button>
         </a>
       </div>
 
