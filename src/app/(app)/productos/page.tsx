@@ -557,20 +557,33 @@ export default function ProductosPage() {
             </label>
             {form.control_stock && (
               <>
-                <Input
-                  type="number"
-                  step="0.001"
-                  placeholder="Stock actual"
-                  value={form.stock}
-                  onChange={(e) => setForm({ ...form, stock: e.target.value })}
-                />
-                <Input
-                  type="number"
-                  step="0.001"
-                  placeholder="Stock mínimo (alerta)"
-                  value={form.stock_minimo}
-                  onChange={(e) => setForm({ ...form, stock_minimo: e.target.value })}
-                />
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Stock actual</label>
+                  <Input
+                    type="number"
+                    step="0.001"
+                    placeholder="Ej. 24"
+                    value={form.stock}
+                    onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                  />
+                  <p className="mt-1 text-xs text-stone-500">
+                    Unidades disponibles ahora. Sube con producción o recepciones y baja al vender.
+                  </p>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Stock mínimo (alerta)</label>
+                  <Input
+                    type="number"
+                    step="0.001"
+                    placeholder="Ej. 10"
+                    value={form.stock_minimo}
+                    onChange={(e) => setForm({ ...form, stock_minimo: e.target.value })}
+                  />
+                  <p className="mt-1 text-xs text-stone-500">
+                    Si el stock llega a este valor o menos, se marca como bajo. Usa 0 si no quieres
+                    alerta.
+                  </p>
+                </div>
               </>
             )}
             <div className="flex flex-wrap gap-2 md:col-span-2 lg:col-span-3">

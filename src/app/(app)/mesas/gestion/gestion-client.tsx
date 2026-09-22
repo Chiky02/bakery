@@ -27,6 +27,12 @@ export function MesasGestionClient({
   const [zona, setZona] = useState("Salón");
   const [showInactive, setShowInactive] = useState(false);
   const [msg, setMsg] = useState("");
+  const [msgTone, setMsgTone] = useState<"ok" | "error">("ok");
+
+  function notify(text: string, tone: "ok" | "error" = "ok") {
+    setMsg(text);
+    setMsgTone(tone);
+  }
 
   async function load() {
     const supabase = createClient();
@@ -53,11 +59,11 @@ export function MesasGestionClient({
       activa: true,
     });
     if (error) {
-      setMsg(error.message);
+      notify(error.message, "error");
       return;
     }
     setNombre("");
-    setMsg("Mesa creada");
+    notify("Mesa creada");
     void load();
   }
 
@@ -66,34 +72,54 @@ export function MesasGestionClient({
     const next = !(mesa.activa ?? true);
     const { error } = await supabase.from("mesas").update({ activa: next }).eq("id", mesa.id);
     if (error) {
-      setMsg(
+      notify(
         error.message.includes("activa")
           ? "Ejecuta la migración 20260907020000 (columna mesas.activa)"
           : error.message,
+        "error",
       );
       return;
     }
+    notify(next ? `${mesa.nombre} activada` : `${mesa.nombre} desactivada`);
     void load();
+  }
+
+  function isFkBlock(message: string) {
+    const m = message.toLowerCase();
+    return (
+      m.includes("foreign") ||
+      m.includes("23503") ||
+      m.includes("referenced") ||
+      m.includes("cuentas_mesa") ||
+      m.includes("violates") ||
+      m.includes("restrict")
+    );
   }
 
   async function eliminar(mesa: MesaRow) {
     if (!confirm(`¿Eliminar ${mesa.nombre}?`)) return;
     const abierta = mesa.cuentas_mesa?.some((c) => c.estado === "abierta");
     if (abierta) {
-      setMsg("Cierra la cuenta de la mesa antes de eliminarla");
+      notify(
+        `No se puede eliminar ${mesa.nombre}: tiene una cuenta abierta. Ciérrala primero o desactívala para ocultarla del listado.`,
+        "error",
+      );
       return;
     }
     const supabase = createClient();
     const { error } = await supabase.from("mesas").delete().eq("id", mesa.id);
     if (error) {
-      setMsg(
-        error.message.includes("foreign")
-          ? "Tiene historial; desactívala en su lugar"
-          : error.message,
-      );
+      if (isFkBlock(error.message)) {
+        notify(
+          `No se puede eliminar ${mesa.nombre}: ya tiene ventas o cuentas asociadas y se conserva el historial. Usa Desactivar para que no aparezca en mesas activas.`,
+          "error",
+        );
+        return;
+      }
+      notify(error.message, "error");
       return;
     }
-    setMsg("Mesa eliminada");
+    notify("Mesa eliminada");
     void load();
   }
 
@@ -111,7 +137,17 @@ export function MesasGestionClient({
         </p>
       </div>
 
-      {msg && <p className="text-sm text-stone-600">{msg}</p>}
+      {msg && (
+        <p
+          className={`rounded-lg border px-3 py-2 text-sm ${
+            msgTone === "error"
+              ? "border-red-200 bg-red-50 text-red-800"
+              : "border-emerald-200 bg-emerald-50 text-emerald-800"
+          }`}
+        >
+          {msg}
+        </p>
+      )}
 
       <Card className="w-full max-w-4xl space-y-3 p-4">
         <CardTitle>Nueva mesa</CardTitle>
