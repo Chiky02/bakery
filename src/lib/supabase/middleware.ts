@@ -59,11 +59,46 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && path === "/login") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/aceptar-terminos";
-    return NextResponse.redirect(url);
+  if (user && (path === "/login" || path === "/aceptar-terminos")) {
+    const dest = await postAuthPath(supabase, user.id);
+    if (path !== dest) {
+      return redirectKeepingSession(request, supabaseResponse, dest);
+    }
   }
 
   return supabaseResponse;
+}
+
+/** Si ya aceptó, va al panel. Los términos solo se muestran cuando falta aceptar. */
+async function postAuthPath(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+): Promise<"/dashboard" | "/aceptar-terminos"> {
+  const { data: vigente, error: versionError } = await supabase
+    .from("terminos_versiones")
+    .select("id")
+    .eq("vigente", true)
+    .maybeSingle();
+
+  if (versionError || !vigente?.id) return "/dashboard";
+
+  const { data: accepted, error: acceptError } = await supabase
+    .from("terminos_aceptaciones")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("terminos_version_id", vigente.id)
+    .maybeSingle();
+
+  if (acceptError?.message?.includes("terminos_aceptaciones") || accepted) return "/dashboard";
+  return "/aceptar-terminos";
+}
+
+function redirectKeepingSession(request: NextRequest, session: NextResponse, pathname: string) {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  const redirect = NextResponse.redirect(url);
+  session.cookies.getAll().forEach((cookie) => {
+    redirect.cookies.set(cookie);
+  });
+  return redirect;
 }

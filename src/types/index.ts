@@ -122,6 +122,8 @@ export type Producto = {
   stock?: number;
   stock_minimo?: number;
   control_stock?: boolean;
+  /** Se elabora en el local (pan, galletas). El stock sube al registrar producción. */
+  producible?: boolean;
   categorias?: Categoria;
 };
 

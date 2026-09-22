@@ -75,6 +75,7 @@ npm run dev
 | Mostrador | `/mostrador` | dueño, gerente, mostrador, caja |
 | Mesas | `/mesas` | dueño, gerente, mesero, caja |
 | Cocina | `/cocina` | dueño, gerente, cocina |
+| Producción | `/produccion` | ver: dueño, gerente, cocina · registrar stock: cocina · recetas: dueño, gerente, cocina |
 | Caja | `/caja` | dueño, gerente, caja |
 | Clientes | `/clientes` | listado / crear (permisos aparte) |
 | Encargos | `/encargos` | listado / crear |

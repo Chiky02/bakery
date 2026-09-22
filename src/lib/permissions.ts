@@ -5,6 +5,7 @@ import {
   Calculator,
   Armchair,
   ChefHat,
+  Flame,
   Wallet,
   Package,
   Truck,
@@ -60,6 +61,12 @@ const OPS_ENCARGOS: UserRole[] = ["dueno", "admin", "mostrador", "mesero"];
 const OPS_RECEPCIONES: UserRole[] = ["dueno", "admin", "mostrador", "caja"];
 const OPS_INSUMOS: UserRole[] = ["dueno", "admin", "mostrador", "caja"];
 const GESTION: UserRole[] = ["dueno", "admin"];
+/** Ven el módulo. Subir stock de lo producido es otro permiso. */
+const VER_PRODUCCION: UserRole[] = ["dueno", "admin", "cocina"];
+/** Solo el panadero (cocina) registra producción por defecto. */
+const CREAR_PRODUCCION: UserRole[] = ["cocina"];
+/** Dueño, gerente y cocina definen la receta (consumo de insumos). */
+const RECETAS_PRODUCCION: UserRole[] = ["dueno", "admin", "cocina"];
 
 /** Claves de funcionalidad del panel (menú + subpermisos listado/crear). */
 export const FEATURE_PERMISOS: FeaturePermiso[] = [
@@ -97,6 +104,29 @@ export const FEATURE_PERMISOS: FeaturePermiso[] = [
     href: "/cocina",
     icon: ChefHat,
     defaultRoles: ["dueno", "admin", "cocina"],
+  },
+  {
+    key: "produccion",
+    label: "Producción",
+    href: "/produccion",
+    icon: Flame,
+    defaultRoles: VER_PRODUCCION,
+  },
+  {
+    key: "produccion_crear",
+    label: "Producción · Registrar (subir stock)",
+    href: "/produccion",
+    icon: Flame,
+    defaultRoles: CREAR_PRODUCCION,
+    nav: false,
+  },
+  {
+    key: "produccion_recetas",
+    label: "Producción · Recetas",
+    href: "/produccion",
+    icon: Flame,
+    defaultRoles: RECETAS_PRODUCCION,
+    nav: false,
   },
   {
     key: "caja",

@@ -64,7 +64,7 @@ export default function LoginPage() {
       }
     }
 
-    router.push("/aceptar-terminos");
+    router.push("/dashboard");
     router.refresh();
   }
 

@@ -25,6 +25,7 @@ type ProductForm = {
   disponible: boolean;
   encargable: boolean;
   control_stock: boolean;
+  producible: boolean;
   stock: string;
   stock_minimo: string;
   orden: string;
@@ -38,6 +39,7 @@ const emptyProduct = (categoriaId = ""): ProductForm => ({
   disponible: true,
   encargable: false,
   control_stock: false,
+  producible: false,
   stock: "0",
   stock_minimo: "0",
   orden: "0",
@@ -46,6 +48,12 @@ const emptyProduct = (categoriaId = ""): ProductForm => ({
 
 const selectClass =
   "rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm";
+
+function formatQty(n: number) {
+  return Number.isInteger(n)
+    ? String(n)
+    : n.toLocaleString("es-CO", { maximumFractionDigits: 3 });
+}
 
 export default function ProductosPage() {
   const { panaderiaId } = useBakeryId();
@@ -128,7 +136,8 @@ export default function ProductosPage() {
       categoria_id: form.categoria_id,
       disponible: form.disponible,
       encargable: form.encargable,
-      control_stock: form.control_stock,
+      control_stock: form.control_stock || form.producible,
+      producible: form.producible,
       stock: Number(form.stock) || 0,
       stock_minimo: Number(form.stock_minimo) || 0,
       orden: Number(form.orden) || 0,
@@ -149,12 +158,14 @@ export default function ProductosPage() {
       if (
         res.error.message.includes("encargable") ||
         res.error.message.includes("control_stock") ||
+        res.error.message.includes("producible") ||
         res.error.message.includes("stock_minimo") ||
         res.error.message.includes("stock")
       ) {
         const {
           encargable: _e,
           control_stock: _c,
+          producible: _p,
           stock: _s,
           stock_minimo: _m,
           ...without
@@ -197,7 +208,8 @@ export default function ProductosPage() {
       categoria_id: p.categoria_id,
       disponible: p.disponible,
       encargable: !!p.encargable,
-      control_stock: !!p.control_stock,
+      control_stock: !!p.control_stock || !!p.producible,
+      producible: !!p.producible,
       stock: String(p.stock ?? 0),
       stock_minimo: String(p.stock_minimo ?? 0),
       orden: String(p.orden),
@@ -523,7 +535,22 @@ export default function ProductosPage() {
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
-                checked={form.control_stock}
+                checked={form.producible}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    producible: e.target.checked,
+                    control_stock: e.target.checked ? true : form.control_stock,
+                  })
+                }
+              />
+              Se produce en el local (pan, galletas…)
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.control_stock || form.producible}
+                disabled={form.producible}
                 onChange={(e) => setForm({ ...form, control_stock: e.target.checked })}
               />
               Controlar stock
@@ -632,81 +659,122 @@ export default function ProductosPage() {
               Productos ({filtered.length}
               {filtered.length !== productos.length ? ` de ${productos.length}` : ""})
             </CardTitle>
-            <ul className="mt-4 divide-y">
-              {pageItems.map((p) => (
-                <li
-                  key={p.id}
-                  className="flex flex-wrap items-center justify-between gap-3 py-3"
-                >
-                  <div className="min-w-0">
-                    <p className="font-medium">{p.nombre}</p>
-                    <p className="text-sm text-stone-500">
-                      {p.categorias?.nombre ?? "Sin categoría"} · {formatCOP(p.precio)}
-                      {p.codigo_barras ? ` · ${p.codigo_barras}` : ""}
-                      {p.control_stock ? ` · stock ${p.stock ?? 0}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1">
-                    <Badge color={p.disponible ? "success" : "danger"}>
-                      {p.disponible ? "Disponible" : "Agotado"}
-                    </Badge>
-                    {p.encargable && <Badge color="info">Encargable</Badge>}
-                    {p.control_stock && <Badge color="warning">Stock</Badge>}
-                    {canCreate && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          title={p.disponible ? "Agotar" : "Disponible"}
-                          aria-label={p.disponible ? "Agotar" : "Disponible"}
-                          onClick={() => toggleDisponible(p.id, p.disponible)}
-                        >
-                          {p.disponible ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full min-w-[52rem] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-stone-200 text-xs uppercase tracking-wide text-stone-500">
+                    <th className="py-2 pr-3 font-medium">Nombre</th>
+                    <th className="py-2 pr-3 font-medium">Categoría</th>
+                    <th className="py-2 pr-3 font-medium text-right">Precio</th>
+                    <th className="py-2 pr-3 font-medium text-right">Stock</th>
+                    <th className="py-2 pr-3 font-medium">Estado</th>
+                    <th className="py-2 font-medium text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {pageItems.map((p) => {
+                    const stock = Number(p.stock ?? 0);
+                    const minimo = Number(p.stock_minimo ?? 0);
+                    const bajo =
+                      !!p.control_stock && minimo > 0 && stock <= minimo;
+                    return (
+                      <tr key={p.id}>
+                        <td className="py-2.5 pr-3">
+                          <p className="font-medium text-stone-900">{p.nombre}</p>
+                          {p.codigo_barras && (
+                            <p className="text-xs text-stone-400">{p.codigo_barras}</p>
                           )}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant={p.encargable ? "primary" : "secondary"}
-                          title={p.encargable ? "Quitar encargable" : "Marcar encargable"}
-                          aria-label="Encargable"
-                          onClick={() => toggleEncargable(p.id, !!p.encargable)}
+                        </td>
+                        <td className="py-2.5 pr-3 text-stone-600">
+                          {p.categorias?.nombre ?? "Sin categoría"}
+                        </td>
+                        <td className="py-2.5 pr-3 text-right font-medium tabular-nums">
+                          {formatCOP(p.precio)}
+                        </td>
+                        <td
+                          className={`py-2.5 pr-3 text-right tabular-nums ${
+                            bajo ? "font-medium text-amber-700" : "text-stone-700"
+                          }`}
+                          title={
+                            p.control_stock
+                              ? bajo
+                                ? `Bajo el mínimo (${minimo})`
+                                : "Con control de stock"
+                              : "Sin control de stock"
+                          }
                         >
-                          <Cake className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          title="Editar"
-                          aria-label="Editar"
-                          onClick={() => editProduct(p)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="danger"
-                          title="Borrar"
-                          aria-label="Borrar"
-                          onClick={() => deleteProduct(p.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </li>
-              ))}
-              {pageItems.length === 0 && (
-                <li className="py-4 text-sm text-stone-500">
-                  {productos.length === 0
-                    ? "Aún no hay productos. Crea el primero en la pestaña Crear."
-                    : "Ningún producto coincide con los filtros."}
-                </li>
-              )}
-            </ul>
+                          {p.control_stock ? formatQty(stock) : "—"}
+                        </td>
+                        <td className="py-2.5 pr-3">
+                          <div className="flex flex-wrap items-center gap-1">
+                            <Badge color={p.disponible ? "success" : "danger"}>
+                              {p.disponible ? "Disponible" : "Agotado"}
+                            </Badge>
+                            {p.encargable && <Badge color="info">Encargable</Badge>}
+                            {p.producible && <Badge color="warning">Se produce</Badge>}
+                          </div>
+                        </td>
+                        <td className="py-2.5 text-right">
+                          {canCreate && (
+                            <div className="flex flex-wrap items-center justify-end gap-1">
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                title={p.disponible ? "Agotar" : "Disponible"}
+                                aria-label={p.disponible ? "Agotar" : "Disponible"}
+                                onClick={() => toggleDisponible(p.id, p.disponible)}
+                              >
+                                {p.disponible ? (
+                                  <EyeOff className="h-4 w-4" />
+                                ) : (
+                                  <Eye className="h-4 w-4" />
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={p.encargable ? "primary" : "secondary"}
+                                title={p.encargable ? "Quitar encargable" : "Marcar encargable"}
+                                aria-label="Encargable"
+                                onClick={() => toggleEncargable(p.id, !!p.encargable)}
+                              >
+                                <Cake className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                title="Editar"
+                                aria-label="Editar"
+                                onClick={() => editProduct(p)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="danger"
+                                title="Borrar"
+                                aria-label="Borrar"
+                                onClick={() => deleteProduct(p.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {pageItems.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-4 text-sm text-stone-500">
+                        {productos.length === 0
+                          ? "Aún no hay productos. Crea el primero en la pestaña Crear."
+                          : "Ningún producto coincide con los filtros."}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
 
             {totalPages > 1 && (
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-stone-100 pt-3">

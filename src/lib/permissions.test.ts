@@ -20,13 +20,30 @@ describe("defaultPermisosForRole", () => {
     expect(defaultPermisosForRole("admin")).not.toContain("negocios");
   });
 
-  it("cocina ve cocina + dashboard + config + panaderías", () => {
+  it("cocina ve cocina + producción (puede subir stock) + dashboard", () => {
     const p = defaultPermisosForRole("cocina");
     expect(p).toContain("dashboard");
     expect(p).toContain("cocina");
-    expect(p).toContain("configuracion");
+    expect(p).toContain("produccion");
+    expect(p).toContain("produccion_crear");
+    expect(p).toContain("produccion_recetas");
     expect(p).not.toContain("caja");
     expect(p).not.toContain("usuarios");
+  });
+
+  it("dueño ve producción y recetas, pero no registra tandas por defecto", () => {
+    const p = defaultPermisosForRole("dueno");
+    expect(p).toContain("produccion");
+    expect(p).toContain("produccion_recetas");
+    expect(p).not.toContain("produccion_crear");
+  });
+
+  it("mostrador, mesero y caja no tienen producción por defecto", () => {
+    for (const rol of ["mostrador", "mesero", "caja"] as const) {
+      const p = defaultPermisosForRole(rol);
+      expect(p).not.toContain("produccion");
+      expect(p).not.toContain("produccion_crear");
+    }
   });
   it("dueño incluye subpermisos crear de clientes/productos", () => {
     const p = defaultPermisosForRole("dueno");
