@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiContext } from "@/lib/api-context";
+import { hasPermiso } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 
@@ -16,7 +17,7 @@ export async function PATCH(
   if (result instanceof NextResponse) return result;
   const { ctx } = result;
 
-  if (!["dueno", "admin"].includes(ctx.rol)) {
+  if (!ctx.plataformaAdmin && !hasPermiso("usuarios", ctx.permisos, ctx.rol)) {
     return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
   }
 

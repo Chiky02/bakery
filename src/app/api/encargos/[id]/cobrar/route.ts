@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/api-context";
+import { requireApiAnyPermiso } from "@/lib/api-context";
 import { getTurnoAbiertoId, sinTurnoCajaResponse } from "@/lib/turno-caja";
 import { resolvePagoDesglose } from "@/lib/pago-split";
 import { z } from "zod";
@@ -18,7 +18,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const result = await requireApiContext();
+  const result = await requireApiAnyPermiso(["encargos", "caja"]);
   if (result instanceof NextResponse) return result;
   const { ctx, supabase } = result;
 

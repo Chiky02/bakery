@@ -61,6 +61,7 @@ export default function ProductosPage() {
   const canList = hasPermiso("productos", permisos, rol);
   const canCreate = hasPermiso("productos_crear", permisos, rol);
   const canCategorias = hasPermiso("productos_categorias", permisos, rol);
+  const canAdjustStock = hasPermiso("inventario_ajustar", permisos, rol);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [search, setSearch] = useState("");
@@ -138,7 +139,7 @@ export default function ProductosPage() {
       encargable: form.encargable,
       control_stock: form.control_stock || form.producible,
       producible: form.producible,
-      stock: Number(form.stock) || 0,
+      ...(form.id || !canAdjustStock ? {} : { stock: Number(form.stock) || 0 }),
       stock_minimo: Number(form.stock_minimo) || 0,
       orden: Number(form.orden) || 0,
       codigo_barras: form.codigo_barras.trim() || null,
@@ -156,11 +157,12 @@ export default function ProductosPage() {
           : await supabase.from("productos").insert(data);
       if (!res.error) return null;
       if (
-        res.error.message.includes("encargable") ||
-        res.error.message.includes("control_stock") ||
-        res.error.message.includes("producible") ||
-        res.error.message.includes("stock_minimo") ||
-        res.error.message.includes("stock")
+        /column|schema cache|Could not find/i.test(res.error.message) &&
+        (res.error.message.includes("encargable") ||
+          res.error.message.includes("control_stock") ||
+          res.error.message.includes("producible") ||
+          res.error.message.includes("stock_minimo") ||
+          res.error.message.includes("stock"))
       ) {
         const {
           encargable: _e,
@@ -184,6 +186,24 @@ export default function ProductosPage() {
       if (errMsg) {
         setError(errMsg);
         return;
+      }
+      if (canAdjustStock) {
+        const prev = Number(productos.find((p) => p.id === form.id)?.stock ?? 0);
+        const next = Number(form.stock) || 0;
+        const delta = next - prev;
+        if (Math.abs(delta) > 0.0000001) {
+          const { error: stockErr } = await supabase.rpc("ajustar_stock", {
+            p_producto: form.id,
+            p_cantidad: delta,
+            p_tipo: "ajuste",
+            p_notas: "Ajuste desde productos",
+          });
+          if (stockErr) {
+            setError(stockErr.message);
+            await load();
+            return;
+          }
+        }
       }
       setMsg("Producto actualizado");
     } else {
@@ -555,36 +575,41 @@ export default function ProductosPage() {
               />
               Controlar stock
             </label>
+            {form.control_stock && canAdjustStock && (
+              <div>
+                <label className="mb-1 block text-sm font-medium">Stock actual</label>
+                <Input
+                  type="number"
+                  step="0.001"
+                  placeholder="Ej. 24"
+                  value={form.stock}
+                  onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                />
+                <p className="mt-1 text-xs text-stone-500">
+                  Unidades disponibles ahora. Sube con producción o recepciones y baja al vender.
+                </p>
+              </div>
+            )}
+            {form.control_stock && !canAdjustStock && (
+              <p className="text-xs text-stone-500 md:col-span-2 lg:col-span-3">
+                El stock inicial y los ajustes los hace el dueño. Aquí solo activas el control.
+              </p>
+            )}
             {form.control_stock && (
-              <>
-                <div>
-                  <label className="mb-1 block text-sm font-medium">Stock actual</label>
-                  <Input
-                    type="number"
-                    step="0.001"
-                    placeholder="Ej. 24"
-                    value={form.stock}
-                    onChange={(e) => setForm({ ...form, stock: e.target.value })}
-                  />
-                  <p className="mt-1 text-xs text-stone-500">
-                    Unidades disponibles ahora. Sube con producción o recepciones y baja al vender.
-                  </p>
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium">Stock mínimo (alerta)</label>
-                  <Input
-                    type="number"
-                    step="0.001"
-                    placeholder="Ej. 10"
-                    value={form.stock_minimo}
-                    onChange={(e) => setForm({ ...form, stock_minimo: e.target.value })}
-                  />
-                  <p className="mt-1 text-xs text-stone-500">
-                    Si el stock llega a este valor o menos, se marca como bajo. Usa 0 si no quieres
-                    alerta.
-                  </p>
-                </div>
-              </>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Stock mínimo (alerta)</label>
+                <Input
+                  type="number"
+                  step="0.001"
+                  placeholder="Ej. 10"
+                  value={form.stock_minimo}
+                  onChange={(e) => setForm({ ...form, stock_minimo: e.target.value })}
+                />
+                <p className="mt-1 text-xs text-stone-500">
+                  Si el stock llega a este valor o menos, se marca como bajo. Usa 0 si no quieres
+                  alerta.
+                </p>
+              </div>
             )}
             <div className="flex flex-wrap gap-2 md:col-span-2 lg:col-span-3">
               <Button type="submit">{form.id ? "Actualizar" : "Crear"}</Button>

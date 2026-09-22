@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireApiContext } from "@/lib/api-context";
 import { getServiceClient } from "@/lib/supabase/admin";
-import { ROLE_LABELS } from "@/lib/permissions";
+import { hasPermiso, ROLE_LABELS } from "@/lib/permissions";
 import type { UserRole } from "@/types";
 
 export type EquipoMember = {
@@ -32,17 +32,21 @@ export async function GET(request: Request) {
   if (result instanceof NextResponse) return result;
   const { ctx } = result;
 
-  if (!ctx.plataformaAdmin) {
-    if (!["dueno", "admin"].includes(ctx.rol)) {
-      return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
-    }
+  if (!ctx.plataformaAdmin && !hasPermiso("usuarios", ctx.permisos, ctx.rol)) {
+    return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
   }
 
   const url = new URL(request.url);
   const panaderiaId = url.searchParams.get("panaderia_id") || ctx.panaderia.id;
 
-  if (!ctx.plataformaAdmin && !canManagePanaderia(ctx.memberships, panaderiaId)) {
-    return NextResponse.json({ error: "Sin permiso en ese negocio" }, { status: 403 });
+  if (!ctx.plataformaAdmin) {
+    const sameBakery = panaderiaId === ctx.panaderia.id;
+    const member = ctx.memberships.some((m) => m.panaderia_id === panaderiaId);
+    if (!sameBakery || !member) {
+      if (!canManagePanaderia(ctx.memberships, panaderiaId)) {
+        return NextResponse.json({ error: "Sin permiso en ese negocio" }, { status: 403 });
+      }
+    }
   }
 
   try {

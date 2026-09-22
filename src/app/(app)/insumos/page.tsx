@@ -15,6 +15,7 @@ export default function InsumosPage() {
   const { permisos, rol } = useBakery();
   const canList = hasPermiso("insumos", permisos, rol);
   const canCreate = hasPermiso("insumos_crear", permisos, rol);
+  const canAdjustStock = hasPermiso("inventario_ajustar", permisos, rol);
   const [items, setItems] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [nombre, setNombre] = useState("");
@@ -59,10 +60,14 @@ export default function InsumosPage() {
       codigo_barras: barras.trim() || null,
       orden: 0,
       control_stock: true,
-      stock: Number(stock) || 0,
+      stock: canAdjustStock ? Number(stock) || 0 : 0,
     };
     let { error } = await supabase.from("productos").insert(payload);
-    if (error && (error.message.includes("control_stock") || error.message.includes("stock"))) {
+    if (
+      error &&
+      /column|schema cache|Could not find/i.test(error.message) &&
+      (error.message.includes("control_stock") || error.message.includes("stock"))
+    ) {
       const { control_stock: _c, stock: _s, ...without } = payload;
       ({ error } = await supabase.from("productos").insert(without));
     }
@@ -79,7 +84,7 @@ export default function InsumosPage() {
   }
 
   async function ajustar(id: string, delta: number) {
-    if (!canCreate) return;
+    if (!canAdjustStock) return;
     const supabase = createClient();
     const { error } = await supabase.rpc("ajustar_stock", {
       p_producto: id,
@@ -162,13 +167,15 @@ export default function InsumosPage() {
               value={barras}
               onChange={(e) => setBarras(e.target.value)}
             />
-            <Input
-              type="number"
-              step="0.001"
-              placeholder="Stock inicial"
-              value={stock}
-              onChange={(e) => setStock(e.target.value)}
-            />
+            {canAdjustStock && (
+              <Input
+                type="number"
+                step="0.001"
+                placeholder="Stock inicial"
+                value={stock}
+                onChange={(e) => setStock(e.target.value)}
+              />
+            )}
             <select
               className="rounded-lg border px-3 py-2 text-sm"
               value={categoriaId}
@@ -210,7 +217,7 @@ export default function InsumosPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge color="info">Stock {i.stock ?? 0}</Badge>
-                  {canCreate && (
+                  {canAdjustStock && (
                     <>
                       <Button size="sm" variant="secondary" onClick={() => ajustar(i.id, 1)}>
                         +1
@@ -218,10 +225,12 @@ export default function InsumosPage() {
                       <Button size="sm" variant="secondary" onClick={() => ajustar(i.id, -1)}>
                         −1
                       </Button>
-                      <Button size="sm" variant="danger" onClick={() => borrar(i.id)}>
-                        Borrar
-                      </Button>
                     </>
+                  )}
+                  {canCreate && (
+                    <Button size="sm" variant="danger" onClick={() => borrar(i.id)}>
+                      Borrar
+                    </Button>
                   )}
                 </div>
               </li>

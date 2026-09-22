@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/api-context";
+import { requireApiAnyPermiso } from "@/lib/api-context";
 
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: mesaId } = await params;
-  const result = await requireApiContext();
+  const result = await requireApiAnyPermiso(["mesas"]);
   if (result instanceof NextResponse) return result;
   const { ctx, supabase } = result;
 

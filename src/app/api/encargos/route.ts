@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/api-context";
+import { requireApiAnyPermiso } from "@/lib/api-context";
 
 export async function POST(request: Request) {
-  const result = await requireApiContext();
+  const result = await requireApiAnyPermiso(["encargos_crear"]);
   if (result instanceof NextResponse) return result;
   const { ctx, supabase } = result;
 

@@ -90,7 +90,7 @@ export async function POST(
     const { error: stockErr } = await supabase.rpc("ajustar_stock", {
       p_producto: line.producto_id,
       p_cantidad: Number(line.cantidad),
-      p_tipo: "ajuste",
+      p_tipo: "anulacion",
       p_referencia: id,
       p_notas: "Anulación venta mostrador",
     });

@@ -241,6 +241,14 @@ export const FEATURE_PERMISOS: FeaturePermiso[] = [
     defaultRoles: ["dueno", "admin", "caja"],
   },
   {
+    key: "inventario_ajustar",
+    label: "Inventario · Ajustar stock",
+    href: "/inventario",
+    icon: Boxes,
+    defaultRoles: ["dueno"],
+    nav: false,
+  },
+  {
     key: "reportes",
     label: "Reportes",
     href: "/reportes",

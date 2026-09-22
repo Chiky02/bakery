@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireApiContext } from "@/lib/api-context";
+import { hasPermiso } from "@/lib/permissions";
 import { z } from "zod";
 
 const schema = z.object({
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
   if (result instanceof NextResponse) return result;
   const { ctx } = result;
 
-  if (!["dueno", "admin"].includes(ctx.rol)) {
+  if (!ctx.plataformaAdmin && !hasPermiso("usuarios", ctx.permisos, ctx.rol)) {
     return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
   }
 

@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useBakeryId } from "@/lib/use-bakery-id";
+import { useBakery, useBakeryId } from "@/lib/use-bakery-id";
+import { hasPermiso } from "@/lib/permissions";
 import type { Producto } from "@/types";
 import { formatCOP, formatDateTime } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,8 @@ export function InventarioClient({
   initialProductos: Producto[];
 }) {
   const { panaderiaId } = useBakeryId();
+  const { permisos, rol } = useBakery();
+  const canAdjustStock = hasPermiso("inventario_ajustar", permisos, rol);
   const [productos, setProductos] = useState(initialProductos);
   const [q, setQ] = useState("");
   const [soloBajos, setSoloBajos] = useState(false);
@@ -92,7 +95,7 @@ export function InventarioClient({
   }, [panaderiaId]);
 
   async function aplicarAjuste() {
-    if (!ajusteId) return;
+    if (!canAdjustStock || !ajusteId) return;
     const qty = Number(ajusteQty);
     if (!Number.isFinite(qty) || qty === 0) {
       setMsg("Indica una cantidad distinta de 0 (+ entrada / − salida)");
@@ -227,9 +230,11 @@ export function InventarioClient({
                   >
                     Mínimo
                   </Button>
-                  <Button size="sm" onClick={() => setAjusteId(p.id)}>
-                    Ajustar
-                  </Button>
+                  {canAdjustStock && (
+                    <Button size="sm" onClick={() => setAjusteId(p.id)}>
+                      Ajustar
+                    </Button>
+                  )}
                 </div>
               </li>
             );
@@ -243,7 +248,7 @@ export function InventarioClient({
         </ul>
       </Card>
 
-      {ajusteId && (
+      {canAdjustStock && ajusteId && (
         <Card className="space-y-3">
           <CardTitle>Ajuste de stock</CardTitle>
           <p className="text-xs text-stone-500">

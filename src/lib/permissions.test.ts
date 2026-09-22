@@ -13,6 +13,7 @@ describe("defaultPermisosForRole", () => {
     expect(p).toContain("dashboard");
     expect(p).toContain("usuarios");
     expect(p).toContain("reportes");
+    expect(p).toContain("inventario_ajustar");
     expect(p).not.toContain("negocios");
   });
 
@@ -31,6 +32,17 @@ describe("defaultPermisosForRole", () => {
     expect(p).not.toContain("usuarios");
   });
 
+  it("gerente ve inventario pero no ajusta stock por defecto", () => {
+    const p = defaultPermisosForRole("admin");
+    expect(p).toContain("inventario");
+    expect(p).not.toContain("inventario_ajustar");
+  });
+
+  it("caja y mostrador no ajustan stock", () => {
+    expect(defaultPermisosForRole("caja")).not.toContain("inventario_ajustar");
+    expect(defaultPermisosForRole("mostrador")).not.toContain("inventario_ajustar");
+    expect(defaultPermisosForRole("cocina")).not.toContain("inventario_ajustar");
+  });
   it("dueño ve producción y recetas, pero no registra tandas por defecto", () => {
     const p = defaultPermisosForRole("dueno");
     expect(p).toContain("produccion");

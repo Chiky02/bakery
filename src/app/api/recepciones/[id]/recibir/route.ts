@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiFeature } from "@/lib/api-context";
+import { requireApiAnyPermiso } from "@/lib/api-context";
 
 /** Marca recepción como recibida e incrementa stock (idempotente vía RPC). */
 export async function POST(
@@ -7,7 +7,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const result = await requireApiFeature("recepciones");
+  const result = await requireApiAnyPermiso(["recepciones_crear"]);
   if (result instanceof NextResponse) return result;
   const { ctx, supabase } = result;
 

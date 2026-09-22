@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireApiContext } from "@/lib/api-context";
+import { hasPermiso, slugify } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
-import { slugify } from "@/lib/permissions";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -17,6 +17,9 @@ export async function GET() {
   const result = await requireApiContext();
   if (result instanceof NextResponse) return result;
   const { ctx } = result;
+  if (!ctx.plataformaAdmin && !hasPermiso("usuarios", ctx.permisos, ctx.rol)) {
+    return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
+  }
 
   const supabase = await createClient();
   await supabase.rpc("seed_default_roles", { p_panaderia_id: ctx.panaderia.id });
@@ -37,7 +40,7 @@ export async function POST(request: Request) {
   if (result instanceof NextResponse) return result;
   const { ctx } = result;
 
-  if (!["dueno", "admin"].includes(ctx.rol)) {
+  if (!ctx.plataformaAdmin && !hasPermiso("usuarios", ctx.permisos, ctx.rol)) {
     return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
   }
 

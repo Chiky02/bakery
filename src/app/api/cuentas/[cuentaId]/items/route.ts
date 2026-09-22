@@ -1,16 +1,14 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireApiAnyPermiso } from "@/lib/api-context";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ cuentaId: string }> },
 ) {
   const { cuentaId } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const result = await requireApiAnyPermiso(["mesas"]);
+  if (result instanceof NextResponse) return result;
+  const { supabase } = result;
 
   const body = await request.json();
   const { producto_id, origen = "mesero", cantidad = 1 } = body;
@@ -73,7 +71,9 @@ export async function GET(
   { params }: { params: Promise<{ cuentaId: string }> },
 ) {
   const { cuentaId } = await params;
-  const supabase = await createClient();
+  const result = await requireApiAnyPermiso(["mesas", "caja"]);
+  if (result instanceof NextResponse) return result;
+  const { supabase } = result;
   const { data } = await supabase
     .from("items_cuenta")
     .select("*, productos(*)")

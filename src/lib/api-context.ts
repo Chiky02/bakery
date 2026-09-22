@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { SessionContext } from "@/types";
 import { NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/auth";
-import { canAccess, FEATURE_PERMISOS } from "@/lib/permissions";
+import { canAccess, FEATURE_PERMISOS, hasPermiso } from "@/lib/permissions";
 
 export async function requireApiContext(): Promise<
   { ctx: SessionContext; supabase: Awaited<ReturnType<typeof createClient>> } | NextResponse
@@ -27,6 +27,24 @@ export async function requireApiFeature(
   const feature = FEATURE_PERMISOS.find((f) => f.key === featureKey);
   const href = feature?.href ?? `/${featureKey}`;
   if (!canAccess(ctx.rol, href, ctx.permisos, { plataformaAdmin: ctx.plataformaAdmin })) {
+    return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
+  }
+  return { ctx, supabase };
+}
+
+/** Exige una clave concreta (no basta con otro permiso de la misma pantalla). */
+export async function requireApiAnyPermiso(
+  keys: string[],
+): Promise<
+  { ctx: SessionContext; supabase: Awaited<ReturnType<typeof createClient>> } | NextResponse
+> {
+  const result = await requireApiContext();
+  if (result instanceof NextResponse) return result;
+  const { ctx, supabase } = result;
+  const ok =
+    ctx.plataformaAdmin ||
+    keys.some((key) => hasPermiso(key, ctx.permisos, ctx.rol));
+  if (!ok) {
     return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
   }
   return { ctx, supabase };

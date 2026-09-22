@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/api-context";
+import { requireApiAnyPermiso } from "@/lib/api-context";
 import { getTurnoAbiertoId, sinTurnoCajaResponse } from "@/lib/turno-caja";
 import { resolvePagoDesglose } from "@/lib/pago-split";
 import type { MedioPago } from "@/types";
@@ -9,13 +9,9 @@ export async function POST(
   { params }: { params: Promise<{ cuentaId: string }> },
 ) {
   const { cuentaId } = await params;
-  const result = await requireApiContext();
+  const result = await requireApiAnyPermiso(["mesas", "caja"]);
   if (result instanceof NextResponse) return result;
   const { ctx, supabase } = result;
-
-  if (!["dueno", "admin", "mesero", "caja"].includes(ctx.rol)) {
-    return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
-  }
 
   const body = await request.json().catch(() => ({}));
   const {

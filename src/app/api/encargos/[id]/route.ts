@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/api-context";
+import { requireApiAnyPermiso } from "@/lib/api-context";
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const result = await requireApiContext();
+  const result = await requireApiAnyPermiso(["encargos", "encargos_crear"]);
   if (result instanceof NextResponse) return result;
   const { ctx, supabase } = result;
 
