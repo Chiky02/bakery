@@ -3,10 +3,14 @@ import { z } from "zod";
 import { requireApiFeature } from "@/lib/api-context";
 import { hasPermiso } from "@/lib/permissions";
 
-const crearSchema = z.object({
+const itemSchema = z.object({
   producto_id: z.string().uuid(),
   cantidad: z.number().positive().max(100_000),
+});
+
+const crearSchema = z.object({
   notas: z.string().max(500).optional().nullable(),
+  items: z.array(itemSchema).min(1).max(50),
 });
 
 /** Historial + productos elaborables del local. */
@@ -62,21 +66,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
   }
 
-  const { data, error } = await supabase.rpc("registrar_produccion", {
-    p_producto: body.producto_id,
-    p_cantidad: body.cantidad,
-    p_notas: body.notas?.trim() || null,
+  const ids = body.items.map((i) => i.producto_id);
+  if (new Set(ids).size !== ids.length) {
+    return NextResponse.json(
+      { error: "No repitas el mismo producto. Suma la cantidad en una sola línea." },
+      { status: 400 },
+    );
+  }
+
+  const notas = body.notas?.trim() || null;
+  const { data, error } = await supabase.rpc("registrar_produccion_lote", {
+    p_items: body.items,
+    p_notas: notas,
   });
 
   if (error) {
     const msg = error.message ?? "No se pudo registrar";
     const status = /sin permiso|no autorizado|no autenticado/i.test(msg)
       ? 403
-      : /insuficiente|no se elabora|inválid/i.test(msg)
+      : /insuficiente|no se elabora|inválid|repet/i.test(msg)
         ? 409
         : 400;
     return NextResponse.json({ error: msg }, { status });
   }
 
-  return NextResponse.json({ ok: true, id: data });
+  return NextResponse.json({ ok: true, cantidad: data ?? body.items.length });
 }

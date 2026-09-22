@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { hasPermiso } from "@/lib/permissions";
 import { useBakery } from "@/lib/use-bakery-id";
+import { ProductSearchSelect } from "@/components/app/product-search-select";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,7 +27,13 @@ type Insumo = { id: string; nombre: string; stock?: number | null };
 
 type RecetaLine = { insumo_id: string; cantidad_por_unidad: string };
 
+type LineaTanda = { key: string; producto_id: string; cantidad: string };
+
 type Tab = "registrar" | "historial" | "receta";
+
+function lineaVacia(): LineaTanda {
+  return { key: crypto.randomUUID(), producto_id: "", cantidad: "" };
+}
 
 export function ProduccionClient() {
   const { permisos, rol } = useBakery();
@@ -37,7 +44,7 @@ export function ProduccionClient() {
   const [productos, setProductos] = useState<ProdRow[]>([]);
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [productoId, setProductoId] = useState("");
-  const [cantidad, setCantidad] = useState("");
+  const [lineasTanda, setLineasTanda] = useState<LineaTanda[]>([lineaVacia()]);
   const [notas, setNotas] = useState("");
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [lineas, setLineas] = useState<RecetaLine[]>([]);
@@ -89,18 +96,48 @@ export function ProduccionClient() {
     if (tab === "receta" && productoId) void loadReceta(productoId);
   }, [tab, productoId, loadReceta]);
 
+  const opcionesProducto = useMemo(
+    () =>
+      productos.map((p) => ({
+        id: p.id,
+        label: p.nombre,
+        hint: p.stock != null ? `stock ${p.stock}` : undefined,
+      })),
+    [productos],
+  );
+
+  const opcionesInsumo = useMemo(
+    () =>
+      insumos.map((i) => ({
+        id: i.id,
+        label: i.nombre,
+        hint: i.stock != null ? `stock ${i.stock}` : undefined,
+      })),
+    [insumos],
+  );
+
   async function registrar(e: React.FormEvent) {
     e.preventDefault();
     if (!canCreate) return;
     setError("");
     setMsg("");
+    const items = lineasTanda
+      .filter((l) => l.producto_id && Number(l.cantidad) > 0)
+      .map((l) => ({ producto_id: l.producto_id, cantidad: Number(l.cantidad) }));
+    if (items.length === 0) {
+      setError("Agrega al menos un producto con cantidad.");
+      return;
+    }
+    if (new Set(items.map((i) => i.producto_id)).size !== items.length) {
+      setError("No repitas el mismo producto. Suma la cantidad en una sola línea.");
+      return;
+    }
     setLoading(true);
     const res = await fetch("/api/produccion", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        producto_id: productoId,
-        cantidad: Number(cantidad),
+        items,
         notas: notas.trim() || null,
       }),
     });
@@ -110,9 +147,13 @@ export function ProduccionClient() {
       setError(body.error ?? "No se pudo registrar");
       return;
     }
-    setCantidad("");
+    setLineasTanda([lineaVacia()]);
     setNotas("");
-    setMsg("Producción registrada. El stock del producto ya subió.");
+    setMsg(
+      items.length === 1
+        ? "Producción registrada. El stock del producto ya subió."
+        : `Se registraron ${items.length} productos. El stock ya subió.`,
+    );
     await load();
     setTab("historial");
   }
@@ -155,8 +196,8 @@ export function ProduccionClient() {
       <div>
         <h1 className="text-2xl font-bold">Producción</h1>
         <p className="text-sm text-stone-500">
-          Pan, galletas y lo que se elabora en el local. Al registrar una tanda sube el stock del
-          producto y, si hay receta, baja la materia prima.
+          El producto se crea en Productos, con la casilla “Se produce en el local”. Aquí registras
+          una o varias tandas a la vez: el stock sube junto y, si hay receta, baja la materia prima.
         </p>
       </div>
 
@@ -188,39 +229,65 @@ export function ProduccionClient() {
       {tab === "registrar" && canCreate && (
         <Card className="space-y-3">
           <CardTitle>Registrar tanda</CardTitle>
+          <p className="text-sm text-stone-500">
+            Busca cada producto y anota cuánto salió. Pan y galletas pueden ir en la misma tanda:
+            el stock de todos sube al registrar.
+          </p>
           {productos.length === 0 ? (
             <p className="text-sm text-stone-500">
-              No hay productos marcados como “se produce en el local”. Márcalos en Productos.
+              Ningún producto está marcado para producirse aquí. En Productos, edita el pan o las
+              galletas y activa “Se produce en el local”. Las gaseosas y demás compras no entran:
+              su stock sube en Recepciones.
             </p>
           ) : (
-            <form onSubmit={registrar} className="grid gap-3 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <label className="mb-1 block text-sm font-medium">Producto</label>
-                <select
-                  className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm"
-                  value={productoId}
-                  onChange={(e) => setProductoId(e.target.value)}
-                  required
-                >
-                  {productos.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nombre}
-                      {p.stock != null ? ` · stock ${p.stock}` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">Cantidad producida</label>
-                <Input
-                  type="number"
-                  min="0.001"
-                  step="0.001"
-                  value={cantidad}
-                  onChange={(e) => setCantidad(e.target.value)}
-                  required
-                />
-              </div>
+            <form onSubmit={registrar} className="space-y-3">
+              {lineasTanda.map((line, idx) => (
+                <div key={line.key} className="grid gap-2 sm:grid-cols-[1fr_8rem_auto]">
+                  <div>
+                    {idx === 0 && (
+                      <label className="mb-1 block text-sm font-medium">Producto</label>
+                    )}
+                    <ProductSearchSelect
+                      options={opcionesProducto}
+                      value={line.producto_id}
+                      allowEmpty={false}
+                      placeholder="Buscar pan, galletas…"
+                      onChange={(id) => {
+                        const next = [...lineasTanda];
+                        next[idx] = { ...line, producto_id: id };
+                        setLineasTanda(next);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    {idx === 0 && (
+                      <label className="mb-1 block text-sm font-medium">Cantidad</label>
+                    )}
+                    <Input
+                      type="number"
+                      min="0.001"
+                      step="0.001"
+                      placeholder="Cantidad"
+                      value={line.cantidad}
+                      onChange={(e) => {
+                        const next = [...lineasTanda];
+                        next[idx] = { ...line, cantidad: e.target.value };
+                        setLineasTanda(next);
+                      }}
+                    />
+                  </div>
+                  <div className={idx === 0 ? "sm:pt-6" : ""}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={lineasTanda.length === 1}
+                      onClick={() => setLineasTanda(lineasTanda.filter((l) => l.key !== line.key))}
+                    >
+                      Quitar
+                    </Button>
+                  </div>
+                </div>
+              ))}
               <div>
                 <label className="mb-1 block text-sm font-medium">Notas</label>
                 <Input
@@ -229,9 +296,18 @@ export function ProduccionClient() {
                   onChange={(e) => setNotas(e.target.value)}
                 />
               </div>
-              <Button type="submit" disabled={loading} className="sm:col-span-2 w-fit">
-                {loading ? "Registrando…" : "Registrar y subir stock"}
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setLineasTanda([...lineasTanda, lineaVacia()])}
+                >
+                  Agregar producto
+                </Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? "Registrando…" : "Registrar y subir stock"}
+                </Button>
+              </div>
             </form>
           )}
         </Card>
@@ -274,37 +350,28 @@ export function ProduccionClient() {
             <p className="text-sm text-stone-500">Primero marca productos como producibles.</p>
           ) : (
             <form onSubmit={guardarReceta} className="space-y-3">
-              <select
-                className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm"
+              <ProductSearchSelect
+                options={opcionesProducto}
                 value={productoId}
-                onChange={(e) => setProductoId(e.target.value)}
-              >
-                {productos.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nombre}
-                  </option>
-                ))}
-              </select>
+                allowEmpty={false}
+                placeholder="Buscar producto de la receta…"
+                onChange={(id) => setProductoId(id)}
+              />
               {lineas.map((line, idx) => (
                 <div key={idx} className="grid gap-2 sm:grid-cols-[1fr_8rem_auto]">
-                  <select
-                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm"
+                  <ProductSearchSelect
+                    options={opcionesInsumo}
                     value={line.insumo_id}
-                    disabled={!canRecipes}
-                    onChange={(e) => {
+                    allowEmpty
+                    emptyLabel="Elegir insumo"
+                    placeholder="Buscar insumo…"
+                    onChange={(id) => {
+                      if (!canRecipes) return;
                       const next = [...lineas];
-                      next[idx] = { ...line, insumo_id: e.target.value };
+                      next[idx] = { ...line, insumo_id: id };
                       setLineas(next);
                     }}
-                  >
-                    <option value="">Insumo</option>
-                    {insumos.map((i) => (
-                      <option key={i.id} value={i.id}>
-                        {i.nombre}
-                        {i.stock != null ? ` · stock ${i.stock}` : ""}
-                      </option>
-                    ))}
-                  </select>
+                  />
                   <Input
                     type="number"
                     min="0.001"
