@@ -45,6 +45,10 @@ export type Panaderia = {
   consecutivo_factura?: number;
   texto_legal_factura?: string | null;
   imprimir_ticket_venta?: boolean;
+  /** Si está activo, los pedidos de mesa pueden entrar a la cola de cocina. */
+  cocina_habilitada?: boolean;
+  /** Imprime la comanda en cocina (restaurante). */
+  cocina_imprimir?: boolean;
   unidades_medida?: string[] | null;
 };
 
@@ -124,6 +128,8 @@ export type Producto = {
   control_stock?: boolean;
   /** Se elabora en el local (pan, galletas). El stock sube al registrar producción. */
   producible?: boolean;
+  /** El pedido de este producto entra a cocina (platos). Gaseosas y pan ya listo no. */
+  pasa_cocina?: boolean;
   categorias?: Categoria;
 };
 

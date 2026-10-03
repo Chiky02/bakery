@@ -106,28 +106,39 @@ export async function POST(
   const estadoInicial = panaderia.requiere_aprobacion_mesero
     ? "pendiente_confirmacion"
     : "pendiente";
+  const cocinaHabilitada = panaderia.cocina_habilitada !== false;
 
   const inserts = [];
   for (const item of rawItems) {
     if (!item?.producto_id || !isUuid(item.producto_id)) continue;
     const qty = Math.min(30, Math.max(1, Math.floor(Number(item.cantidad) || 1)));
 
-    const { data: producto } = await supabase
+    let { data: producto, error: prodErr } = await supabase
       .from("productos")
-      .select("precio, disponible, panaderia_id, tipo")
+      .select("precio, disponible, panaderia_id, tipo, pasa_cocina")
       .eq("id", item.producto_id)
       .eq("panaderia_id", mesa.panaderia_id)
       .single();
+    if (prodErr && /pasa_cocina/i.test(prodErr.message)) {
+      const again = await supabase
+        .from("productos")
+        .select("precio, disponible, panaderia_id, tipo")
+        .eq("id", item.producto_id)
+        .eq("panaderia_id", mesa.panaderia_id)
+        .single();
+      producto = again.data ? { ...again.data, pasa_cocina: true } : null;
+    }
 
     if (!producto?.disponible || (producto.tipo ?? "venta") === "materia_prima") continue;
 
+    const pasaCocina = (producto as { pasa_cocina?: boolean }).pasa_cocina !== false;
     inserts.push({
       cuenta_mesa_id: cuenta.id,
       producto_id: item.producto_id,
       cantidad: qty,
       precio_al_momento: producto.precio,
       origen: "cliente_qr" as const,
-      estado: estadoInicial,
+      estado: cocinaHabilitada && pasaCocina ? estadoInicial : "listo",
     });
   }
 
@@ -138,12 +149,15 @@ export async function POST(
   const { error } = await supabase.from("items_cuenta").insert(inserts);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
+  const aCocina = inserts.some((i) => i.estado !== "listo");
   await supabase.rpc("notify_panaderia", {
     p_panaderia: mesa.panaderia_id,
     p_tipo: "pedido_qr",
     p_titulo: `Pedido QR · ${mesa.nombre}`,
     p_cuerpo: `${inserts.length} ítem(s) nuevos`,
-    p_roles: ["dueno", "admin", "mesero", "cocina"],
+    p_roles: aCocina
+      ? ["dueno", "admin", "mesero", "cocina"]
+      : ["dueno", "admin", "mesero"],
   });
 
   return NextResponse.json({ ok: true, cuenta_id: cuenta.id });

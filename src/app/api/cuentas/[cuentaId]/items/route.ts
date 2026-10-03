@@ -14,11 +14,25 @@ export async function POST(
   const { producto_id, origen = "mesero", cantidad = 1 } = body;
   const qty = Math.max(1, Number(cantidad) || 1);
 
-  const { data: producto } = await supabase
+  const { data: cuenta } = await supabase
+    .from("cuentas_mesa")
+    .select("panaderia_id")
+    .eq("id", cuentaId)
+    .maybeSingle();
+
+  let { data: producto, error: prodErr } = await supabase
     .from("productos")
-    .select("precio, disponible, tipo")
+    .select("precio, disponible, tipo, pasa_cocina")
     .eq("id", producto_id)
     .single();
+  if (prodErr && /pasa_cocina/i.test(prodErr.message)) {
+    const again = await supabase
+      .from("productos")
+      .select("precio, disponible, tipo")
+      .eq("id", producto_id)
+      .single();
+    producto = again.data ? { ...again.data, pasa_cocina: true } : null;
+  }
 
   if (!producto?.disponible) {
     return NextResponse.json({ error: "Producto no disponible" }, { status: 400 });
@@ -26,6 +40,18 @@ export async function POST(
   if ((producto as { tipo?: string }).tipo === "materia_prima") {
     return NextResponse.json({ error: "Producto no disponible" }, { status: 400 });
   }
+
+  let cocinaHabilitada = true;
+  if (cuenta?.panaderia_id) {
+    const { data: neg, error: negErr } = await supabase
+      .from("panaderias")
+      .select("cocina_habilitada")
+      .eq("id", cuenta.panaderia_id)
+      .maybeSingle();
+    if (!negErr && neg) cocinaHabilitada = neg.cocina_habilitada !== false;
+  }
+  const pasaCocina = (producto as { pasa_cocina?: boolean }).pasa_cocina !== false;
+  const estadoPedido = cocinaHabilitada && pasaCocina ? "pendiente" : "listo";
 
   const { data: existing } = await supabase
     .from("items_cuenta")
@@ -57,7 +83,7 @@ export async function POST(
       cantidad: qty,
       precio_al_momento: producto.precio,
       origen,
-      estado: "pendiente",
+      estado: estadoPedido,
     })
     .select("*, productos(*)")
     .single();

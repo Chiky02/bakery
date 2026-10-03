@@ -71,6 +71,8 @@ export default function ConfiguracionPage() {
       prefijo_factura: config.prefijo_factura?.trim() || "FV",
       texto_legal_factura: config.texto_legal_factura?.trim() || null,
       imprimir_ticket_venta: config.imprimir_ticket_venta !== false,
+      cocina_habilitada: config.cocina_habilitada !== false,
+      cocina_imprimir: !!config.cocina_imprimir && config.cocina_habilitada !== false,
       unidades_medida: resolveUnidades(config.unidades_medida),
       pedido_directo_habilitado: config.pedido_directo_habilitado,
       requiere_aprobacion_mesero: config.requiere_aprobacion_mesero,
@@ -78,10 +80,12 @@ export default function ConfiguracionPage() {
       updated_at: new Date().toISOString(),
     };
     let { error } = await supabase.from("panaderias").update(payload).eq("id", panaderiaId);
-    if (error && /imprimir_ticket|unidades_medida/i.test(error.message)) {
+    if (error && /imprimir_ticket|unidades_medida|cocina_habilitada|cocina_imprimir/i.test(error.message)) {
       const {
         imprimir_ticket_venta: _t,
         unidades_medida: _u,
+        cocina_habilitada: _c,
+        cocina_imprimir: _i,
         ...without
       } = payload;
       ({ error } = await supabase.from("panaderias").update(without).eq("id", panaderiaId));
@@ -342,6 +346,46 @@ export default function ConfiguracionPage() {
                   Separadas por coma. Se usarán al crear ítems de recepción.
                 </p>
               </div>
+
+              <label className="flex items-start gap-3 rounded-lg border border-stone-200 p-3">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={config.cocina_habilitada !== false}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      cocina_habilitada: e.target.checked,
+                      cocina_imprimir: e.target.checked ? config.cocina_imprimir : false,
+                    })
+                  }
+                />
+                <div>
+                  <p className="font-medium">Los pedidos de mesa pasan por cocina</p>
+                  <p className="text-xs text-stone-500">
+                    Actívalo en un restaurante o si hay platos por preparar. En una panadería de
+                    mostrador puedes dejarlo apagado: el pedido se cobra sin entrar a la cola de
+                    cocina. Solo llegan los productos marcados como “Pasa por cocina”.
+                  </p>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 rounded-lg border border-stone-200 p-3">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={!!config.cocina_imprimir && config.cocina_habilitada !== false}
+                  disabled={config.cocina_habilitada === false}
+                  onChange={(e) => setConfig({ ...config, cocina_imprimir: e.target.checked })}
+                />
+                <div>
+                  <p className="font-medium">Imprimir comanda en cocina</p>
+                  <p className="text-xs text-stone-500">
+                    Muestra el botón de imprimir en cada pedido de cocina (útil en restaurante).
+                    No imprime solo: alguien en cocina lo dispara.
+                  </p>
+                </div>
+              </label>
 
               <label className="flex items-start gap-3 rounded-lg border border-stone-200 p-3">
                 <input

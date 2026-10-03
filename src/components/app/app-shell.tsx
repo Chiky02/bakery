@@ -14,6 +14,7 @@ import { Bell, Menu, X } from "lucide-react";
 import { notificationHref } from "@/lib/notifications";
 import { ImpersonateBanner, ImpersonateControls } from "@/components/app/impersonate-controls";
 import { OfflineBanner } from "@/components/app/offline-banner";
+import { SessionKeepAlive } from "@/components/app/session-keep-alive";
 
 function NavLinks({
   nav,
@@ -173,6 +174,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background">
+      <SessionKeepAlive />
       <aside className="hidden h-dvh w-64 shrink-0 flex-col overflow-hidden border-r border-stone-200 bg-white md:flex">
         <div className="shrink-0 border-b border-stone-200 p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-700">
@@ -251,57 +253,65 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 )}
               </Button>
               {openNotif && (
-                <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-stone-200 bg-white shadow-lg">
-                  <div className="flex items-center justify-between border-b border-stone-100 px-3 py-2">
-                    <p className="text-sm font-semibold">Notificaciones</p>
-                    {notifs.length > 0 && (
-                      <button
-                        type="button"
-                        className="text-xs text-stone-500 hover:text-orange-700"
-                        onClick={clearAll}
-                      >
-                        Limpiar
-                      </button>
-                    )}
-                  </div>
-                  <ul className="max-h-72 overflow-y-auto">
-                    {notifs.length === 0 ? (
-                      <li className="px-3 py-4 text-sm text-stone-500">Sin avisos</li>
-                    ) : (
-                      notifs.map((n) => (
-                        <li
-                          key={n.id}
-                          className="flex items-start border-b border-stone-50 last:border-0"
+                <>
+                  <button
+                    type="button"
+                    className="fixed inset-0 z-40 bg-stone-900/20 md:hidden"
+                    aria-label="Cerrar notificaciones"
+                    onClick={() => setOpenNotif(false)}
+                  />
+                  <div className="fixed inset-x-3 top-16 z-50 flex max-h-[min(70dvh,28rem)] flex-col overflow-hidden rounded-xl border border-stone-200 bg-white shadow-lg md:absolute md:inset-x-auto md:right-0 md:top-auto md:mt-2 md:max-h-none md:w-80">
+                    <div className="flex items-center justify-between gap-2 border-b border-stone-100 px-3 py-2">
+                      <p className="text-sm font-semibold">Notificaciones</p>
+                      {notifs.length > 0 && (
+                        <button
+                          type="button"
+                          className="shrink-0 text-xs text-stone-500 hover:text-orange-700"
+                          onClick={clearAll}
                         >
-                          <button
-                            type="button"
-                            className={cn(
-                              "min-w-0 flex-1 px-3 py-2.5 text-left text-sm hover:bg-stone-50",
-                              !n.leida && "bg-orange-50/70",
-                            )}
-                            onClick={() => openNotifItem(n)}
+                          Limpiar
+                        </button>
+                      )}
+                    </div>
+                    <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                      {notifs.length === 0 ? (
+                        <li className="px-3 py-4 text-sm text-stone-500">Sin avisos</li>
+                      ) : (
+                        notifs.map((n) => (
+                          <li
+                            key={n.id}
+                            className="flex items-start border-b border-stone-50 last:border-0"
                           >
-                            <p className="font-medium text-stone-900">{n.titulo}</p>
-                            {n.cuerpo && (
-                              <p className="mt-0.5 line-clamp-2 text-xs text-stone-500">
-                                {n.cuerpo}
-                              </p>
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            className="shrink-0 p-2 text-stone-400 hover:text-red-600"
-                            title="Quitar"
-                            aria-label="Quitar notificación"
-                            onClick={(e) => dismissNotif(n.id, e)}
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </li>
-                      ))
-                    )}
-                  </ul>
-                </div>
+                            <button
+                              type="button"
+                              className={cn(
+                                "min-w-0 flex-1 px-3 py-2.5 text-left text-sm hover:bg-stone-50",
+                                !n.leida && "bg-orange-50/70",
+                              )}
+                              onClick={() => openNotifItem(n)}
+                            >
+                              <p className="break-words font-medium text-stone-900">{n.titulo}</p>
+                              {n.cuerpo && (
+                                <p className="mt-0.5 line-clamp-3 break-words text-xs text-stone-500">
+                                  {n.cuerpo}
+                                </p>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              className="shrink-0 p-2 text-stone-400 hover:text-red-600"
+                              title="Quitar"
+                              aria-label="Quitar notificación"
+                              onClick={(e) => dismissNotif(n.id, e)}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  </div>
+                </>
               )}
             </div>
             <Button variant="ghost" size="sm" className="md:hidden" onClick={logout}>

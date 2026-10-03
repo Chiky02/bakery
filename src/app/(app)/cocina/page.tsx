@@ -6,8 +6,33 @@ import type { ItemCuenta } from "@/types";
 import { useBakeryId } from "@/lib/use-bakery-id";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, ChefHat, X } from "lucide-react";
+import { Check, ChefHat, Printer, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function imprimirComanda(mesa: string, items: ItemConMesa[]) {
+  const win = window.open("", "_blank", "noopener,noreferrer,width=420,height=640");
+  if (!win) return;
+  const filas = items
+    .map(
+      (item) =>
+        `<tr><td>${item.cantidad}×</td><td>${escapeHtml(item.productos?.nombre ?? "Producto")}</td></tr>`,
+    )
+    .join("");
+  const cuando = new Date().toLocaleString("es-CO", { timeZone: "America/Bogota" });
+  win.document.write(`<!doctype html><html><head><title>Comanda ${escapeHtml(mesa)}</title>
+    <style>body{font-family:sans-serif;padding:16px} h1{font-size:20px;margin:0} p{color:#444;font-size:12px} table{width:100%;border-collapse:collapse;margin-top:12px} td{padding:6px 0;border-bottom:1px solid #ddd;font-size:16px}</style>
+    </head><body><h1>${escapeHtml(mesa)}</h1><p>${cuando}</p><table>${filas}</table></body></html>`);
+  win.document.close();
+  win.focus();
+  win.print();
+}
 
 type ItemConMesa = ItemCuenta & {
   cuentas_mesa?: {
@@ -22,18 +47,33 @@ export default function CocinaPage() {
   const { panaderiaId } = useBakeryId();
   const [items, setItems] = useState<ItemConMesa[]>([]);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [cocinaOn, setCocinaOn] = useState(true);
+  const [puedeImprimir, setPuedeImprimir] = useState(false);
 
   async function load() {
     if (!panaderiaId) return;
     const supabase = createClient();
-    const { data } = await supabase
-      .from("items_cuenta")
-      .select("*, productos(*), cuentas_mesa!inner(id, estado, panaderia_id, mesas(nombre))")
-      .eq("cuentas_mesa.panaderia_id", panaderiaId)
-      .eq("cuentas_mesa.estado", "abierta")
-      .in("estado", ["pendiente", "en_preparacion"])
-      .order("created_at");
-    setItems((data as ItemConMesa[]) ?? []);
+    const [{ data }, { data: neg }] = await Promise.all([
+      supabase
+        .from("items_cuenta")
+        .select("*, productos(*), cuentas_mesa!inner(id, estado, panaderia_id, mesas(nombre))")
+        .eq("cuentas_mesa.panaderia_id", panaderiaId)
+        .eq("cuentas_mesa.estado", "abierta")
+        .in("estado", ["pendiente", "en_preparacion", "pendiente_confirmacion"])
+        .order("created_at"),
+      supabase
+        .from("panaderias")
+        .select("cocina_habilitada, cocina_imprimir")
+        .eq("id", panaderiaId)
+        .maybeSingle(),
+    ]);
+    const habilitada = neg?.cocina_habilitada !== false;
+    setCocinaOn(habilitada);
+    setPuedeImprimir(habilitada && !!neg?.cocina_imprimir);
+    const rows = ((data as ItemConMesa[]) ?? []).filter(
+      (item) => habilitada && item.productos?.pasa_cocina !== false,
+    );
+    setItems(rows);
   }
 
   useEffect(() => {
@@ -103,12 +143,17 @@ export default function CocinaPage() {
           <ChefHat className="h-6 w-6" /> Cocina
         </h1>
         <p className="text-sm text-stone-500">
-          Solo mesas abiertas. Al marcar listo desaparece de la cola; al cerrar mesa se limpia la
-          tarjeta.
+          Solo entran los productos marcados como “Pasa por cocina”, si el local lo tiene activo
+          en Configuración. Al marcar listo salen de la cola.
         </p>
       </div>
 
-      {byMesa.length === 0 ? (
+      {!cocinaOn ? (
+        <p className="rounded-2xl border border-dashed border-stone-300 p-10 text-center text-stone-500">
+          Cocina desactivada. En Configuración puedes activar “Los pedidos de mesa pasan por
+          cocina” si este local prepara platos.
+        </p>
+      ) : byMesa.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-stone-300 p-10 text-center text-stone-500 ">
           Sin pedidos en cola
         </p>
@@ -238,6 +283,16 @@ export default function CocinaPage() {
                   >
                     <X className="h-3.5 w-3.5" /> Limpiar tarjeta
                   </Button>
+                  {puedeImprimir && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="w-full gap-1"
+                      onClick={() => imprimirComanda(grupo.nombre, grupo.items)}
+                    >
+                      <Printer className="h-3.5 w-3.5" /> Imprimir
+                    </Button>
+                  )}
                 </footer>
               </article>
             );

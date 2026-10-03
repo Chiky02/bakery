@@ -26,6 +26,7 @@ type ProductForm = {
   encargable: boolean;
   control_stock: boolean;
   producible: boolean;
+  pasa_cocina: boolean;
   stock: string;
   stock_minimo: string;
   orden: string;
@@ -40,6 +41,7 @@ const emptyProduct = (categoriaId = ""): ProductForm => ({
   encargable: false,
   control_stock: false,
   producible: false,
+  pasa_cocina: false,
   stock: "0",
   stock_minimo: "0",
   orden: "0",
@@ -139,6 +141,7 @@ export default function ProductosPage() {
       encargable: form.encargable,
       control_stock: form.control_stock || form.producible,
       producible: form.producible,
+      pasa_cocina: form.pasa_cocina,
       ...(form.id || !canAdjustStock ? {} : { stock: Number(form.stock) || 0 }),
       stock_minimo: Number(form.stock_minimo) || 0,
       orden: Number(form.orden) || 0,
@@ -161,6 +164,7 @@ export default function ProductosPage() {
         (res.error.message.includes("encargable") ||
           res.error.message.includes("control_stock") ||
           res.error.message.includes("producible") ||
+          res.error.message.includes("pasa_cocina") ||
           res.error.message.includes("stock_minimo") ||
           res.error.message.includes("stock"))
       ) {
@@ -168,6 +172,7 @@ export default function ProductosPage() {
           encargable: _e,
           control_stock: _c,
           producible: _p,
+          pasa_cocina: _k,
           stock: _s,
           stock_minimo: _m,
           ...without
@@ -230,6 +235,7 @@ export default function ProductosPage() {
       encargable: !!p.encargable,
       control_stock: !!p.control_stock || !!p.producible,
       producible: !!p.producible,
+      pasa_cocina: p.pasa_cocina !== false,
       stock: String(p.stock ?? 0),
       stock_minimo: String(p.stock_minimo ?? 0),
       orden: String(p.orden),
@@ -565,6 +571,14 @@ export default function ProductosPage() {
                 }
               />
               Se produce en el local (pan, galletas…)
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.pasa_cocina}
+                onChange={(e) => setForm({ ...form, pasa_cocina: e.target.checked })}
+              />
+              Pasa por cocina (plato por preparar)
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input
