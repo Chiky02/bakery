@@ -18,6 +18,21 @@ import { ClientePicker } from "@/components/app/cliente-picker";
 import { TurnoCajaRequiredBanner } from "@/components/app/turno-caja-banner";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { MobileAccountSheet } from "@/components/app/mobile-account-sheet";
+import {
+  comandaToItem,
+  parseLocalItemId,
+  publishComanda,
+  patchHubComanda,
+} from "@/lib/cocina-hub";
+import { flushComandasLocales } from "@/lib/cocina-sync";
+import {
+  listComandasLocales,
+  loadMesaCache,
+  newClientRequestId,
+  saveComandaLocal,
+  saveMesaCache,
+  type ComandaLocal,
+} from "@/lib/offline/store";
 
 export default function MesaDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -41,6 +56,8 @@ export default function MesaDetailPage() {
   const [emitirFactura, setEmitirFactura] = useState(false);
   const [ivaPct, setIvaPct] = useState("0");
   const [turnoAbierto, setTurnoAbierto] = useState(true);
+  const [cocinaHabilitada, setCocinaHabilitada] = useState(true);
+  const [avisoLocal, setAvisoLocal] = useState("");
   const [montoEfectivo, setMontoEfectivo] = useState("");
   const [montoElectronico, setMontoElectronico] = useState("");
   const [clienteId, setClienteId] = useState<string | null>(null);
@@ -77,7 +94,15 @@ export default function MesaDetailPage() {
         .order("created_at"),
       supabase.from("sub_cuentas").select("*").eq("cuenta_mesa_id", cid),
     ]);
-    setItems((its as ItemCuenta[]) ?? []);
+    const cloud = (its as ItemCuenta[]) ?? [];
+    const locals = (await listComandasLocales()).filter(
+      (c) => c.cuenta_id === cid && c.estado !== "cancelado",
+    );
+    const cloudIds = new Set(cloud.map((i) => i.id));
+    setItems([
+      ...cloud,
+      ...locals.filter((c) => !cloudIds.has(c.id)).map(comandaToItem),
+    ]);
     setSubCuentas((subs as SubCuenta[]) ?? []);
   }, []);
 
@@ -85,22 +110,63 @@ export default function MesaDetailPage() {
   const bootstrap = useCallback(async () => {
     if (closingRef.current) return;
     const supabase = createClient();
-    const { data: mesaData } = await supabase.from("mesas").select("*").eq("id", id).single();
-    setMesa(mesaData as Mesa);
-    if (!mesaData) return;
+    const { data: mesaData, error: mesaErr } = await supabase
+      .from("mesas")
+      .select("*")
+      .eq("id", id)
+      .single();
 
-    const [list, cuentaRes] = await Promise.all([
-      loadVentaProductos(supabase, mesaData.panaderia_id, { onlyDisponible: true }),
+    if (mesaErr || !mesaData) {
+      const cached = await loadMesaCache(id);
+      if (!cached) return;
+      setMesa(cached.mesa as Mesa);
+      setProductos(cached.productos as Producto[]);
+      setCocinaHabilitada(cached.cocina_habilitada);
+      setCuentaId(cached.cuenta_id);
+      setAvisoLocal(
+        "Sin nube. Los pedidos nuevos quedan en este equipo y, si configuraste el de cocina, salen allá por el WiFi.",
+      );
+      if (cached.cuenta_id) {
+        const locals = (await listComandasLocales()).filter(
+          (c) => c.cuenta_id === cached.cuenta_id && c.estado !== "cancelado",
+        );
+        setItems(locals.map(comandaToItem));
+      }
+      return;
+    }
+
+    setMesa(mesaData as Mesa);
+    const mesaRow = mesaData as Mesa;
+
+    const [list, cuentaRes, negRes] = await Promise.all([
+      loadVentaProductos(supabase, mesaRow.panaderia_id, { onlyDisponible: true }),
       supabase
         .from("cuentas_mesa")
         .select("*")
         .eq("mesa_id", id)
         .eq("estado", "abierta")
         .maybeSingle(),
+      supabase
+        .from("panaderias")
+        .select("cocina_habilitada")
+        .eq("id", mesaRow.panaderia_id)
+        .maybeSingle(),
     ]);
     setProductos(list);
+    const cocinaOn = negRes.data?.cocina_habilitada !== false;
+    setCocinaHabilitada(cocinaOn);
 
     const cuenta = cuentaRes.data;
+    await saveMesaCache({
+      mesa_id: id,
+      panaderia_id: mesaRow.panaderia_id,
+      mesa: mesaRow,
+      cuenta_id: cuenta?.id ?? null,
+      productos: list,
+      cocina_habilitada: cocinaOn,
+      updated_at: new Date().toISOString(),
+    });
+
     if (!cuenta) {
       setCuentaId(null);
       setItems([]);
@@ -109,6 +175,9 @@ export default function MesaDetailPage() {
     }
 
     setCuentaId(cuenta.id);
+    if (typeof navigator === "undefined" || navigator.onLine) {
+      await flushComandasLocales();
+    }
     await refreshCuenta(cuenta.id);
   }, [id, refreshCuenta]);
 
@@ -205,16 +274,43 @@ export default function MesaDetailPage() {
 
     mutatingRef.current += 1;
     try {
-      const res = await fetch(`/api/cuentas/${cuentaId}/items`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ producto_id: producto.id, origen: "mesero", cantidad: qty }),
-      });
-      if (!res.ok) {
-        setItems(prev);
+      const offline = typeof navigator !== "undefined" && !navigator.onLine;
+      let saved: ItemCuenta | null = null;
+      if (!offline) {
+        try {
+          const res = await fetch(`/api/cuentas/${cuentaId}/items`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ producto_id: producto.id, origen: "mesero", cantidad: qty }),
+          });
+          if (res.ok) saved = (await res.json()) as ItemCuenta;
+          else if (res.status < 500) {
+            setItems(prev);
+            return;
+          }
+        } catch {
+          saved = null;
+        }
+      }
+
+      if (!saved) {
+        const localExisting = existing ? parseLocalItemId(existing.id) : null;
+        const local = await guardarPedidoLocal(producto, qty, localExisting);
+        if (!local) {
+          setItems(prev);
+          setAvisoLocal("Sin nube y no se pudo guardar el pedido en este equipo.");
+          return;
+        }
+        setItems((list) => {
+          const rest = list.filter(
+            (i) => i.id !== local.id && i.id !== existing?.id && !i.id.startsWith(`temp-${producto.id}-`),
+          );
+          return [...rest, local];
+        });
         return;
       }
-      const saved = (await res.json()) as ItemCuenta;
+
+      setAvisoLocal("");
       setItems((list) => {
         const rest = list.filter(
           (i) =>
@@ -229,6 +325,61 @@ export default function MesaDetailPage() {
     }
   }
 
+  async function guardarPedidoLocal(
+    producto: Producto,
+    qty: number,
+    existingLocalId: string | null,
+  ): Promise<ItemCuenta | null> {
+    if (!mesa || !cuentaId) return null;
+    const pasa = cocinaHabilitada && producto.pasa_cocina !== false;
+    if (existingLocalId) {
+      const rows = await listComandasLocales();
+      const current = rows.find((r) => r.id === existingLocalId);
+      if (!current) return null;
+      const next: ComandaLocal = { ...current, cantidad: current.cantidad + qty };
+      await saveComandaLocal(next);
+      if (pasa) {
+        const ok = await patchHubComanda(existingLocalId, { cantidad: next.cantidad });
+        setAvisoLocal(
+          ok
+            ? "Sin nube. Cocina lo ve por el WiFi del local."
+            : "Guardado en este equipo. El de cocina no respondió: revisa la dirección en Configuración.",
+        );
+      }
+      return comandaToItem(next);
+    }
+
+    const row: ComandaLocal = {
+      id: newClientRequestId(),
+      panaderia_id: mesa.panaderia_id,
+      mesa_id: mesa.id,
+      mesa_nombre: mesa.nombre,
+      cuenta_id: cuentaId,
+      producto_id: producto.id,
+      nombre: producto.nombre,
+      cantidad: qty,
+      precio: producto.precio,
+      estado: pasa ? "pendiente" : "listo",
+      pasa_cocina: pasa,
+      created_at: new Date().toISOString(),
+      status: "pending",
+    };
+    await saveComandaLocal(row);
+    if (pasa) {
+      const ok = await publishComanda(row);
+      setAvisoLocal(
+        ok
+          ? "Sin nube. Cocina lo ve por el WiFi del local."
+          : "Guardado en este equipo. Configura el equipo de cocina en Configuración para que lo vean allá.",
+      );
+    } else {
+      setAvisoLocal(
+        "Sin nube. Quedó en la cuenta de este equipo y sube al volver la señal. Este producto no entra a cocina.",
+      );
+    }
+    return comandaToItem(row);
+  }
+
   async function setCantidad(itemId: string, cantidad: number) {
     const prev = items;
     if (cantidad <= 0) {
@@ -241,6 +392,21 @@ export default function MesaDetailPage() {
 
     mutatingRef.current += 1;
     try {
+      const localId = parseLocalItemId(itemId);
+      if (localId) {
+        const rows = await listComandasLocales();
+        const current = rows.find((r) => r.id === localId);
+        if (!current) return;
+        if (cantidad <= 0) {
+          await saveComandaLocal({ ...current, estado: "cancelado" });
+          await patchHubComanda(localId, { estado: "cancelado" });
+        } else {
+          await saveComandaLocal({ ...current, cantidad });
+          await patchHubComanda(localId, { cantidad });
+        }
+        return;
+      }
+
       const res = await fetch(`/api/items/${itemId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -615,6 +781,11 @@ export default function MesaDetailPage() {
       </div>
 
       {!turnoAbierto && <TurnoCajaRequiredBanner abierto={false} />}
+      {avisoLocal && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          {avisoLocal}
+        </p>
+      )}
 
       <div className="grid items-start gap-6 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">

@@ -1,5 +1,5 @@
 const DB_NAME = "sissa-offline";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export type OutboxVentaPayload = {
   panaderia_id: string;
@@ -56,6 +56,12 @@ function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains("outbox")) {
         const store = db.createObjectStore("outbox", { keyPath: "id" });
         store.createIndex("status", "status", { unique: false });
+      }
+      if (!db.objectStoreNames.contains("mesa_cache")) {
+        db.createObjectStore("mesa_cache", { keyPath: "mesa_id" });
+      }
+      if (!db.objectStoreNames.contains("comandas_locales")) {
+        db.createObjectStore("comandas_locales", { keyPath: "id" });
       }
     };
   });
@@ -146,8 +152,89 @@ export async function removeOutbox(id: string): Promise<void> {
 }
 
 export async function countPendingOutbox(): Promise<number> {
-  const items = await listOutbox();
-  return items.filter((i) => i.status === "pending" || i.status === "error").length;
+  const [items, comandas] = await Promise.all([listOutbox(), listComandasLocales()]);
+  const ventas = items.filter((i) => i.status === "pending" || i.status === "error").length;
+  return ventas + comandas.length;
+}
+
+export type MesaCache = {
+  mesa_id: string;
+  panaderia_id: string;
+  mesa: unknown;
+  cuenta_id: string | null;
+  productos: unknown[];
+  cocina_habilitada: boolean;
+  updated_at: string;
+};
+
+export type ComandaLocal = {
+  id: string;
+  panaderia_id: string;
+  mesa_id: string;
+  mesa_nombre: string;
+  cuenta_id: string;
+  producto_id: string;
+  nombre: string;
+  cantidad: number;
+  precio: number;
+  estado: "pendiente" | "en_preparacion" | "listo" | "cancelado";
+  pasa_cocina: boolean;
+  created_at: string;
+  status: "pending" | "error";
+  last_error?: string | null;
+};
+
+export async function saveMesaCache(row: MesaCache): Promise<void> {
+  if (typeof indexedDB === "undefined") return;
+  const db = await openDb();
+  const tx = db.transaction("mesa_cache", "readwrite");
+  tx.objectStore("mesa_cache").put(row);
+  await txDone(tx);
+  db.close();
+}
+
+export async function loadMesaCache(mesaId: string): Promise<MesaCache | null> {
+  if (typeof indexedDB === "undefined") return null;
+  const db = await openDb();
+  const tx = db.transaction("mesa_cache", "readonly");
+  const req = tx.objectStore("mesa_cache").get(mesaId);
+  const row = await new Promise<MesaCache | undefined>((resolve, reject) => {
+    req.onsuccess = () => resolve(req.result as MesaCache | undefined);
+    req.onerror = () => reject(req.error);
+  });
+  await txDone(tx);
+  db.close();
+  return row ?? null;
+}
+
+export async function saveComandaLocal(row: ComandaLocal): Promise<void> {
+  const db = await openDb();
+  const tx = db.transaction("comandas_locales", "readwrite");
+  tx.objectStore("comandas_locales").put(row);
+  await txDone(tx);
+  db.close();
+}
+
+export async function listComandasLocales(): Promise<ComandaLocal[]> {
+  if (typeof indexedDB === "undefined") return [];
+  const db = await openDb();
+  const tx = db.transaction("comandas_locales", "readonly");
+  const req = tx.objectStore("comandas_locales").getAll();
+  const rows = await new Promise<ComandaLocal[]>((resolve, reject) => {
+    req.onsuccess = () => resolve((req.result as ComandaLocal[]) ?? []);
+    req.onerror = () => reject(req.error);
+  });
+  await txDone(tx);
+  db.close();
+  return rows.sort((a, b) => a.created_at.localeCompare(b.created_at));
+}
+
+export async function removeComandaLocal(id: string): Promise<void> {
+  const db = await openDb();
+  const tx = db.transaction("comandas_locales", "readwrite");
+  tx.objectStore("comandas_locales").delete(id);
+  await txDone(tx);
+  db.close();
 }
 
 export function newClientRequestId(): string {

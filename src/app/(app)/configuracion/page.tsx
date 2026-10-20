@@ -9,6 +9,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Building2, KeyRound, Store, UserRound } from "lucide-react";
 import { resolveUnidades } from "@/lib/unidades-medida";
+import { CocinaHubField } from "@/components/app/cocina-hub-field";
 
 type Tab = "negocio" | "cuenta" | "alta";
 
@@ -386,6 +387,8 @@ export default function ConfiguracionPage() {
                   </p>
                 </div>
               </label>
+
+              <CocinaHubField />
 
               <label className="flex items-start gap-3 rounded-lg border border-stone-200 p-3">
                 <input

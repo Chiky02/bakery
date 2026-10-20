@@ -14,7 +14,8 @@
     "db:login": "npx supabase login",
     "db:link": "npx supabase link",
     "db:push": "npx supabase db push",
-    "db:status": "npx supabase migration list"
+    "db:status": "npx supabase migration list",
+    "cocina-hub": "node hub/server.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",

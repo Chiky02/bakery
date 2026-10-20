@@ -18,13 +18,17 @@ export function OfflineBanner() {
       if (n === 0) return;
       startTransition(async () => {
         const { flushOutbox } = await import("@/lib/offline/sync");
+        const { flushComandasLocales } = await import("@/lib/cocina-sync");
         const result = await flushOutbox();
+        const comandas = await flushComandasLocales();
         notifyOutboxChanged();
         await refresh();
-        if (result.synced > 0) {
-          setMsg(`Sincronizadas ${result.synced} venta(s) pendientes.`);
-        } else if (result.failed > 0) {
-          setMsg(result.errors[0] ?? "No se pudieron sincronizar algunas ventas.");
+        const partes: string[] = [];
+        if (result.synced > 0) partes.push(`${result.synced} venta(s)`);
+        if (comandas.synced > 0) partes.push(`${comandas.synced} pedido(s) de mesa`);
+        if (partes.length) setMsg(`Sincronizado: ${partes.join(" y ")}.`);
+        else if (result.failed > 0 || comandas.failed > 0) {
+          setMsg(result.errors[0] ?? "No se pudieron sincronizar algunos pendientes.");
         }
       });
     }
@@ -38,12 +42,16 @@ export function OfflineBanner() {
     setMsg(null);
     startTransition(async () => {
       const { flushOutbox } = await import("@/lib/offline/sync");
+      const { flushComandasLocales } = await import("@/lib/cocina-sync");
       const result = await flushOutbox();
+      const comandas = await flushComandasLocales();
       notifyOutboxChanged();
       await refresh();
-      if (result.synced > 0) {
-        setMsg(`Sincronizadas ${result.synced} venta(s).`);
-      } else if (result.failed > 0) {
+      const partes: string[] = [];
+      if (result.synced > 0) partes.push(`${result.synced} venta(s)`);
+      if (comandas.synced > 0) partes.push(`${comandas.synced} pedido(s) de mesa`);
+      if (partes.length) setMsg(`Sincronizado: ${partes.join(" y ")}.`);
+      else if (result.failed > 0 || comandas.failed > 0) {
         setMsg(result.errors[0] ?? "Error al sincronizar");
       } else {
         setMsg("Nada pendiente.");
@@ -64,13 +72,14 @@ export function OfflineBanner() {
       <div className="min-w-0 space-y-0.5">
         {!online ? (
           <p>
-            <span className="font-semibold">Sin conexión.</span> En mostrador las ventas se
-            guardan en este dispositivo y se envían al volver la red
+            <span className="font-semibold">Sin conexión.</span> Ventas de mostrador y pedidos
+            de mesa se guardan en este dispositivo. Si hay equipo de cocina en el WiFi, la comanda
+            llega allá igual
             {count > 0 ? ` · ${count} pendiente(s)` : ""}.
           </p>
         ) : count > 0 ? (
           <p>
-            <span className="font-semibold">Pendientes de sync:</span> {count} venta(s) en este
+            <span className="font-semibold">Pendientes de sync:</span> {count} en este
             dispositivo.
           </p>
         ) : null}

@@ -11,8 +11,25 @@ export async function POST(
   const { supabase } = result;
 
   const body = await request.json();
-  const { producto_id, origen = "mesero", cantidad = 1 } = body;
+  const { producto_id, origen = "mesero", cantidad = 1, client_request_id, estado: estadoCliente } =
+    body;
   const qty = Math.max(1, Number(cantidad) || 1);
+  const requestId =
+    typeof client_request_id === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      client_request_id,
+    )
+      ? client_request_id
+      : null;
+
+  if (requestId) {
+    const { data: dup, error: dupErr } = await supabase
+      .from("items_cuenta")
+      .select("*, productos(*)")
+      .eq("client_request_id", requestId)
+      .maybeSingle();
+    if (!dupErr && dup) return NextResponse.json(dup);
+  }
 
   const { data: cuenta } = await supabase
     .from("cuentas_mesa")
@@ -52,8 +69,13 @@ export async function POST(
   }
   const pasaCocina = (producto as { pasa_cocina?: boolean }).pasa_cocina !== false;
   const estadoPedido = cocinaHabilitada && pasaCocina ? "pendiente" : "listo";
+  const estadosSync = ["pendiente", "en_preparacion", "listo"] as const;
+  const estadoFinal =
+    requestId && estadosSync.includes(estadoCliente) ? estadoCliente : estadoPedido;
 
-  const { data: existing } = await supabase
+  const { data: existing } = requestId
+    ? { data: null }
+    : await supabase
     .from("items_cuenta")
     .select("id, cantidad")
     .eq("cuenta_mesa_id", cuentaId)
@@ -75,18 +97,37 @@ export async function POST(
     return NextResponse.json(data);
   }
 
-  const { data, error } = await supabase
+  const insertRow: Record<string, unknown> = {
+    cuenta_mesa_id: cuentaId,
+    producto_id,
+    cantidad: qty,
+    precio_al_momento: producto.precio,
+    origen,
+    estado: estadoFinal,
+  };
+  if (requestId) insertRow.client_request_id = requestId;
+
+  let { data, error } = await supabase
     .from("items_cuenta")
-    .insert({
-      cuenta_mesa_id: cuentaId,
-      producto_id,
-      cantidad: qty,
-      precio_al_momento: producto.precio,
-      origen,
-      estado: estadoPedido,
-    })
+    .insert(insertRow)
     .select("*, productos(*)")
     .single();
+
+  if (error && requestId && /client_request_id|column|schema cache|Could not find/i.test(error.message)) {
+    delete insertRow.client_request_id;
+    const again = await supabase.from("items_cuenta").insert(insertRow).select("*, productos(*)").single();
+    data = again.data;
+    error = again.error;
+  }
+
+  if (error && requestId && /duplicate|unique|23505/i.test(error.message)) {
+    const { data: dup } = await supabase
+      .from("items_cuenta")
+      .select("*, productos(*)")
+      .eq("client_request_id", requestId)
+      .maybeSingle();
+    if (dup) return NextResponse.json(dup);
+  }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json(data);

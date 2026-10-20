@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, ChefHat, Printer, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { comandasParaCocina, getCocinaHubUrl, listHubComandas, patchHubComanda, type HubComanda } from "@/lib/cocina-hub";
+import { flushHubComandas } from "@/lib/cocina-sync";
+import { CocinaHubField } from "@/components/app/cocina-hub-field";
 
 function escapeHtml(value: string) {
   return value
@@ -49,11 +52,46 @@ export default function CocinaPage() {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [cocinaOn, setCocinaOn] = useState(true);
   const [puedeImprimir, setPuedeImprimir] = useState(false);
+  const [hubListo, setHubListo] = useState(false);
+
+  function hubItem(c: HubComanda): ItemConMesa {
+    return {
+      id: `hub:${c.id}`,
+      cuenta_mesa_id: c.cuenta_id || c.mesa_id,
+      sub_cuenta_id: null,
+      producto_id: c.producto_id,
+      cantidad: c.cantidad,
+      precio_al_momento: c.precio,
+      origen: "mesero",
+      estado: c.estado === "cancelado" ? "cancelado" : c.estado,
+      notas: null,
+      productos: {
+        id: c.producto_id,
+        panaderia_id: c.panaderia_id,
+        categoria_id: "",
+        nombre: c.nombre,
+        precio: c.precio,
+        disponible: true,
+        orden: 0,
+        pasa_cocina: true,
+      },
+      cuentas_mesa: {
+        id: c.cuenta_id || c.mesa_id,
+        estado: "abierta",
+        panaderia_id: c.panaderia_id,
+        mesas: { nombre: c.mesa_nombre },
+      },
+    };
+  }
 
   async function load() {
     if (!panaderiaId) return;
+    setHubListo(!!getCocinaHubUrl());
+    if (typeof navigator === "undefined" || navigator.onLine) {
+      await flushHubComandas(panaderiaId);
+    }
     const supabase = createClient();
-    const [{ data }, { data: neg }] = await Promise.all([
+    const [{ data, error }, { data: neg, error: negErr }] = await Promise.all([
       supabase
         .from("items_cuenta")
         .select("*, productos(*), cuentas_mesa!inner(id, estado, panaderia_id, mesas(nombre))")
@@ -67,13 +105,21 @@ export default function CocinaPage() {
         .eq("id", panaderiaId)
         .maybeSingle(),
     ]);
-    const habilitada = neg?.cocina_habilitada !== false;
-    setCocinaOn(habilitada);
-    setPuedeImprimir(habilitada && !!neg?.cocina_imprimir);
-    const rows = ((data as ItemConMesa[]) ?? []).filter(
-      (item) => habilitada && item.productos?.pasa_cocina !== false,
-    );
-    setItems(rows);
+    const cloudOk = !error;
+    if (cloudOk && !negErr) {
+      const habilitada = neg?.cocina_habilitada !== false;
+      setCocinaOn(habilitada);
+      setPuedeImprimir(habilitada && !!neg?.cocina_imprimir);
+    }
+    const habilitada = negErr ? true : neg?.cocina_habilitada !== false;
+    const rows = cloudOk
+      ? ((data as ItemConMesa[]) ?? []).filter(
+          (item) => habilitada && item.productos?.pasa_cocina !== false,
+        )
+      : [];
+    const locales = comandasParaCocina(await listHubComandas(panaderiaId), cloudOk).map(hubItem);
+    const seen = new Set(rows.map((row) => row.id));
+    setItems([...rows, ...locales.filter((row) => !seen.has(row.id))]);
   }
 
   useEffect(() => {
@@ -85,12 +131,24 @@ export default function CocinaPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "items_cuenta" }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "cuentas_mesa" }, () => load())
       .subscribe();
+    const timer = window.setInterval(() => void load(), 3000);
     return () => {
+      window.clearInterval(timer);
       supabase.removeChannel(channel);
     };
   }, [panaderiaId]);
 
   async function updateEstado(id: string, estado: string) {
+    if (id.startsWith("hub:")) {
+      await patchHubComanda(id.slice(4), {
+        estado: estado as HubComanda["estado"],
+      });
+      if (estado === "listo" || estado === "entregado" || estado === "cancelado") {
+        setItems((prev) => prev.filter((i) => i.id !== id));
+      }
+      await load();
+      return;
+    }
     await fetch(`/api/items/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -109,15 +167,20 @@ export default function CocinaPage() {
   }
 
   async function bulk(ids: string[], estado: string) {
-    await Promise.all(
-      ids.map((id) =>
+    const locales = ids.filter((id) => id.startsWith("hub:"));
+    const nube = ids.filter((id) => !id.startsWith("hub:"));
+    await Promise.all([
+      ...locales.map((id) =>
+        patchHubComanda(id.slice(4), { estado: estado as HubComanda["estado"] }),
+      ),
+      ...nube.map((id) =>
         fetch(`/api/items/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ estado }),
         }),
       ),
-    );
+    ]);
     if (estado === "listo" || estado === "entregado") {
       setItems((prev) => prev.filter((i) => !ids.includes(i.id)));
     }
@@ -144,9 +207,12 @@ export default function CocinaPage() {
         </h1>
         <p className="text-sm text-stone-500">
           Solo entran los productos marcados como “Pasa por cocina”, si el local lo tiene activo
-          en Configuración. Al marcar listo salen de la cola.
+          en Configuración. Al marcar listo salen de la cola. Si no hay internet, los pedidos del
+          WiFi local siguen apareciendo aquí.
         </p>
       </div>
+
+      {!hubListo && <CocinaHubField />}
 
       {!cocinaOn ? (
         <p className="rounded-2xl border border-dashed border-stone-300 p-10 text-center text-stone-500">
@@ -283,7 +349,7 @@ export default function CocinaPage() {
                   >
                     <X className="h-3.5 w-3.5" /> Limpiar tarjeta
                   </Button>
-                  {puedeImprimir && (
+                  {(puedeImprimir || grupo.items.some((item) => item.id.startsWith("hub:"))) && (
                     <Button
                       size="sm"
                       variant="secondary"
