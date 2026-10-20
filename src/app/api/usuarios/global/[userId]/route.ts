@@ -3,9 +3,14 @@ import { z } from "zod";
 import { requireApiContext, assertPlatformAdmin } from "@/lib/api-context";
 import { getServiceClient } from "@/lib/supabase/admin";
 
-const patchSchema = z.object({
-  activo: z.boolean(),
-});
+const patchSchema = z
+  .object({
+    activo: z.boolean().optional(),
+    plataforma_admin: z.boolean().optional(),
+  })
+  .refine((body) => body.activo !== undefined || body.plataforma_admin !== undefined, {
+    message: "Sin cambios",
+  });
 
 export async function PATCH(
   request: Request,
@@ -19,31 +24,41 @@ export async function PATCH(
   if (denied) return denied;
 
   const { userId } = await params;
-  if (userId === ctx.profile.id) {
-    return NextResponse.json({ error: "No puedes desactivar tu propia cuenta" }, { status: 400 });
-  }
-
   try {
     const body = patchSchema.parse(await request.json());
+    if (userId === ctx.profile.id && body.activo === false) {
+      return NextResponse.json({ error: "No puedes desactivar tu propia cuenta" }, { status: 400 });
+    }
+    if (userId === ctx.profile.id && body.plataforma_admin === false) {
+      return NextResponse.json(
+        { error: "No puedes quitarte el admin de plataforma" },
+        { status: 400 },
+      );
+    }
+
     const admin = getServiceClient();
 
     const { data: existing } = await admin
       .from("profiles")
-      .select("id, nombre")
+      .select("id, nombre, activo, plataforma_admin")
       .eq("id", userId)
       .maybeSingle();
+
+    const nextActivo = body.activo ?? existing?.activo ?? true;
+    const nextAdmin = body.plataforma_admin ?? existing?.plataforma_admin ?? false;
 
     const { error: profileErr } = await admin.from("profiles").upsert({
       id: userId,
       nombre: existing?.nombre ?? "Usuario",
-      activo: body.activo,
-      ...(body.activo ? {} : { panaderia_activa_id: null }),
+      activo: nextActivo,
+      plataforma_admin: nextAdmin,
+      ...(nextActivo ? {} : { panaderia_activa_id: null }),
     });
     if (profileErr) {
       return NextResponse.json({ error: profileErr.message }, { status: 400 });
     }
 
-    if (!body.activo) {
+    if (body.activo === false) {
       await admin.from("miembros").update({ activo: false }).eq("user_id", userId);
     }
 

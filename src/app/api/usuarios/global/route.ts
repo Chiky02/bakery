@@ -21,6 +21,7 @@ export type GlobalAuthUser = {
   activo: boolean;
   created_at: string | null;
   last_sign_in_at: string | null;
+  plataforma_admin: boolean;
   memberships: GlobalMembership[];
 };
 
@@ -55,8 +56,15 @@ export async function GET() {
 
     const [{ data: profiles }, { data: miembros }] = await Promise.all([
       ids.length
-        ? admin.from("profiles").select("id, nombre, activo").in("id", ids)
-        : Promise.resolve({ data: [] as { id: string; nombre: string; activo: boolean }[] }),
+        ? admin.from("profiles").select("id, nombre, activo, plataforma_admin").in("id", ids)
+        : Promise.resolve({
+            data: [] as {
+              id: string;
+              nombre: string;
+              activo: boolean;
+              plataforma_admin?: boolean;
+            }[],
+          }),
       ids.length
         ? admin
             .from("miembros")
@@ -68,10 +76,14 @@ export async function GET() {
     ]);
 
     const profileById = new Map(
-      ((profiles as { id: string; nombre: string; activo: boolean }[]) ?? []).map((p) => [
-        p.id,
-        p,
-      ]),
+      (
+        (profiles as {
+          id: string;
+          nombre: string;
+          activo: boolean;
+          plataforma_admin?: boolean;
+        }[]) ?? []
+      ).map((p) => [p.id, p]),
     );
 
     const membershipsByUser = new Map<string, GlobalMembership[]>();
@@ -111,6 +123,7 @@ export async function GET() {
             u.email?.split("@")[0] ||
             "Sin nombre",
           activo: profile?.activo ?? true,
+          plataforma_admin: !!profile?.plataforma_admin,
           created_at: u.created_at ?? null,
           last_sign_in_at: u.last_sign_in_at ?? null,
           memberships,

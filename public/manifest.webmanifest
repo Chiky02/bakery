@@ -2,7 +2,7 @@
   "name": "Panel Panadería",
   "short_name": "Panel",
   "description": "Ventas, mesas, encargos y caja para panaderías",
-  "start_url": "/dashboard",
+  "start_url": "/login",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f7f4ef",

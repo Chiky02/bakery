@@ -455,7 +455,7 @@ export function CajaClient({
               onChange={setConteoApertura}
             />
             <Button disabled={busy} onClick={abrirTurno}>
-              Abrir turno · {formatCOP(totalConteo(conteoApertura))}
+              Abrir turno ({formatCOP(totalConteo(conteoApertura))})
             </Button>
           </>
         )}

@@ -4,6 +4,7 @@ import { formatCOP } from "@/lib/format";
 import {
   BILLETES_COP,
   MONEDAS_COP,
+  conteoKey,
   totalConteo,
   type ConteoDenominaciones,
 } from "@/lib/caja-denominaciones";
@@ -32,11 +33,9 @@ function Cell({
   return (
     <label
       htmlFor={name}
-      className="flex items-center gap-1.5 rounded-md bg-white px-2 py-1.5 ring-1 ring-stone-200"
+      className="flex flex-col gap-1 rounded-md bg-white px-2 py-1.5 ring-1 ring-stone-200"
     >
-      <span className="w-[4.25rem] shrink-0 text-xs font-semibold tabular-nums text-stone-700">
-        {denomShort(value)}
-      </span>
+      <span className="text-xs font-semibold tabular-nums text-stone-700">{denomShort(value)}</span>
       <Input
         id={name}
         name={name}
@@ -44,18 +43,14 @@ function Cell({
         min={0}
         inputMode="numeric"
         autoComplete="off"
-        className="h-8 w-14 shrink-0 px-1.5 text-center text-sm tabular-nums"
+        className="h-8 w-full px-1.5 text-center text-sm tabular-nums"
         value={qty === 0 ? "" : String(qty)}
         placeholder="0"
         onChange={(e) => onChange(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
       />
-      {qty > 0 ? (
-        <span className="min-w-0 flex-1 truncate text-[10px] text-stone-400">
-          {formatCOP(value * qty)}
-        </span>
-      ) : (
-        <span className="min-w-0 flex-1" />
-      )}
+      <span className="min-h-4 text-[11px] tabular-nums text-stone-500">
+        {qty > 0 ? formatCOP(value * qty) : "\u00a0"}
+      </span>
     </label>
   );
 }
@@ -73,8 +68,8 @@ export function CashCounter({
 }) {
   const total = totalConteo(value);
 
-  function setQty(denom: number, qty: number) {
-    onChange({ ...value, [String(denom)]: qty });
+  function setQty(kind: "billete" | "moneda", denom: number, qty: number) {
+    onChange({ ...value, [conteoKey(kind, denom)]: qty });
   }
 
   return (
@@ -95,8 +90,8 @@ export function CashCounter({
                 key={d}
                 id={`${idPrefix}-b`}
                 value={d}
-                qty={Math.max(0, Math.floor(Number(value[String(d)]) || 0))}
-                onChange={(n) => setQty(d, n)}
+                qty={Math.max(0, Math.floor(Number(value[conteoKey("billete", d)]) || 0))}
+                onChange={(n) => setQty("billete", d, n)}
               />
             ))}
           </div>
@@ -112,8 +107,8 @@ export function CashCounter({
                 key={`m-${d}`}
                 id={`${idPrefix}-m`}
                 value={d}
-                qty={Math.max(0, Math.floor(Number(value[String(d)]) || 0))}
-                onChange={(n) => setQty(d, n)}
+                qty={Math.max(0, Math.floor(Number(value[conteoKey("moneda", d)]) || 0))}
+                onChange={(n) => setQty("moneda", d, n)}
               />
             ))}
           </div>

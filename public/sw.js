@@ -1,10 +1,22 @@
 /* Service worker: shell cache para abrir el panel sin red (datos van por IndexedDB/outbox). */
-const CACHE = "sissa-shell-v1";
-const PRECACHE = ["/", "/manifest.webmanifest", "/icons/icon.svg"];
+const CACHE = "sissa-shell-v2";
+const PRECACHE = ["/", "/login", "/manifest.webmanifest", "/icons/icon.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting()),
+    caches.open(CACHE).then(async (cache) => {
+      await Promise.all(
+        PRECACHE.map(async (url) => {
+          const res = await fetch(url, {
+            cache: "reload",
+            credentials: "same-origin",
+            headers: url === "/login" ? { "x-sissa-precache": "1" } : {},
+          });
+          if (res.ok) await cache.put(url, res);
+        }),
+      );
+      await self.skipWaiting();
+    }),
   );
 });
 
@@ -31,11 +43,15 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(req, copy));
+          if (res.ok && !res.redirected) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(req, copy));
+          }
           return res;
         })
-        .catch(() => caches.match(req).then((r) => r || caches.match("/"))),
+        .catch(() =>
+          caches.match(req).then((r) => r || caches.match("/login") || caches.match("/")),
+        ),
     );
     return;
   }

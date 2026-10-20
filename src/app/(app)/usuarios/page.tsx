@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CuentasAuthPanel } from "./cuentas-auth-panel";
 import { ImpersonateUserButton } from "@/components/app/impersonate-user-button";
+import { Pencil, Power, Trash2 } from "lucide-react";
 
 type EquipoMember = {
   id: string;
@@ -338,8 +339,10 @@ export default function UsuariosPage() {
                         type="button"
                         variant="ghost"
                         size="sm"
+                        className="gap-1.5"
                         onClick={() => updateMember(m.id, { activo: !m.activo })}
                       >
+                        <Power className="h-4 w-4" />
                         {m.activo ? "Desactivar" : "Activar"}
                       </Button>
                       <Badge color={m.activo ? "success" : "danger"}>
@@ -508,7 +511,14 @@ export default function UsuariosPage() {
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <Button type="button" size="sm" variant="ghost" onClick={() => startEditRole(r)}>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="gap-1.5"
+                        onClick={() => startEditRole(r)}
+                      >
+                        <Pencil className="h-4 w-4" />
                         Editar
                       </Button>
                       {!r.es_sistema && (
@@ -516,8 +526,10 @@ export default function UsuariosPage() {
                           type="button"
                           size="sm"
                           variant="ghost"
+                          className="gap-1.5"
                           onClick={() => deleteRole(r.id)}
                         >
+                          <Trash2 className="h-4 w-4" />
                           Eliminar
                         </Button>
                       )}

@@ -59,7 +59,10 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && (path === "/login" || path === "/aceptar-terminos")) {
+  const precacheLogin =
+    path === "/login" && request.headers.get("x-sissa-precache") === "1";
+
+  if (user && !precacheLogin && (path === "/login" || path === "/aceptar-terminos")) {
     const dest = await postAuthPath(supabase, user.id);
     if (path !== dest) {
       return redirectKeepingSession(request, supabaseResponse, dest);

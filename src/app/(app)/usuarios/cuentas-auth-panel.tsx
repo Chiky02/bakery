@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { UserRole } from "@/types";
+import { Power, Shield, ShieldOff, Trash2 } from "lucide-react";
 
 type GlobalMembership = {
   miembro_id: string;
@@ -24,6 +25,7 @@ type GlobalAuthUser = {
   email: string;
   nombre: string;
   activo: boolean;
+  plataforma_admin?: boolean;
   created_at: string | null;
   last_sign_in_at: string | null;
   memberships: GlobalMembership[];
@@ -102,6 +104,25 @@ export function CuentasAuthPanel() {
       return;
     }
     setMsg(activo ? "Cuenta activada" : "Cuenta desactivada (ya no puede entrar)");
+    await load();
+  }
+
+  async function setPlataformaAdmin(userId: string, plataformaAdmin: boolean) {
+    setBusyId(userId);
+    setMsg("");
+    setError("");
+    const res = await fetch(`/api/usuarios/global/${userId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plataforma_admin: plataformaAdmin }),
+    });
+    const body = await res.json().catch(() => ({}));
+    setBusyId(null);
+    if (!res.ok) {
+      setError(body.error ?? "No se pudo cambiar el admin");
+      return;
+    }
+    setMsg(plataformaAdmin ? "Ahora es admin de plataforma" : "Ya no es admin de plataforma");
     await load();
   }
 
@@ -194,6 +215,7 @@ export function CuentasAuthPanel() {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium">{u.nombre}</p>
                       {isSelf && <Badge color="info">Tú</Badge>}
+                      {u.plataforma_admin && <Badge color="info">Admin plataforma</Badge>}
                       <Badge color={u.activo ? "success" : "danger"}>
                         {u.activo ? "Activa" : "Inactiva"}
                       </Badge>
@@ -226,18 +248,37 @@ export function CuentasAuthPanel() {
                       type="button"
                       size="sm"
                       variant="ghost"
+                      className="gap-1.5"
+                      disabled={isSelf || busyId === u.id}
+                      onClick={() => setPlataformaAdmin(u.id, !u.plataforma_admin)}
+                    >
+                      {u.plataforma_admin ? (
+                        <ShieldOff className="h-4 w-4" />
+                      ) : (
+                        <Shield className="h-4 w-4" />
+                      )}
+                      {u.plataforma_admin ? "Quitar admin" : "Hacer admin"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="gap-1.5"
                       disabled={isSelf || busyId === u.id}
                       onClick={() => setActivo(u.id, !u.activo)}
                     >
+                      <Power className="h-4 w-4" />
                       {u.activo ? "Desactivar" : "Activar"}
                     </Button>
                     <Button
                       type="button"
                       size="sm"
                       variant="danger"
+                      className="gap-1.5"
                       disabled={isSelf || busyId === u.id}
                       onClick={() => borrarCuenta(u)}
                     >
+                      <Trash2 className="h-4 w-4" />
                       Borrar
                     </Button>
                   </div>

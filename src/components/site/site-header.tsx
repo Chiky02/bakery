@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/", label: "Inicio" },
   { href: "/#locales", label: "Locales" },
   { href: "/encargar", label: "Encargar torta" },
+  { href: "/login", label: "Entrar al panel" },
 ];
 
 export function SiteHeader({ brand }: { brand: string }) {

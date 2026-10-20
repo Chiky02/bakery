@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Eye } from "lucide-react";
 
 export function ImpersonateUserButton({
   userId,
@@ -42,9 +43,11 @@ export function ImpersonateUserButton({
         variant="ghost"
         size="sm"
         disabled={pending}
+        className="gap-1.5"
         title={`Ver el panel como ${nombre}`}
         onClick={() => void run()}
       >
+        <Eye className="h-4 w-4" />
         {pending ? "…" : "Ver como"}
       </Button>
       {error && <span className="max-w-[10rem] text-[10px] text-red-600">{error}</span>}
